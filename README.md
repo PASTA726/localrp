@@ -8,7 +8,7 @@ LocalRP; GGUF modellerle **tamamen çevrimdışı** çalışan, Türkçe arayüz
 
 - **Yerel AI / Local AI**: llama.cpp tabanlı motor (`com.arm:ai-chat`), ARM64 GGUF desteği. Çıkarım tamamen cihazda; sohbet metni hiçbir sunucuya gitmez. Inference is fully on-device; chat text never leaves the phone.
 - **Model öneri merkezine** CPU ve GPU kategorileri: her kartta tahmini hız aralığı, bağlam penceresi, dil düzeyi ve "neden önerilir" notu. CPU önerileri llama.cpp CPU ölçütlerine göre, GPU önerileri `*` işaretli olup Vulkan/MLC tabanlı motorlar içindir.
-- **Uygulama içi indirme**: Hugging Face'ten doğrudan, iptal edilebilir, ilerleme göstergeli indirme; `.part` dosya yönetimi ile yarı kalan indirmeler temizlenir; depolama kontrolü ve mobil veri için onay.
+- **Uygulama içi indirme**: Hugging Face'ten doğrudan, iptal edilebilir, ilerleme göstergeli indirme; `.part` dosyası silinmez ve **kaldığı yerden devam eder** (HTTP Range); depolama kontrolü ve mobil veri için onay.
 - **Karakter ve grup RP**: kişiye özel tanım/kişilik/örnek diyalog, çok karakterli sohbetler, ad geçince o karakterin konuşması, sıra döngüsü ve elle sabitlenen sıradaki konuşmacı.
 - **Detaylı AI ayarları**: sistem promptu, geçmiş mesaj sayısı ve karakter bütçesi, otomatik/elle bağlam bütçesi, karakter zinciri (otomatik devam) sayısı.
 - **6 GUI teması**: Lavanta, Okyanus, Orman (açık) · Gölge, Deniz Gecesi, Gün Batımı (koyu) — kartlar, balonlar ve sistem çubukları tek dokunuşla boyanır.
@@ -17,16 +17,22 @@ LocalRP; GGUF modellerle **tamamen çevrimdışı** çalışan, Türkçe arayüz
 
 ## Kurulum / Install
 
-1. **APK'yi derle / Build the APK** (Linux, JDK 17, Android SDK):
+**Ön koşullar / Prerequisites**: JDK 17, Android SDK (Platform 36, Build-Tools 36.0.0, platform-tools). Repo, Gradle **8.13** sürümüne sabitlenmiş bir **wrapper** ile gelir; ek Gradle kurulumu gerekmez (ilk `./gradlew` çağrısı dağıtımı bir kez indirir).
+
+> The repo ships with a Gradle wrapper pinned to 8.13; you only need JDK 17 and an Android SDK (Platform 36, Build-Tools 36.0.0).
+
+1. **APK'yi derle / Build the APK**:
    ```bash
-   gradle :app:assembleDebug
+   ./gradlew :app:assembleDebug
+   # Çevrimdışı derleme (önceden doldurulmuş bir önbellek varsa):
+   GRADLE_USER_HOME="$PWD/.gradle-home" ./gradlew --no-daemon --offline :app:assembleDebug
    ```
    Çıktı: `app/build/outputs/apk/debug/app-debug.apk`
 2. Telefona kur / Install on phone:
    ```bash
    adb install -r app/build/outputs/apk/debug/app-debug.apk
    ```
-3. Uygulamada **AI sekmesi → Model önerileri**nden bir model indir (öneri: `Llama-3.2-1B Q4_K_M`, ~0,8 GB; daha hızlı seçenek: `Qwen2.5-0.5B`). Sonra aynı ekrandan **Modeli yükle**.
+3. Uygulamada **AI sekmesi → Model önerileri**nden bir model indir (öneri: `Llama-3.2-1B Q4_K_M`, ~0,8 GB; daha hızlı seçenek: `Qwen2.5-0.5B`). Sonra aynı ekrandan **Modeli yükle**. İndirme yarıda kesilirse "İndir" düğmesi kaldığı yerden devam eder.
 4. Alternatif: kendi `.gguf` dosyanı telefon depolama yöneticinden paylaşarak LocalRP'ye kopyala ("GGUF model dosyası seç") veya `Android/data/app.localrp/files/models/` altına koy.
 
 > Model dosyaları APK'da değildir; özel depolamada saklanır. İlk indirme için bir kez internet gerekir; sonrasında uygulama tamamen çevrimdışı çalışır.
@@ -57,6 +63,17 @@ Veri modeli `SharedPreferences` içinde JSON; modeller `Android/data/app.localrp
 - Paketli motor temperature/top-p/top-k ayarını dışa açmıyor; yanıt yönlendirmesi prompt ve uzunluk kaynaklı.
 - Motor bağlamı en fazla 8.192 token; uygulama Türkçe için ~2,5 karakter/token hesabıyla bütçe koyar.
 - GPU hız aralıkları `*` işaretlidir: Vulkan/MLC motorları içindir; paketli motor CPU'dur.
+- **Android 15+**: Android 15'te zorunlu hale gelen edge-to-edge modunda sistem çubuklarının renklendirilmesi göz ardı edilir (çizim Android'e ait); arabirim, inset yastıklaması sayesinde çubukların altına girmeden düzgün çizilir. Çubuk boyama davranışının tam çalıştığı sürüm Android 14'tür.
+- Veriler (`SharedPreferences` + uygulama dosyaları) cihazda **şifrelenmemiş** olarak saklanır; cihaz kilidi kullanıcıya aittir.
+
+## Klasörler / Folder map
+
+```
+app/src/main/java/app/localrp/   Uygulama kodu (tek activity + motor/sağlayıcı sınıflar)
+app/src/main/res/                Launcher ikonları ve tema XML'leri
+docs/logo-source.png             Launcher ikonunun kaynak görseli
+gradle/wrapper/                  Gradle 8.13 wrapper jar/properties (gradlew ile birlikte)
+```
 
 ## Lisans / License
 

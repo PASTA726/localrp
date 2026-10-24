@@ -108,6 +108,8 @@ public class MainActivity extends Activity {
     private final java.util.Map<String, String> chatMetrics = new java.util.HashMap<>();
     private final SimpleDateFormat clock = new SimpleDateFormat("HH:mm", Locale.getDefault());
     private int catalogFilter;
+    private TextView downloadProgressView;
+    private long downloadBytes, downloadTotal = -1L;
     private final java.util.Map<String, Integer> chainCounts = new java.util.HashMap<>();
 
     @Override public void onCreate(Bundle state) {
@@ -1057,17 +1059,20 @@ public class MainActivity extends Activity {
 
         boolean downloading = ModelDownload.INSTANCE.isActive()
                 && model.url.equals(ModelDownload.INSTANCE.getCurrentUrl());
-        String downloadingLabel = downloading ? model.name : null;
         File stored = catalogFile(model);
         File partial = catalogPartialFile(model);
         if (downloading) {
-            addBodyWithin(card, downloadingLabel + " · indiriliyor…");
+            downloadProgressView = addBodyWithin(card, downloadProgressText(model));
             Button cancel = button("İndirmeyi durdur");
             cancel.setAllCaps(false);
             cancel.setTextColor(Design.danger());
             cancel.setTextSize(14);
             cancel.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 12));
-            cancel.setOnClickListener(v -> ModelDownload.INSTANCE.cancel());
+            cancel.setOnClickListener(v -> {
+                ModelDownload.INSTANCE.cancel();
+                downloadProgressView = null;
+                showModelCatalog();
+            });
             LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             cancelParams.setMargins(0, dp(8), 0, 0);
@@ -1094,8 +1099,8 @@ public class MainActivity extends Activity {
             download.setBackground(rounded(Design.accent(), Design.accent(), 14));
             download.setOnClickListener(v -> {
                 if (partial != null) {
-                    confirm("Arzu tamamlanamayan bir indirme var (" + humanSize(partial.length())
-                            + "). Baştan başlansın mı?", "Baştan indir", () -> startCatalogDownload(model));
+                    confirm("Yarı kalan bir indirme var (" + humanSize(partial.length())
+                            + "). İndirme kaldığı yerden devam etsin mi?", "Kaldığı yerden devam", () -> startCatalogDownload(model));
                 } else {
                     startCatalogDownload(model);
                 }
@@ -1106,15 +1111,28 @@ public class MainActivity extends Activity {
             card.addView(download, downloadParams);
         }
         if (partial != null && !downloading) {
-            addBodyWithin(card, "Kalan parça dosya: " + humanSize(partial.length()));
+            addBodyWithin(card, "Kaydedilen parça: " + humanSize(partial.length()) + " · devam edince indirilmiş sayılır");
         }
         addCardToPage(card);
     }
 
-    private void addBodyWithin(LinearLayout parent, String text) {
+    private TextView addBodyWithin(LinearLayout parent, String text) {
         TextView view = label(text, 12, Design.muted());
         view.setPadding(0, dp(6), 0, 0);
         parent.addView(view);
+        return view;
+    }
+
+    /** Progress line for the downloading card's inline label (updated in place, no screen rebuild). */
+    private String downloadProgressText(ModelCatalog.Model model) {
+        StringBuilder text = new StringBuilder(model.name).append(" · indiriliyor…");
+        if (downloadTotal > 0) {
+            text.append("  %").append(Math.round(downloadBytes * 100.0 / downloadTotal))
+                    .append("  (").append(humanSize(downloadBytes)).append(" / ").append(humanSize(downloadTotal)).append(")");
+        } else if (downloadBytes > 0) {
+            text.append("  ").append(humanSize(downloadBytes));
+        }
+        return text.toString();
     }
 
     private void startCatalogDownload(ModelCatalog.Model model) {
@@ -1129,19 +1147,27 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, "Model klasörü açılamadı.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            modelStatus = "İniniyor: " + model.name;
+            modelStatus = "İndiriliyor: " + model.name;
             ModelDownload.INSTANCE.start(this, model.url, model.fileHint, new ModelDownload.Listener() {
-                @Override public void onProgress(int percent, long downloadedBytes) {
+                @Override public void onProgress(int percent, long downloadedBytes, long totalBytes) {
                     if (!uiAlive()) return;
-                    if ("models".equals(currentTab)) showModelCatalog();
+                    downloadBytes = downloadedBytes;
+                    downloadTotal = totalBytes;
+                    if ("models".equals(currentTab) && downloadProgressView != null) {
+                        downloadProgressView.setText(downloadProgressText(model));
+                    }
                 }
                 @Override public void onDone(File file) {
                     if (!uiAlive()) return;
+                    downloadProgressView = null;
+                    downloadBytes = 0L;
+                    downloadTotal = -1L;
                     Toast.makeText(MainActivity.this, model.name + " indirildi.", Toast.LENGTH_SHORT).show();
                     if ("models".equals(currentTab)) showModelCatalog();
                 }
                 @Override public void onError(String message) {
                     if (!uiAlive()) return;
+                    downloadProgressView = null;
                     Toast.makeText(MainActivity.this, "İndirme hatası: " + message, Toast.LENGTH_SHORT).show();
                     if ("models".equals(currentTab)) showModelCatalog();
                 }
@@ -1742,6 +1768,15 @@ public class MainActivity extends Activity {
         pageRoot = new LinearLayout(this);
         pageRoot.setOrientation(LinearLayout.VERTICAL);
         pageRoot.setBackgroundColor(Design.pageBg());
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            // Android 15+ enforces edge-to-edge; pad content under the system bars (page tint still shows through).
+            pageRoot.setOnApplyWindowInsetsListener((view, insets) -> {
+                int top = insets.getSystemWindowInsetTop();
+                int bottom = insets.getSystemWindowInsetBottom();
+                if (top > 0 || bottom > 0) view.setPadding(0, top, 0, bottom);
+                return insets;
+            });
+        }
         if (chat) {
             LinearLayout header = new LinearLayout(this);
             header.setGravity(Gravity.CENTER_VERTICAL);
@@ -2156,27 +2191,10 @@ public class MainActivity extends Activity {
         return input;
     }
 
-    private void addTitle(String text) {
-        TextView view = label(text, 18, Design.text());
-        view.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        view.setPadding(0, dp(14), 0, dp(7));
-        content.addView(view);
-    }
-
     private void addBody(String text) {
         TextView view = label(text, 13, Design.muted());
         view.setPadding(0, dp(4), 0, dp(10));
         content.addView(view);
-    }
-
-    private void addButton(String text, View.OnClickListener listener) {
-        Button view = button(text);
-        view.setOnClickListener(listener);
-        view.setTextColor(Design.text());
-        view.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 12));
-        LinearLayout.LayoutParams p = fullWidth();
-        p.setMargins(0, 0, 0, dp(8));
-        content.addView(view, p);
     }
 
     private void addDangerButton(String text, View.OnClickListener listener) {
@@ -2411,10 +2429,6 @@ public class MainActivity extends Activity {
             List<Message> all = messages(groupId);
             return all.isEmpty() ? null : all.get(all.size() - 1);
         }
-        boolean hasPendingUserMessage(String groupId) {
-            Message last = lastMessage(groupId);
-            return last != null && last.user;
-        }
         void addMessage(String id, Message message) {
             List<Message> all = messages(id);
             all.add(message);
@@ -2422,11 +2436,6 @@ public class MainActivity extends Activity {
         }
         void clearMessages(String id) {
             preferences.edit().remove("chat_" + id).apply();
-        }
-        String lastUserMessage(String id) {
-            List<Message> all = messages(id);
-            for (int i = all.size() - 1; i >= 0; i--) if (all.get(i).user) return all.get(i).text;
-            return "";
         }
         private void writeMessages(String id, List<Message> all) {
             try {

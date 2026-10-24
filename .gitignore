@@ -29,3 +29,7 @@ Thumbs.db
 # Günlük ve geçici dosyalar
 *.log
 *.tmp
+
+# Proje içi çalışma notları (herkese açık repo olmayan)
+AGENTS.md
+NEXT_AI.md
