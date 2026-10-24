@@ -1,0 +1,31 @@
+# Gradle
+.gradle/
+build/
+app/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Makineye özel / machine-specific
+local.properties
+
+# Çevrimdışı derleme önbellekleri (bu projeye özel klasörler)
+.gradle-home/
+.tmp/
+.api/
+.apkcheck/
+.compile-check/
+.manual-build/
+.kotlin/
+.gradle/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# İşletim sistemi
+.DS_Store
+Thumbs.db
+
+# Günlük ve geçici dosyalar
+*.log
+*.tmp
