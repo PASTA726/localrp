@@ -57,8 +57,9 @@ The tail unloads the previous model, reads GGUF metadata in a header pass (name/
 ### Downloading (`ModelDownload.kt`)
 
 - Writes to `<fileHint>.part`, `fd.sync()`s, then renames.
+- Single-flight gate: an `AtomicBoolean` taken at launch and released in the coroutine's `finally` — a cancelled job keeps the slot until its writer is really gone, so attempts during the small unwind are refused (the UI reports a toast).
 - If `.part` exists the request carries `Range: bytes=<part>-`; an HTTP 206 (all catalog URLs were verified resumable) appends and reports offset-adjusted progress; a 200 response restarts cleanly.
-- `cancel()` clears the `active` flag **and** cancels the job, so a read loop without suspension points stops immediately; the `.part` stays for resume.
+- `cancel()` clears `currentUrl` and cancels the job; the read loop relays cancellation via `isActive` at most 256 KB later, and the `.part` stays for resume.
 - Storage is checked with `StatFs` (128 MB headroom); metered networks trigger a confirm dialog in the UI layer.
 - Progress callback reports `(percent, bytes, total)`; `total` is resolved from `Content-Range` (206) or `Content-Length` (200), `-1` when unknown (periodic byte-only ticks).
 

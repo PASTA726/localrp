@@ -9,10 +9,12 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.isActive
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.coroutines.coroutineContext
 
 /**
  * Streams a GGUF file from a direct HTTPS URL into the app's model directory.
@@ -29,27 +31,28 @@ object ModelDownload {
     private const val REPORT_CHUNK = 4L * 1024 * 1024 // bytes between progress events without Content-Length
 
     @Volatile private var job: Job? = null
-    @Volatile private var active = false
+
+    /**
+     * Single-flight gate. Taken when a download launches and released in the
+     * coroutine's finally, so a just-cancelled job keeps the slot until its
+     * writer is really gone — attempts during that small unwind get `false`.
+     */
+    private val running = java.util.concurrent.atomic.AtomicBoolean(false)
     @Volatile var currentUrl: String? = null
         private set
 
-    fun isActive(): Boolean = active
+    fun isActive(): Boolean = running.get()
 
-    /** Clears the flag first so a read loop stops even without suspension points. */
     fun cancel() {
-        active = false
         currentUrl = null
         job?.cancel()
     }
 
-    fun start(context: Context, url: String, displayName: String, listener: Listener) {
-        // One download at a time. The job guard also rejects a restart while a
-        // just-cancelled coroutine is still unwinding: two writers appending to
-        // the same .part part file would corrupt it.
-        if (active || job?.isActive == true) return
+    /** @return false when refused (another download in flight or still unwinding). */
+    fun start(context: Context, url: String, displayName: String, listener: Listener): Boolean {
+        if (!running.compareAndSet(false, true)) return false
         val app = context.applicationContext
         val target = File(LocalAiRuntime.modelsDirectory(app), displayName)
-        active = true
         currentUrl = url
         job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             var connection: HttpURLConnection? = null
@@ -80,8 +83,6 @@ object ModelDownload {
                 val remaining = if (total != null) total - startOffset else -1L
                 if (total != null && remaining <= 0) {
                     finalize(target, temporary)
-                    active = false
-                    currentUrl = null
                     withContext(Dispatchers.Main) { listener.onDone(target) }
                     return@launch
                 }
@@ -99,7 +100,7 @@ object ModelDownload {
                         var lastReported = copied
                         val buffer = ByteArray(1024 * 256)
                         while (true) {
-                            if (!active) throw CancellationException()
+                            if (!coroutineContext.isActive) throw CancellationException()
                             val read = input.read(buffer)
                             if (read < 0) break
                             output.write(buffer, 0, read)
@@ -128,24 +129,21 @@ object ModelDownload {
                     error("Dosya tam inmedi (${temporary.length()}/${total}); tekrar deneyebilirsin.")
                 }
                 finalize(target, temporary)
-                active = false
-                currentUrl = null
                 withContext(Dispatchers.Main) { listener.onDone(target) }
             } catch (cancelled: CancellationException) {
                 // Keep the .part file so the next "İndir" resumes instead of restarting 0.8–2.4 GB.
-                active = false
-                currentUrl = null
                 throw cancelled
             } catch (failure: Throwable) {
-                active = false
-                currentUrl = null
                 withContext(NonCancellable + Dispatchers.Main) {
                     listener.onError(failure.message ?: "İndirme tamamlanamadı.")
                 }
             } finally {
                 connection?.disconnect()
+                currentUrl = null
+                running.set(false)
             }
         }
+        return true
     }
 
     private fun open(url: String, rangeStart: Long): HttpURLConnection {

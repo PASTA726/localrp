@@ -1148,7 +1148,7 @@ public class MainActivity extends Activity {
                 return;
             }
             modelStatus = "İndiriliyor: " + model.name;
-            ModelDownload.INSTANCE.start(this, model.url, model.fileHint, new ModelDownload.Listener() {
+            boolean accepted = ModelDownload.INSTANCE.start(this, model.url, model.fileHint, new ModelDownload.Listener() {
                 @Override public void onProgress(int percent, long downloadedBytes, long totalBytes) {
                     if (!uiAlive()) return;
                     downloadBytes = downloadedBytes;
@@ -1177,6 +1177,15 @@ public class MainActivity extends Activity {
                     if ("models".equals(currentTab)) showModelCatalog();
                 }
             });
+            if (!accepted) {
+                Toast.makeText(this, "Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene.", Toast.LENGTH_SHORT).show();
+            } else {
+                if ("models".equals(currentTab)) {
+                    // Swap the card into its downloading state right away
+                    // (progress label + cancel button) instead of waiting for %1.
+                    showModelCatalog();
+                }
+            }
         };
         if (metered) {
             new AlertDialog.Builder(this).setTitle("Mobil veri uyarısı")
@@ -1185,11 +1194,6 @@ public class MainActivity extends Activity {
                     .setNegativeButton("Vazgeç", null).show();
         } else {
             start.run();
-            if (ModelDownload.INSTANCE.isActive() && "models".equals(currentTab)) {
-                // Swap the card into its downloading state right away
-                // (progress label + cancel button) instead of waiting for %1.
-                showModelCatalog();
-            }
         }
     }
 
