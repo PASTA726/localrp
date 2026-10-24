@@ -35,7 +35,7 @@ object ModelDownload {
 
     fun isActive(): Boolean = active
 
-    /** Clears the flag first so a valid read loop stops even while suspended reads are gone. */
+    /** Clears the flag first so a read loop stops even without suspension points. */
     fun cancel() {
         active = false
         currentUrl = null
@@ -43,12 +43,16 @@ object ModelDownload {
     }
 
     fun start(context: Context, url: String, displayName: String, listener: Listener) {
-        if (active) return
+        // One download at a time. The job guard also rejects a restart while a
+        // just-cancelled coroutine is still unwinding: two writers appending to
+        // the same .part part file would corrupt it.
+        if (active || job?.isActive == true) return
         val app = context.applicationContext
         val target = File(LocalAiRuntime.modelsDirectory(app), displayName)
         active = true
         currentUrl = url
         job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            var connection: HttpURLConnection? = null
             try {
                 withContext(Dispatchers.Main) { listener.onProgress(0, 0L, -1L) }
                 val directory = target.parentFile ?: error("Model klasörü yok.")
@@ -56,21 +60,23 @@ object ModelDownload {
                 val temporary = File(directory, target.name + ".part")
                 val alreadyHave = if (temporary.isFile) temporary.length() else 0L
 
-                var connection = open(url, alreadyHave)
-                var code = connection.responseCode
+                var activeConnection = open(url, alreadyHave)
+                connection = activeConnection
+                var code = activeConnection.responseCode
                 if (alreadyHave > 0 && code != HttpURLConnection.HTTP_PARTIAL) {
                     // Server ignored Range: restart cleanly.
                     temporary.delete()
-                    connection.disconnect()
-                    connection = open(url, 0L)
-                    code = connection.responseCode
+                    activeConnection.disconnect()
+                    activeConnection = open(url, 0L)
+                    connection = activeConnection
+                    code = activeConnection.responseCode
                 }
                 if (code < 200 || code >= 300) {
                     error("Sunucu $code döndürdü; indirme başlatılamadı.")
                 }
 
                 val startOffset = if (code == HttpURLConnection.HTTP_PARTIAL) alreadyHave else 0L
-                val total: Long? = fullTotal(connection, startOffset)
+                val total: Long? = fullTotal(activeConnection, startOffset)
                 val remaining = if (total != null) total - startOffset else -1L
                 if (total != null && remaining <= 0) {
                     finalize(target, temporary)
@@ -86,7 +92,7 @@ object ModelDownload {
                     }
                 }
 
-                connection.inputStream.use { input ->
+                activeConnection.inputStream.use { input ->
                     FileOutputStream(temporary, startOffset > 0L).use { output ->
                         var copied = startOffset
                         var lastPercent = if (total == null) -1 else ((copied * 100L) / total).toInt()
@@ -136,6 +142,8 @@ object ModelDownload {
                 withContext(NonCancellable + Dispatchers.Main) {
                     listener.onError(failure.message ?: "İndirme tamamlanamadı.")
                 }
+            } finally {
+                connection?.disconnect()
             }
         }
     }

@@ -2,7 +2,6 @@ package app.localrp;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.view.View;
 import android.view.Window;
 
@@ -29,19 +28,14 @@ public final class Design {
     public static void applyBars(Activity activity) {
         Window window = activity.getWindow();
         if (window == null) return;
-        int barColor = theme.pageBg;
-        window.setStatusBarColor(barColor);
+        window.setStatusBarColor(theme.pageBg);
         window.setNavigationBarColor(theme.dark ? theme.cardBg : theme.pageBg);
         int decor = View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
-        if (Build.VERSION.SDK_INT >= 30) {
-            window.setStatusBarColor(barColor);
-        }
         if (!theme.dark) {
             decor |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         }
         window.getDecorView().setSystemUiVisibility(decor);
     }
-
     public static int text() { return theme.text; }
     public static int muted() { return theme.muted; }
     public static int pageBg() { return theme.pageBg; }

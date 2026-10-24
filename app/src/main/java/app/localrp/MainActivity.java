@@ -609,7 +609,7 @@ public class MainActivity extends Activity {
                     else if (finalText.isEmpty()) chatStatusView.setText("Model boş yanıt döndürdü");
                     else if (stopped) chatStatusView.setText("Yanıt durduruldu.");
                 }
-                if (error != null && finalText.isEmpty() && group.id.equals(visibleChatId)) {
+                if (error != null && finalText.isEmpty() && group.id.equals(visibleChatId) && uiAlive()) {
                     AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this)
                             .setTitle("Yanıt üretilemedi")
                             .setMessage(error);
@@ -1153,9 +1153,14 @@ public class MainActivity extends Activity {
                     if (!uiAlive()) return;
                     downloadBytes = downloadedBytes;
                     downloadTotal = totalBytes;
-                    if ("models".equals(currentTab) && downloadProgressView != null) {
-                        downloadProgressView.setText(downloadProgressText(model));
+                    if (!"models".equals(currentTab)) return;
+                    if (downloadProgressView == null) {
+                        // Download started from the catalog; rebuild once to mount the
+                        // downloading card (label + cancel), then update in place.
+                        showModelCatalog();
+                        return;
                     }
+                    downloadProgressView.setText(downloadProgressText(model));
                 }
                 @Override public void onDone(File file) {
                     if (!uiAlive()) return;
@@ -1180,6 +1185,11 @@ public class MainActivity extends Activity {
                     .setNegativeButton("Vazgeç", null).show();
         } else {
             start.run();
+            if (ModelDownload.INSTANCE.isActive() && "models".equals(currentTab)) {
+                // Swap the card into its downloading state right away
+                // (progress label + cancel button) instead of waiting for %1.
+                showModelCatalog();
+            }
         }
     }
 
@@ -1696,10 +1706,8 @@ public class MainActivity extends Activity {
     private String cleanResponse(String raw, String speakerName) {
         if (raw == null) return "";
         String text = raw.trim();
-        if (text != null) {
-            text = text.replace("<|im_end|>", "").replace("<|eot_id|>", "")
-                    .replace("<|end_of_text|>", "").replace("</s>", "").trim();
-        }
+        text = text.replace("<|im_end|>", "").replace("<|eot_id|>", "")
+                .replace("<|end_of_text|>", "").replace("</s>", "").trim();
         if (!text.isEmpty() && speakerName != null && !speakerName.trim().isEmpty()) {
             String name = Pattern.quote(speakerName.trim());
             text = text.replaceFirst("(?is)^\\s*\\*{0,2}" + name + "\\*{0,2}\\s*[:：-]\\s*", "");

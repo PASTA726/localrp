@@ -8,11 +8,11 @@ LocalRP is deliberately small: one `MainActivity`, one Kotlin runtime object, an
 
 ```
 MainActivity.java      2.4k lines — all screens, RP flow, speaker selection, data store
-LocalAiRuntime.kt      llama.cpp wrapper (com.arm:ai-chat), GGUF loading, metrics
+LocalAiRuntime.kt      llama.cpp via com.arm:ai-chat (Apache-2.0, upstream: github.com/arm/ai-chat)
 AppTheme.java          6 GUI themes as plain color tokens (light + dark)
 Design.java            static accessor for the active theme + system-bar painting
 ModelCatalog.java      curated GGUF download list (CPU/GPU columns, verified URLs)
-ModelDownload.kt       streaming downloader with cancel + HTTP-Range resume
+ModelDownload.kt       streaming downloader with cancel, single-writer gate and HTTP-Range resume
 ```
 
 ### MainActivity
@@ -76,4 +76,6 @@ The tail unloads the previous model, reads GGUF metadata in a header pass (name/
 
 - Engine does not expose sampling parameters (temperature/top-p/top-k); steering is prompt- and length-based.
 - Streaming works through the engine (`onToken` per token), so bars append incrementally — no per-character typing bubble is drawn on top.
+- The message store re-parses its JSON blob on every access; very long chats (hundreds of messages) may slow screen rebuilds. Export/backup tooling is a stated next step.
 - No content-filter layer; RP personas write as fictional characters by system prompt only.
+- `MainActivity` is a single ~2.4k-line class by design (no architecture framework); splitting it further was traded away on purpose to keep dependencies at zero.

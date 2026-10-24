@@ -17,9 +17,9 @@ LocalRP; GGUF modellerle **tamamen çevrimdışı** çalışan, Türkçe arayüz
 
 ## Kurulum / Install
 
-**Ön koşullar / Prerequisites**: JDK 17, Android SDK (Platform 36, Build-Tools 36.0.0, platform-tools). Repo, Gradle **8.13** sürümüne sabitlenmiş bir **wrapper** ile gelir; ek Gradle kurulumu gerekmez (ilk `./gradlew` çağrısı dağıtımı bir kez indirir).
+**Ön koşullar / Prerequisites**: JDK 17, Android SDK (Platform 36, Build-Tools 36.0.0, platform-tools). Repo, Gradle **8.13** sürümüne sabitlenmiş bir **wrapper** ile gelir; ek Gradle kurulumu gerekmez (ilk `./gradlew` çağrısı dağıtımı bir kez indirir). Uygulamanın çalışması için **Android 13 (API 33) veya üstü** ve **ARM64** bir cihaz gerekir. Android motoru bağımlılığı [`com.arm:ai-chat:0.1.0`](https://github.com/arm/ai-chat) Apache-2.0 lisanslı, doğrudan Maven Central'dan çözülür.
 
-> The repo ships with a Gradle wrapper pinned to 8.13; you only need JDK 17 and an Android SDK (Platform 36, Build-Tools 36.0.0).
+> The repo ships with a Gradle wrapper pinned to 8.13; you only need JDK 17 and an Android SDK (Platform 36, Build-Tools 36.0.0). The app requires Android 13+ (API 33) on ARM64. The engine dependency `com.arm:ai-chat:0.1.0` (Apache-2.0) resolves from Maven Central.
 
 1. **APK'yi derle / Build the APK**:
    ```bash
