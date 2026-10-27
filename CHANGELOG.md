@@ -2,6 +2,14 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.7.3 — 2026-10-28
+
+- **Group roleplay identity fix** (user-reported: the AI sometimes lost track of which character it was playing):
+  - On continuing turns, the prompt now re-injects this turn's speaker identity (name + one-line hint) and lists the other characters *by name* with an explicit "do not write as them" instruction. Previously the continuing branch only said "context continues" and the model stayed anchored to the previous speaker's persona in the shared engine context.
+  - Chat history in the prompt now labels the user as `Kullanıcı:` instead of the display label `Sen:`, removing an ambiguity that read like a character named "Sen".
+  - The global system prompt gained an explicit multi-character turn rule ("write only the requested character's reply").
+- versionCode 10 / 0.7.3.
+
 ## v0.7.2 — 2026-10-28
 
 - **Download integrity hardened** (Görev 02 implementation phase): the catalog only presents a model as "İndirildi" when the stored file size matches the verified catalog size; a hand-copied or truncated file now shows the "İndir" state instead of a ready model. Redirects to any non-https final URL are refused. The start/cancel race in `ModelDownload` is closed (`cancel()` can no longer miss the just-launched job; a download cancelled in the launch window aborts itself).

@@ -1592,7 +1592,7 @@ public class MainActivity extends Activity {
 
         appendAiInstructions(prompt);
         prompt.append("Sahne: ").append(oneLine(group.name, 160)).append("\n");
-        prompt.append("Şimdi ").append(speakerName).append(" karakteri olarak rol içi yanıt ver.\n");
+        prompt.append("Bu tur yalnızca ").append(speakerName).append(" karakterini konuşacak şekilde yanıt ver.\n");
         if (!continuing) {
             String description = clip(speaker.description, 700);
             String personality = clip(speaker.personality, 900);
@@ -1621,7 +1621,29 @@ public class MainActivity extends Activity {
                 appendHistory(prompt, history, last != null && last.user);
             }
         } else {
-            prompt.append("Bağlam devam ediyor; önceki karakter tanımını ve sahneyi koru.\n");
+            // The engine keeps ONE shared context per conversation; on continuing turns the
+            // model would otherwise stay anchored to the previous speaker's persona.
+            // Re-inject this turn's identity compactly. (Kullanıcı kusuru: grup RP'de rol kayması)
+            prompt.append("Bağlam devam ediyor; sahneyi koru ama bu turun karakter kimliği aşağıdadır.\n");
+            String hint = clip(speaker.description, 160);
+            if (hint.isEmpty()) hint = clip(speaker.personality, 160);
+            prompt.append("Rol kimliği: ").append(speakerName);
+            if (!hint.isEmpty()) prompt.append(" — ").append(hint);
+            prompt.append("\n");
+            StringBuilder otherNames = new StringBuilder();
+            int otherBudget = 280;
+            for (String id : group.characterIds) {
+                CharacterProfile character = store.character(id);
+                if (character == null || character.id.equals(speaker.id)) continue;
+                String name = clip(character.name.trim(), 60);
+                if (name.isEmpty() || otherBudget <= name.length()) continue;
+                if (otherNames.length() > 0) { otherNames.append(", "); otherBudget -= 2; }
+                otherNames.append(name);
+                otherBudget -= name.length();
+            }
+            if (otherNames.length() > 0) {
+                prompt.append("Sahnedeki diğer karakterler (adlarına yazma): ").append(otherNames).append("\n");
+            }
         }
         if (last != null && last.user) {
             prompt.append("\nKullanıcının son mesajı: ").append(clip(last.text, 3000)).append("\n");
@@ -1629,7 +1651,8 @@ public class MainActivity extends Activity {
             prompt.append("\nSahne devam ediyor; sıradaki karakter olarak bu ana doğal bir tepki ver.\n");
         }
         prompt.append("\nKurallar: Yalnızca ").append(speakerName)
-                .append(" olarak tek bir rol içi yanıt yaz. Kullanıcı veya diğer karakterler adına konuşma. ")
+                .append(" olarak tek bir rol içi yanıt yaz. Geçmişte \"Kullanıcı:\" olarak görünen satırlar kullanıcının " +
+                        "kendi sözleridir; kullanıcı veya diğer karakterler adına konuşma. ")
                 .append("Yanıtın başında karakter adını yazma. Türkçe yanıt ver ve sahnenin dışına çıkma.");
         return prompt.toString();
     }
@@ -1641,7 +1664,10 @@ public class MainActivity extends Activity {
         int budget = historyCharBudget();
         for (int i = end - 1; i >= start; i--) {
             Message message = history.get(i);
-            String line = message.speaker + ": " + message.text;
+            // User records are stored with the display label "Sen"; the transcript must
+            // disambiguate the user from any character, so the prompt uses "Kullanıcı".
+            String who = message.user ? "Kullanıcı" : message.speaker;
+            String line = who + ": " + message.text;
             if (line.length() > budget) {
                 if (budget > 40) lines.add(0, line.substring(0, budget - 1) + "…");
                 break;

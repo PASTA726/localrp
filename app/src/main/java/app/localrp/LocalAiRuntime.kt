@@ -59,6 +59,8 @@ object LocalAiRuntime {
     private const val SYSTEM_PROMPT =
         "Sen LocalRP'nin daima karakter içinde kalan rol yapma motorusun. Kullanıcıyla " +
             "ortak hikâyeyi sürdür. Kullanıcının karakterinin kararlarını veya sözlerini yazma. " +
+            "Birden fazla karakterli sahnelerde her turda yalnızca istenen karakterin repliğini yaz; " +
+            "başka karakterlere veya kullanıcıya ait replikler yazma. " +
             "Türkçe yanıt ver ve sahnenin dışına çıkma."
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
