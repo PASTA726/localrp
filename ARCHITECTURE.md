@@ -65,7 +65,7 @@ The tail unloads the previous model, reads GGUF metadata in a header pass (name/
 
 ### Theming (`AppTheme` / `Design`)
 
-`AppTheme` holds 6 palettes; `Design` exposes them as static accessors (`Design.text()`, `Design.accent()`, …) that `MainActivity` uses everywhere — no hardcoded colors remain. `Design.applyBars()` paints status/navigation bars and toggles light appearance icons. On Android 15+ (enforced edge-to-edge) the root view pads itself with the system bar insets so nothing hides under the bars; users on Android 14 get the painted bars.
+`AppTheme` holds 6 palettes; `Design` exposes them as static accessors (`Design.text()`, `Design.accent()`, …) that `MainActivity` uses everywhere — the only hardcoded colors left are `styles.xml`'s cold-start mirror of the default Lavanta palette (used on the first frame before `Design.applyBars()` runs; see the comment there). `Design.applyBars()` paints status/navigation bars and toggles light appearance icons. On Android 15+ (enforced edge-to-edge) the root view pads itself with the system bar insets so nothing hides under the bars; users on Android 14 get the painted bars.
 
 ### Privacy
 

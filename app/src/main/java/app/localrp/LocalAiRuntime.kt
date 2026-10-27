@@ -364,12 +364,15 @@ object LocalAiRuntime {
                 val needsReload = reloadBeforeNextGeneration ||
                     (activeChatId != null && activeChatId != chatId) ||
                     state is InferenceEngine.State.Initialized ||
-                    state is InferenceEngine.State.Error
+                    state is InferenceEngine.State.Error ||
+                    state is InferenceEngine.State.Benchmarking
 
                 if (needsReload) {
                     withContext(Dispatchers.Main) { listener.onStatus("Sohbet bağlamı hazırlanıyor…") }
-                    if (state is InferenceEngine.State.ModelReady || state is InferenceEngine.State.Error) {
-                        modelEngine.cleanUp()
+                    if (state is InferenceEngine.State.ModelReady || state is InferenceEngine.State.Error ||
+                        state is InferenceEngine.State.Benchmarking) {
+                        // A failed bench() can strand the engine in Benchmarking; best-effort reset.
+                        try { modelEngine.cleanUp() } catch (_: Throwable) { }
                     }
                     modelEngine.loadModel(path)
                     modelEngine.setSystemPrompt(currentSystemPrompt())
@@ -434,6 +437,11 @@ object LocalAiRuntime {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Throwable) {
+                // A bench() failure can leave the engine stranded in Benchmarking;
+                // attempt a best-effort reset so the next generation can reload.
+                if (modelEngine.state.value is InferenceEngine.State.Benchmarking) {
+                    try { modelEngine.cleanUp() } catch (_: Throwable) { }
+                }
                 benchmarking = false
                 val recovery = if (modelEngine.state.value is InferenceEngine.State.ModelReady) ""
                     else "\nModel durumu bozuldu; uygulamayı kapatıp yeniden açman ve modeli yeniden yüklemen gerekebilir."
@@ -505,6 +513,7 @@ object LocalAiRuntime {
             ?: uri.lastPathSegment?.substringAfterLast('/')
             ?: "model.gguf"
         name = name.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"), "_")
+        if (name.length > 72) name = name.take(72) // pathological SAF names must stay within filesystem limits
         if (!name.endsWith(".gguf", ignoreCase = true)) name += ".gguf"
         return name
     }

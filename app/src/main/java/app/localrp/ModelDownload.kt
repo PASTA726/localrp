@@ -38,25 +38,31 @@ object ModelDownload {
      * writer is really gone — attempts during that small unwind get `false`.
      */
     private val running = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val gate = Any()
     @Volatile var currentUrl: String? = null
         private set
 
     fun isActive(): Boolean = running.get()
 
     fun cancel() {
-        currentUrl = null
-        job?.cancel()
+        synchronized(gate) {
+            currentUrl = null
+            job?.cancel()
+        }
     }
 
     /** @return false when refused (another download in flight or still unwinding). */
     fun start(context: Context, url: String, displayName: String, listener: Listener): Boolean {
-        if (!running.compareAndSet(false, true)) return false
+        synchronized(gate) {
+            if (!running.compareAndSet(false, true)) return false
+            currentUrl = url
+        }
         val app = context.applicationContext
         val target = File(LocalAiRuntime.modelsDirectory(app), displayName)
-        currentUrl = url
-        job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        val started = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             var connection: HttpURLConnection? = null
             try {
+                if (currentUrl != url) return@launch // cancel() raced between start() and job assignment
                 withContext(Dispatchers.Main) { listener.onProgress(0, 0L, -1L) }
                 val directory = target.parentFile ?: error("Model klasörü yok.")
                 if (!directory.exists() && !directory.mkdirs()) error("Model klasörü oluşturulamadı.")
@@ -76,6 +82,10 @@ object ModelDownload {
                 }
                 if (code < 200 || code >= 300) {
                     error("Sunucu $code döndürdü; indirme başlatılamadı.")
+                }
+                val finalUrl = activeConnection.url
+                if (finalUrl.protocol != "https") {
+                    error("İndirme güvenli olmayan (https olmayan) bir adrese yönlendirildi; iptal edildi.")
                 }
 
                 val startOffset = if (code == HttpURLConnection.HTTP_PARTIAL) alreadyHave else 0L
@@ -143,6 +153,7 @@ object ModelDownload {
                 running.set(false)
             }
         }
+        synchronized(gate) { job = started }
         return true
     }
 
@@ -151,7 +162,7 @@ object ModelDownload {
         connection.instanceFollowRedirects = true
         connection.connectTimeout = 20_000
         connection.readTimeout = 30_000
-        connection.setRequestProperty("User-Agent", "LocalRP/0.7.1 (+android)")
+        connection.setRequestProperty("User-Agent", "LocalRP/0.7.2 (+android)")
         if (rangeStart > 0L) connection.setRequestProperty("Range", "bytes=$rangeStart-")
         return connection
     }

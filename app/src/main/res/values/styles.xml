@@ -1,9 +1,11 @@
 <resources>
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#5B3FD1</item>
-        <item name="android:navigationBarColor">#FAF8FF</item>
+        <!-- Cold-start palette mirror of the default theme (Lavanta in AppTheme.java):
+             the first frame is drawn from these, Design.applyBars() then repaints with tokens. -->
+        <item name="android:colorAccent">#694DD6</item>
+        <item name="android:navigationBarColor">#F8F7FB</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:statusBarColor">#FAF8FF</item>
+        <item name="android:statusBarColor">#F8F7FB</item>
     </style>
 </resources>

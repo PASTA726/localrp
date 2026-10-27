@@ -19,11 +19,6 @@ public final class Design {
         theme = AppTheme.byId(prefs.getString("ui_theme", "lavanta"));
     }
 
-    public static AppTheme byIdOrNull(String id) {
-        for (AppTheme candidate : AppTheme.ALL) if (candidate.id.equals(id)) return candidate;
-        return null;
-    }
-
     /** Applies the theme to the system bars so the chrome follows the screen palette. */
     public static void applyBars(Activity activity) {
         Window window = activity.getWindow();

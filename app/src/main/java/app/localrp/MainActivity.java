@@ -1011,7 +1011,11 @@ public class MainActivity extends Activity {
     private File catalogFile(ModelCatalog.Model model) {
         File directory = LocalAiRuntime.INSTANCE.modelsDirectory(this);
         File file = new File(directory, model.fileHint);
-        return file.isFile() ? file : null;
+        if (!file.isFile()) return null;
+        // Do not trust the filename alone: a stale or hand-copied file of the wrong
+        // quant/colors must not be presented as "İndirildi".
+        if (model.bytes > 0 && file.length() != model.bytes) return null;
+        return file;
     }
 
     private File catalogPartialFile(ModelCatalog.Model model) {
@@ -1549,7 +1553,8 @@ public class MainActivity extends Activity {
                 if (!uiAlive()) return;
                 modelStatus = message;
                 if ("models".equals(currentTab) && modelStatusView != null) modelStatusView.setText(message);
-                if (message.contains("kaldırıldı")) {
+                // Success is decided by runtime state, not by parsing the status text.
+                if (!LocalAiRuntime.INSTANCE.isModelReady() && LocalAiRuntime.INSTANCE.loadedModelPath() == null) {
                     modelLoading = false;
                     contextChars.clear();
                     chatMetrics.clear();
@@ -2345,10 +2350,17 @@ public class MainActivity extends Activity {
         }
         List<CharacterProfile> characters() {
             List<CharacterProfile> result = new ArrayList<>();
+            JSONArray data = null;
             try {
-                JSONArray data = new JSONArray(preferences.getString("characters", "[]"));
-                for (int i = 0; i < data.length(); i++) result.add(characterFrom(data.getJSONObject(i)));
-            } catch (JSONException ignored) {}
+                data = new JSONArray(preferences.getString("characters", "[]"));
+            } catch (JSONException ignored) {
+                return result;
+            }
+            for (int i = 0; i < data.length(); i++) {
+                try {
+                    result.add(characterFrom(data.getJSONObject(i)));
+                } catch (JSONException ignoredRecord) { }
+            }
             return result;
         }
         CharacterProfile character(String id) { for (CharacterProfile c : characters()) if (c.id.equals(id)) return c; return null; }
@@ -2393,10 +2405,17 @@ public class MainActivity extends Activity {
         }
         List<Group> groups() {
             List<Group> result = new ArrayList<>();
+            JSONArray data = null;
             try {
-                JSONArray data = new JSONArray(preferences.getString("groups", "[]"));
-                for (int i = 0; i < data.length(); i++) result.add(groupFrom(data.getJSONObject(i)));
-            } catch (JSONException ignored) {}
+                data = new JSONArray(preferences.getString("groups", "[]"));
+            } catch (JSONException ignored) {
+                return result;
+            }
+            for (int i = 0; i < data.length(); i++) {
+                try {
+                    result.add(groupFrom(data.getJSONObject(i)));
+                } catch (JSONException ignoredRecord) { }
+            }
             return result;
         }
         Group group(String id) {
@@ -2428,13 +2447,19 @@ public class MainActivity extends Activity {
         }
         List<Message> messages(String groupId) {
             List<Message> result = new ArrayList<>();
+            JSONArray data = null;
             try {
-                JSONArray data = new JSONArray(preferences.getString("chat_" + groupId, "[]"));
-                for (int i = 0; i < data.length(); i++) {
+                data = new JSONArray(preferences.getString("chat_" + groupId, "[]"));
+            } catch (JSONException ignored) {
+                return result;
+            }
+            for (int i = 0; i < data.length(); i++) {
+                // One malformed record must not truncate the whole conversation.
+                try {
                     JSONObject o = data.getJSONObject(i);
                     result.add(new Message(o.getString("speaker"), o.getString("text"), o.getBoolean("user"), o.optLong("at", 0L)));
-                }
-            } catch (JSONException ignored) {}
+                } catch (JSONException ignoredRecord) { }
+            }
             return result;
         }
         Message lastMessage(String groupId) {
