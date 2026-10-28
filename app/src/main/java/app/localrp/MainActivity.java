@@ -116,6 +116,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         store = new Store(this);
         store.migrateToRoleplay();
+        if (!store.integrityIssues().isEmpty()) reportIntegrityIssues();
         Design.refresh(this);
         modelsBackAction = this::showHome;
         SharedPreferences prefs = prefs();
@@ -128,6 +129,25 @@ public class MainActivity extends Activity {
         else if (LocalAiRuntime.INSTANCE.isModelLoading()) modelStatus = "Model yükleniyor…";
         else if (selectedModel != null) modelStatus = "Seçildi · yüklemeye hazır";
         showHome();
+    }
+
+    private void reportIntegrityIssues() {
+        java.util.List<String> parts = new ArrayList<>();
+        for (String key : store.integrityIssues()) {
+            if ("characters".equals(key)) parts.add("karakter listesi");
+            else if ("groups".equals(key)) parts.add("sohbet listesi");
+            else if (key.startsWith("chat_")) parts.add("bir sohbetin geçmişi");
+        }
+        if (parts.isEmpty()) parts.add("bazı kayıtlar");
+        String detail = String.join(", ", parts);
+        new AlertDialog.Builder(this)
+                .setTitle("Veri okunamadı")
+                .setCancelable(false)
+                .setMessage("Saklı verilerde bozuk bölümler bulundu (" + detail + "). "
+                        + "Koruma gereği bu bölümler okunana kadar yazmaya kapatıldı; hiçbir veri üzerine yazılmadı. "
+                        + "İlgili sohbeti temizleyerek o bölümü onarabilirsin.")
+                .setPositiveButton("Anlaşıldı", null)
+                .show();
     }
 
     private void showHome() {
@@ -183,12 +203,17 @@ public class MainActivity extends Activity {
             character.personality = personality.getText().toString().trim();
             character.instructions = instructions.getText().toString().trim();
             character.examples = examples.getText().toString().trim();
-            store.saveCharacter(character);
+            if (!store.saveCharacter(character)) {
+                Toast.makeText(this, "Değişiklik kaydedilemedi: karakter verisi okunamıyor.", Toast.LENGTH_LONG).show();
+            }
             if (afterSave != null) afterSave.run(); else showCharacters();
         });
         if (editing && !BUILTIN_ROLEPLAY_ID.equals(existing.id)) {
             addDangerButton("Karakteri sil", v -> confirm(existing.name + " silinsin mi?", () -> {
-                store.deleteCharacter(existing.id);
+                if (!store.deleteCharacter(existing.id)) {
+                    Toast.makeText(this, "Silinemedi: karakter verisi okunamıyor.", Toast.LENGTH_LONG).show();
+                    return;
+                }
                 showCharacters();
             }));
         }
@@ -230,7 +255,10 @@ public class MainActivity extends Activity {
             for (int i = 0; i < choices.size(); i++) if (choices.get(i).isChecked()) group.characterIds.add(characters.get(i).id);
             if (group.characterIds.isEmpty()) { name.setError("En az bir karakter seç"); return; }
             group.roleplay = true;
-            store.saveGroup(group);
+            if (!store.saveGroup(group)) {
+                Toast.makeText(this, "Değişiklik kaydedilemedi: sohbet verisi okunamıyor.", Toast.LENGTH_LONG).show();
+                return;
+            }
             showChat(group);
         });
         if (editing) {
@@ -2327,19 +2355,19 @@ public class MainActivity extends Activity {
         return getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    static class CharacterProfile { String id = UUID.randomUUID().toString(), name = "", description = "", personality = "", instructions = "", examples = ""; }
-    static class Group { String id = UUID.randomUUID().toString(), name = ""; boolean roleplay = true; List<String> characterIds = new ArrayList<>(); }
-    static class Message {
-        String speaker, text;
-        boolean user;
-        long at;
-        Message(String s, String t, boolean u) { this(s, t, u, System.currentTimeMillis()); }
-        Message(String s, String t, boolean u, long at) { speaker = s; text = t; user = u; this.at = at; }
-    }
-
     static class Store {
         private final SharedPreferences preferences;
+        // In-memory chat transcripts: messages() used to re-parse the whole JSON array on
+        // every read, making large conversations O(n) main-thread work per message.
+        private final java.util.Map<String, List<Message>> chatCache = new java.util.HashMap<>();
+        // Keys of stored values that exist but cannot be parsed. Writes to them are refused
+        // so the store can never be replaced by an empty default while unreadable.
+        private final java.util.Set<String> integrityIssues = new java.util.HashSet<>();
+
         Store(Context c) { preferences = c.getSharedPreferences("localrp", Context.MODE_PRIVATE); }
+
+        java.util.Set<String> integrityIssues() { return integrityIssues; }
+
         void migrateToRoleplay() {
             List<Group> all = groups();
             boolean needsDefault = false;
@@ -2375,31 +2403,26 @@ public class MainActivity extends Activity {
             if (changed) for (Group group : all) saveGroup(group);
         }
         List<CharacterProfile> characters() {
-            List<CharacterProfile> result = new ArrayList<>();
-            JSONArray data = null;
-            try {
-                data = new JSONArray(preferences.getString("characters", "[]"));
-            } catch (JSONException ignored) {
-                return result;
-            }
-            for (int i = 0; i < data.length(); i++) {
-                try {
-                    result.add(characterFrom(data.getJSONObject(i)));
-                } catch (JSONException ignoredRecord) { }
-            }
-            return result;
+            String raw = preferences.getString("characters", null);
+            PersistenceCodec.Decode<CharacterProfile> decoded = PersistenceCodec.decodeCharacters(raw);
+            if (decoded.rootCorrupt) integrityIssues.add("characters");
+            return decoded.items;
         }
         CharacterProfile character(String id) { for (CharacterProfile c : characters()) if (c.id.equals(id)) return c; return null; }
-        void saveCharacter(CharacterProfile edited) {
-            List<CharacterProfile> all = characters();
+        boolean saveCharacter(CharacterProfile edited) {
+            String raw = preferences.getString("characters", null);
+            if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("characters"); return false; }
+            List<CharacterProfile> all = PersistenceCodec.decodeCharacters(raw).items;
             boolean found = false;
             for (int i = 0; i < all.size(); i++) if (all.get(i).id.equals(edited.id)) { all.set(i, edited); found = true; }
             if (!found) all.add(edited);
-            putCharacters(all);
+            return putCharacters(all);
         }
-        void deleteCharacter(String id) {
-            if (BUILTIN_ROLEPLAY_ID.equals(id)) return;
-            List<CharacterProfile> all = characters();
+        boolean deleteCharacter(String id) {
+            if (BUILTIN_ROLEPLAY_ID.equals(id)) return true;
+            String raw = preferences.getString("characters", null);
+            if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("characters"); return false; }
+            List<CharacterProfile> all = PersistenceCodec.decodeCharacters(raw).items;
             all.removeIf(c -> c.id.equals(id));
             putCharacters(all);
             List<Group> chats = groups();
@@ -2428,135 +2451,83 @@ public class MainActivity extends Activity {
                 group.roleplay = true;
                 saveGroup(group);
             }
+            return true;
         }
         List<Group> groups() {
-            List<Group> result = new ArrayList<>();
-            JSONArray data = null;
-            try {
-                data = new JSONArray(preferences.getString("groups", "[]"));
-            } catch (JSONException ignored) {
-                return result;
-            }
-            for (int i = 0; i < data.length(); i++) {
-                try {
-                    result.add(groupFrom(data.getJSONObject(i)));
-                } catch (JSONException ignoredRecord) { }
-            }
-            return result;
+            String raw = preferences.getString("groups", null);
+            PersistenceCodec.Decode<Group> decoded = PersistenceCodec.decodeGroups(raw);
+            if (decoded.rootCorrupt) integrityIssues.add("groups");
+            return decoded.items;
         }
         Group group(String id) {
             for (Group group : groups()) if (group.id.equals(id)) return group;
             return null;
         }
-        void saveGroup(Group edited) {
-            List<Group> all = groups();
+        boolean saveGroup(Group edited) {
+            String raw = preferences.getString("groups", null);
+            if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("groups"); return false; }
+            List<Group> all = PersistenceCodec.decodeGroups(raw).items;
             boolean found = false;
             for (int i = 0; i < all.size(); i++) if (all.get(i).id.equals(edited.id)) { all.set(i, edited); found = true; }
             if (!found) all.add(edited);
-            try {
-                JSONArray data = new JSONArray();
-                for (Group g : all) data.put(groupTo(g));
-                preferences.edit().putString("groups", data.toString()).apply();
-            } catch (JSONException ignored) {}
+            String encoded = PersistenceCodec.encodeGroups(all);
+            if (encoded.isEmpty()) return false;
+            preferences.edit().putString("groups", encoded).apply();
+            return true;
         }
         void deleteGroup(String id) {
-            List<Group> all = groups();
-            all.removeIf(g -> g.id.equals(id));
-            try {
-                JSONArray data = new JSONArray();
-                for (Group g : all) data.put(groupTo(g));
-                preferences.edit().putString("groups", data.toString())
-                        .remove("chat_" + id)
-                        .remove("next_speaker_" + id)
-                        .apply();
-            } catch (JSONException ignored) {}
+            String raw = preferences.getString("groups", null);
+            if (PersistenceCodec.overwriteAllowed(raw)) {
+                List<Group> all = PersistenceCodec.decodeGroups(raw).items;
+                if (all.removeIf(g -> g.id.equals(id))) {
+                    String encoded = PersistenceCodec.encodeGroups(all);
+                    if (!encoded.isEmpty()) preferences.edit().putString("groups", encoded).apply();
+                }
+            } else {
+                // Catalog unreadable: refuse to rewrite it, but the chat payload of the
+                // group being deleted is intentionally removed either way.
+                integrityIssues.add("groups");
+            }
+            preferences.edit().remove("chat_" + id).remove("next_speaker_" + id).apply();
+            chatCache.remove(id);
+            integrityIssues.remove("chat_" + id);
         }
         List<Message> messages(String groupId) {
-            List<Message> result = new ArrayList<>();
-            JSONArray data = null;
-            try {
-                data = new JSONArray(preferences.getString("chat_" + groupId, "[]"));
-            } catch (JSONException ignored) {
-                return result;
-            }
-            for (int i = 0; i < data.length(); i++) {
-                // One malformed record must not truncate the whole conversation.
-                try {
-                    JSONObject o = data.getJSONObject(i);
-                    result.add(new Message(o.getString("speaker"), o.getString("text"), o.getBoolean("user"), o.optLong("at", 0L)));
-                } catch (JSONException ignoredRecord) { }
-            }
-            return result;
+            List<Message> cached = chatCache.get(groupId);
+            if (cached != null) return cached;
+            String raw = preferences.getString("chat_" + groupId, null);
+            PersistenceCodec.Decode<Message> decoded = PersistenceCodec.decodeMessages(raw);
+            if (decoded.rootCorrupt) integrityIssues.add("chat_" + groupId);
+            chatCache.put(groupId, decoded.items);
+            return decoded.items;
         }
         Message lastMessage(String groupId) {
             List<Message> all = messages(groupId);
             return all.isEmpty() ? null : all.get(all.size() - 1);
         }
         void addMessage(String id, Message message) {
-            List<Message> all = messages(id);
-            all.add(message);
-            writeMessages(id, all);
+            String raw = preferences.getString("chat_" + id, null);
+            if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("chat_" + id); return; }
+            List<Message> updated = new ArrayList<>(messages(id));
+            updated.add(message);
+            writeMessages(id, updated);
         }
         void clearMessages(String id) {
             preferences.edit().remove("chat_" + id).apply();
+            chatCache.remove(id);
+            integrityIssues.remove("chat_" + id); // user-initiated clear repairs the slot
         }
         private void writeMessages(String id, List<Message> all) {
-            try {
-                JSONArray data = new JSONArray();
-                for (Message m : all) {
-                    JSONObject o = new JSONObject();
-                    o.put("speaker", m.speaker);
-                    o.put("text", m.text);
-                    o.put("user", m.user);
-                    o.put("at", m.at);
-                    data.put(o);
-                }
-                preferences.edit().putString("chat_" + id, data.toString()).apply();
-            } catch (JSONException ignored) {}
+            String encoded = PersistenceCodec.encodeMessages(all);
+            if (encoded.isEmpty()) return; // encode failure must not replace valid data
+            preferences.edit().putString("chat_" + id, encoded).apply();
+            chatCache.put(id, all);
         }
-        private void putCharacters(List<CharacterProfile> all) {
-            try {
-                JSONArray data = new JSONArray();
-                for (CharacterProfile c : all) data.put(characterTo(c));
-                preferences.edit().putString("characters", data.toString()).apply();
-            } catch (JSONException ignored) {}
-        }
-        private JSONObject characterTo(CharacterProfile c) throws JSONException {
-            JSONObject o = new JSONObject();
-            o.put("id", c.id);
-            o.put("name", c.name);
-            o.put("description", c.description);
-            o.put("personality", c.personality);
-            o.put("instructions", c.instructions);
-            o.put("examples", c.examples);
-            return o;
-        }
-        private CharacterProfile characterFrom(JSONObject o) throws JSONException {
-            CharacterProfile c = new CharacterProfile();
-            c.id = o.getString("id");
-            c.name = o.getString("name");
-            c.description = o.optString("description");
-            c.personality = o.optString("personality");
-            c.instructions = o.optString("instructions");
-            c.examples = o.optString("examples");
-            return c;
-        }
-        private JSONObject groupTo(Group g) throws JSONException {
-            JSONObject o = new JSONObject();
-            o.put("id", g.id);
-            o.put("name", g.name);
-            o.put("roleplay", g.roleplay);
-            o.put("characters", new JSONArray(g.characterIds));
-            return o;
-        }
-        private Group groupFrom(JSONObject o) throws JSONException {
-            Group g = new Group();
-            g.id = o.getString("id");
-            g.name = o.getString("name");
-            g.roleplay = o.optBoolean("roleplay", true);
-            JSONArray chars = o.optJSONArray("characters");
-            if (chars != null) for (int i = 0; i < chars.length(); i++) g.characterIds.add(chars.getString(i));
-            return g;
+        private boolean putCharacters(List<CharacterProfile> all) {
+            String encoded = PersistenceCodec.encodeCharacters(all);
+            if (encoded.isEmpty()) return false;
+            preferences.edit().putString("characters", encoded).apply();
+            return true;
         }
     }
 }

@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.7.4 — 2026-10-28
+
+- **Persistence reliability** (Görev 03): stored JSON is now decoded through a tested `PersistenceCodec`:
+  - **Crash-safe-by-refusal**: if a stored value exists but cannot be parsed as JSON, all writers refuse to touch it (`overwriteAllowed`); the app never replaces unreadable data with an empty default. The startup screen reports the affected section and how to repair it.
+  - **Rescue decode**: a broken element inside a stored array no longer makes the whole list unreadable — a token-level salvage pass recovers every still-readable record (storage stays write-locked until repaired).
+  - **One bad record survives**: malformed single records are skipped without truncating the list (0.7.2 behavior, kept and now verified by tests).
+  - **Write feedback**: saving a character or conversation when data is unreadable now tells the user "verisi okunamıyor" instead of silently doing nothing.
+  - **Faster large chats**: conversation transcripts are cached in memory; `messages()` no longer re-parses the whole JSON array on every read.
+- **First unit tests added**: `PersistenceCodecTest` (15 scenarios) — legacy round trips, empty data, malformed roots, missing optional fields, rescue behavior, user flags and timestamps. Requires `junit` + `org.json:json` test dependencies (org.json is not on the JVM test classpath otherwise).
+- versionCode 11 / 0.7.4, user agent 0.7.4.
+
 ## v0.7.3 — 2026-10-28
 
 - **Group roleplay identity fix** (user-reported: the AI sometimes lost track of which character it was playing):
