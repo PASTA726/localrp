@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.8.0 — 2026-10-28
+
+- **Character.AI / PolyBuzz tarzı arayüz yenilemesi** (Görev 09):
+  - **Avatar sistemi**: karakterler ve sohbetler artık programlı avatar kullanıyor — ismin ilk harfi + isimden türetilen iki tonlu gradyan çemberi. Hiçbir görsel APK'ya gömülmedi, hiçbir şey indirilmiyor; açık/koyu tema paletine göre tonlanıyor.
+  - **Ana ekran**: karakterler artık 2 sütunlu grid kartlarda ("Keşfet" hissi); son sohbetler kartları cAI tarzı avatar + kalın başlık + tek satır önizleme + zaman gösteriyor.
+  - **Sohbet ekranı**: başlıkta sohbet avatarı, karakter mesaj baloncuklarının solunda 32 dp avatar ve aynadaki Sağda saat; kullanıcı baloncukları avatarsız (aynı davranış).
+  - **Mesaj baloncukları**: konuşmacı adı aksan rengiyle daha görünür; pad-konumlar cAI ritmine göre yeniden ayarlandı.
+  - **Gönderici**: tam genişlik "Gönder" düğmesi yerine pill giriş alanı + 46 dp dairesel ➤ gönder düğmesi; üretim sırasında düğme kemik "■" durdur varyantına dönüyor (aynı davranış, aynı kilit).
+  - Tüm özellikler ve gezinme korunuyor; animasyon yok; zaten üretim akışını bozma.
+- versionCode 12 / 0.8.0, user agent 0.8.0.
+
 ## v0.7.4 — 2026-10-28
 
 - **Persistence reliability** (Görev 03): stored JSON is now decoded through a tested `PersistenceCodec`:

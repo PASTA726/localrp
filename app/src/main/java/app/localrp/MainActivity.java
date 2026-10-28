@@ -155,25 +155,28 @@ public class MainActivity extends Activity {
         backAction = null;
         setPage("LocalRP", "Yerel hikâyelerin, senin kontrolünde", "home");
         addHero();
-        addSection("Son sohbetler", "Tümünü gör", this::showChats);
         addPrimary("＋  Tek karakterli RP", v -> createSingleCharacterRoleplay());
         addSecondary("＋  Grup RP", v -> showGroupEditor(null));
         List<Group> groups = store.groups();
         if (groups.isEmpty()) addEmpty("Henüz bir RP yok", "Bir karakter seçerek bire bir hikâye başlat veya grup kur.", null, null);
-        for (Group group : groups) addGroupCard(group);
-        addSection("Karakterlerin", "Düzenle", this::showCharacters);
+        else {
+            addSection("Son sohbetler", "Tümünü gör", this::showChats);
+            for (Group group : groups) addGroupCard(group);
+        }
+        addSection("Karakterlerin", "Yönet", this::showCharacters);
         List<CharacterProfile> characters = store.characters();
         if (characters.isEmpty()) addEmpty("Hikâyene karakter ekle", "Kişiliğini ve konuşma tarzını birlikte tanımla.", "＋  Karakter oluştur", v -> showCharacterEditor(null));
-        else addCharacterStrip(characters);
+        else addCharacterGrid(characters);
     }
 
     private void showCharacters() {
         visibleChatId = null;
         backAction = this::showHome;
-        setPage("Karakterler", "Hikâyendeki kişileri yönet", "characters");        addPrimary("＋  Yeni karakter", v -> showCharacterEditor(null));
+        setPage("Karakterler", "Hikâyendeki kişileri yönet", "characters");
+        addPrimary("＋  Yeni karakter", v -> showCharacterEditor(null));
         List<CharacterProfile> characters = store.characters();
         if (characters.isEmpty()) addEmpty("İlk karakterini oluştur", "Adını, kişiliğini ve hikâyedeki yerini belirle.", "Karakter oluştur", v -> showCharacterEditor(null));
-        for (CharacterProfile character : characters) addCharacterCard(character);
+        else addCharacterGrid(characters);
     }
 
     private void showCharacterEditor(CharacterProfile existing) {
@@ -455,19 +458,30 @@ public class MainActivity extends Activity {
             input.setText(draft);
             input.setSelection(draft.length());
         }
-        LinearLayout.LayoutParams inputParams = fullWidth();
+        // cAI-like composer: rounded pill input with a circular send/stop button on the right.
+        LinearLayout composerRow = new LinearLayout(this);
+        composerRow.setGravity(Gravity.BOTTOM);
+        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         inputParams.setMargins(0, dp(8), 0, 0);
-        chatComposer.addView(input, inputParams);
+        composerRow.addView(input, inputParams);
 
-        Button action = button("Gönder");
+        Button action = button("➤");
         chatActionButton = action;
+        action.setTextSize(17);
+        action.setPadding(0, 0, 0, 0);
+        action.setMinWidth(dp(46));
+        action.setMinHeight(dp(46));
+        action.setTextColor(Design.onAccent());
+        action.setBackground(rounded(Design.accent(), Design.accent(), 30));
         action.setOnClickListener(v -> {
             if (generatingChatId != null) LocalAiRuntime.INSTANCE.stopGeneration();
             else sendMessage(group, input);
         });
-        LinearLayout.LayoutParams actionParams = fullWidth();
-        actionParams.setMargins(0, dp(8), 0, 0);
-        chatComposer.addView(action, actionParams);
+        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(dp(46), dp(46));
+        actionParams.setMargins(dp(8), dp(8), 0, 0);
+        composerRow.addView(action, actionParams);
+        chatComposer.addView(composerRow, fullWidth());
 
         updateChatControls(group);
     }
@@ -696,13 +710,17 @@ public class MainActivity extends Activity {
         if (chatActionButton != null) {
             chatActionButton.setEnabled(generating || !(loading || benchmarking));
             chatActionButton.setAlpha((loading || benchmarking) && !generating ? 0.55f : 1f);
+            // Circular send/stop button: filled accent when idle, soft danger while generating.
             if (generating) {
-                chatActionButton.setText("■  Durdur");
+                chatActionButton.setText("■");
+                chatActionButton.setTextSize(15);
                 chatActionButton.setTextColor(Design.danger());
-                chatActionButton.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 12));
+                chatActionButton.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 30));
             } else {
-                chatActionButton.setText("Gönder");
-                stylePrimary(chatActionButton);
+                chatActionButton.setText("➤");
+                chatActionButton.setTextSize(17);
+                chatActionButton.setTextColor(Design.onAccent());
+                chatActionButton.setBackground(rounded(Design.accent(), Design.accent(), 30));
             }
         }
         if (chatSpeakerView != null) {
@@ -1859,6 +1877,11 @@ public class MainActivity extends Activity {
                 back.setOnClickListener(v -> backAction.run());
                 header.addView(back, new LinearLayout.LayoutParams(dp(38), dp(38)));
             }
+            // cAI-style leading avatar on the chat header; ids stay legible next to it.
+            TextView selfAvatar = Avatar.forName(this, title, 38);
+            LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(dp(38), dp(38));
+            avatarParams.setMargins(dp(9), 0, 0, 0);
+            header.addView(selfAvatar, avatarParams);
             LinearLayout titles = new LinearLayout(this);
             titles.setOrientation(LinearLayout.VERTICAL);
             TextView heading = label(title, 18, Design.text());
@@ -2077,38 +2100,92 @@ public class MainActivity extends Activity {
     private void addGroupCard(Group group) {
         Message last = store.lastMessage(group.id);
         String preview;
+        String when = "";
         if (group.id.equals(generatingChatId)) {
             preview = (generatingSpeaker == null ? "Karakter" : generatingSpeaker) + " yanıt yazıyor…";
         } else if (last == null) {
             preview = "Sahneyi başlatmak için dokun";
         } else {
             preview = (last.user ? "Sen" : last.speaker) + ": " + oneLine(last.text, 90);
+            when = clock.format(new Date(last.at));
         }
-        StringBuilder names = new StringBuilder();
-        for (String id : group.characterIds) {
-            CharacterProfile character = store.character(id);
-            if (character == null) continue;
-            if (names.length() > 0) names.append(" · ");
-            names.append(character.name);
-        }
-        String cast = names.length() == 0 ? "Karakter yok" : names.toString();
+        CharacterProfile face = group.characterIds.isEmpty() ? null : store.character(group.characterIds.get(0));
 
+        // cAI-style recent-chat card: leading avatar, bold title, muted preview + time.
         LinearLayout card = makeCard();
-        TextView kind = label("ROLEPLAY", 10, Design.accent());
-        kind.setLetterSpacing(.07f);
-        card.addView(kind);
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        TextView avatar = Avatar.forName(this, face != null ? face.name : group.name, 44);
+        row.addView(avatar, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setPadding(dp(12), 0, 0, 0);
         TextView name = label(group.name, 17, Design.text());
         name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        card.addView(name);
-        TextView castView = label(cast, 12, Design.accent());
-        castView.setPadding(0, dp(4), 0, 0);
-        card.addView(castView);
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        texts.addView(name);
         TextView meta = label(preview, 13, Design.muted());
-        meta.setPadding(0, dp(5), 0, 0);
-        meta.setMaxLines(2);
-        card.addView(meta);
+        meta.setSingleLine(true);
+        meta.setEllipsize(TextUtils.TruncateAt.END);
+        meta.setPadding(0, dp(3), 0, 0);
+        texts.addView(meta);
+        TextView cast = label(face != null && !when.isEmpty() ? when : "RP", 11, Design.muted());
+        cast.setPadding(0, dp(3), 0, 0);
+        texts.addView(cast);
+        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        card.addView(row);
         card.setOnClickListener(v -> showChat(group));
         addCardToPage(card);
+    }
+
+    private void addCharacterGrid(List<CharacterProfile> characters) {
+        // Two-column cAI-like cards; simple pairs of weight-1 cards, no complex layout.
+        int rows = (characters.size() + 1) / 2;
+        for (int i = 0; i < rows; i++) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            for (int j = 0; j < 2; j++) {
+                int index = i * 2 + j;
+                LinearLayout.LayoutParams cell = new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                if (j == 1) cell.setMargins(dp(6), 0, 0, 0);
+                if (index < characters.size()) {
+                    row.addView(characterCell(characters.get(index)), cell);
+                } else {
+                    row.addView(new View(this), cell); // keeps rows square when the count is odd
+                }
+            }
+            LinearLayout.LayoutParams rowParams = fullWidth();
+            rowParams.setMargins(0, 0, 0, dp(8));
+            content.addView(row, rowParams);
+        }
+    }
+
+    private LinearLayout characterCell(CharacterProfile character) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER);
+        card.setPadding(dp(10), dp(13), dp(10), dp(13));
+        card.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 16));
+        TextView avatar = Avatar.forName(this, character.name, 52);
+        card.addView(avatar, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        TextView name = label(character.name, 15, Design.text());
+        name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        name.setGravity(Gravity.CENTER);
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setPadding(0, dp(8), 0, 0);
+        card.addView(name);
+        TextView desc = label(brief(character.description).replace("\n", " "), 12, Design.muted());
+        desc.setGravity(Gravity.CENTER);
+        desc.setMaxLines(2);
+        desc.setEllipsize(TextUtils.TruncateAt.END);
+        desc.setPadding(0, dp(3), 0, 0);
+        card.addView(desc);
+        // Tapping a grid cell opens the character editor, matching the previous long list.
+        card.setOnClickListener(v -> showCharacterEditor(character));
+        return card;
     }
 
     private void addCharacterStrip(List<CharacterProfile> characters) {
@@ -2119,10 +2196,7 @@ public class MainActivity extends Activity {
         LinearLayout card = makeCard();
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        TextView avatar = label(initials(character.name), 18, Design.onAccent());
-        avatar.setGravity(Gravity.CENTER);
-        avatar.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        avatar.setBackground(rounded(Design.accent(), Design.accent(), 30));
+        TextView avatar = Avatar.forName(this, character.name, 42);
         row.addView(avatar, new LinearLayout.LayoutParams(dp(42), dp(42)));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
@@ -2227,11 +2301,6 @@ public class MainActivity extends Activity {
         return drawable;
     }
 
-    private String initials(String name) {
-        String trimmed = name == null ? "?" : name.trim();
-        return trimmed.isEmpty() ? "?" : trimmed.substring(0, 1).toUpperCase();
-    }
-
     private void stylePrimary(Button button) {
         button.setAllCaps(false);
         button.setTextColor(Design.onAccent());
@@ -2288,8 +2357,10 @@ public class MainActivity extends Activity {
     }
 
     private TextView addMessage(LinearLayout parent, String speaker, String text, boolean user, long at) {
+        // Character messages get a cAI/PolyBuzz-like leading avatar + time to be set off
+        // from user messages, which keep the plain offset bubble without an avatar row.
         TextView view = label("", 15, Design.text());
-        view.setPadding(dp(14), dp(12), dp(14), dp(12));
+        view.setPadding(dp(14), dp(11), dp(14), dp(11));
         view.setLineSpacing(dp(2), 1f);
         view.setBackground(rounded(user ? Design.bubbleUser() : Design.cardBg(),
                 user ? Design.bubbleUserStroke() : Design.cardStroke(), 16));
@@ -2300,9 +2371,25 @@ public class MainActivity extends Activity {
             showMessageActions(speaker, value);
             return true;
         });
-        LinearLayout.LayoutParams p = fullWidth();
-        p.setMargins(user ? dp(36) : 0, 0, user ? 0 : dp(36), dp(9));
-        parent.addView(view, p);
+        LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                user ? 0.15f : 0.62f);
+        bubbleParams.setMargins(user ? dp(10) : 0, 0, user ? 0 : dp(10), dp(9));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(user ? Gravity.BOTTOM : Gravity.TOP);
+        if (!user) {
+            TextView companion = Avatar.forName(this, speaker, 32);
+            companion.setPadding(0, 0, 0, 0);
+            LinearLayout.LayoutParams companionParams = new LinearLayout.LayoutParams(dp(32), dp(32));
+            companionParams.setMargins(0,(dp(1)), 0, 0);
+            row.addView(companion, companionParams);
+        }
+        row.addView(view, bubbleParams);
+        TextView companionTime = label(clock.format(new Date(at)), 10, Design.muted());
+        companionTime.setPadding(dp(2), 0, dp(2), dp(3));
+        row.addView(companionTime, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        parent.addView(row, fullWidth());
         return view;
     }
 
@@ -2323,9 +2410,12 @@ public class MainActivity extends Activity {
         String value = header + "\n" + text;
         SpannableString styled = new SpannableString(value);
         styled.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), 0, speaker.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        // Character names pop as accent-on-accentSoft like the cAI chat card, not
+        // invisible-on-invisible; the span colors the whole "Name  ·  12:04" head line.
+        int headLength = header.length();
         styled.setSpan(new ForegroundColorSpan(Design.accent()), 0, speaker.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (at > 0) {
-            styled.setSpan(new ForegroundColorSpan(Design.muted()), speaker.length(), header.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            styled.setSpan(new ForegroundColorSpan(Design.muted()), speaker.length(), headLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         view.setText(styled);
     }
