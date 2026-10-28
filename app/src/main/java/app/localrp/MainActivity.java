@@ -116,7 +116,7 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        store = new Store(this);
+        store = new Store(this, BUILTIN_ROLEPLAY_ID);
         store.migrateToRoleplay();
         if (!store.integrityIssues().isEmpty()) reportIntegrityIssues();
         Design.refresh(this);
@@ -1728,109 +1728,23 @@ public class MainActivity extends Activity {
     }
 
     private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation) {
-        StringBuilder prompt = new StringBuilder();
-        String speakerName = clip(speaker.name, 80);
-        boolean continuing = LocalAiRuntime.INSTANCE.hasConversation(group.id);
-        List<Message> history = store.messages(group.id);
-        Message last = history.isEmpty() ? null : history.get(history.size() - 1);
-
-        appendAiInstructions(prompt);
-        prompt.append("Sahne: ").append(oneLine(group.name, 160)).append("\n");
-        prompt.append("Bu tur yalnızca ").append(speakerName).append(" karakterini konuşacak şekilde yanıt ver.\n");
-        if (!continuing) {
-            String description = clip(speaker.description, 700);
-            String personality = clip(speaker.personality, 900);
-            String instructions = clip(speaker.instructions, 900);
-            String examples = clip(speaker.examples, 1200);
-            if (!description.isEmpty()) prompt.append("Karakter tanımı: ").append(description).append("\n");
-            if (!personality.isEmpty()) prompt.append("Kişilik ve konuşma tarzı: ").append(personality).append("\n");
-            if (!instructions.isEmpty()) prompt.append("Karakter talimatları: ").append(instructions).append("\n");
-            if (!examples.isEmpty()) prompt.append("Örnek diyalog:\n").append(examples).append("\n");
-
-            prompt.append("Sahnedeki diğer karakterler:\n");
-            boolean otherCharacter = false;
-            for (String id : group.characterIds) {
-                CharacterProfile character = store.character(id);
-                if (character == null || character.id.equals(speaker.id)) continue;
-                otherCharacter = true;
-                prompt.append("- ").append(clip(character.name, 80));
-                String detail = !character.description.trim().isEmpty() ? character.description : character.personality;
-                if (!detail.trim().isEmpty()) prompt.append(": ").append(oneLine(detail, 220));
-                prompt.append("\n");
-            }
-            if (!otherCharacter) prompt.append("- Yok (bire bir sahne)\n");
-
-            if (history.size() > 1) {
-                prompt.append("\nYakın sahne geçmişi:\n");
-                appendHistory(prompt, history, last != null && last.user);
-            }
-        } else {
-            // The engine keeps ONE shared context per conversation; on continuing turns the
-            // model would otherwise stay anchored to the previous speaker's persona.
-            // Re-inject this turn's identity compactly. (Kullanıcı kusuru: grup RP'de rol kayması)
-            prompt.append("Bağlam devam ediyor; sahneyi koru ama bu turun karakter kimliği aşağıdadır.\n");
-            String hint = clip(speaker.description, 160);
-            if (hint.isEmpty()) hint = clip(speaker.personality, 160);
-            prompt.append("Rol kimliği: ").append(speakerName);
-            if (!hint.isEmpty()) prompt.append(" — ").append(hint);
-            prompt.append("\n");
-            StringBuilder otherNames = new StringBuilder();
-            int otherBudget = 280;
-            for (String id : group.characterIds) {
-                CharacterProfile character = store.character(id);
-                if (character == null || character.id.equals(speaker.id)) continue;
-                String name = clip(character.name.trim(), 60);
-                if (name.isEmpty() || otherBudget <= name.length()) continue;
-                if (otherNames.length() > 0) { otherNames.append(", "); otherBudget -= 2; }
-                otherNames.append(name);
-                otherBudget -= name.length();
-            }
-            if (otherNames.length() > 0) {
-                prompt.append("Sahnedeki diğer karakterler (adlarına yazma): ").append(otherNames).append("\n");
-            }
-        }
-        if (last != null && last.user) {
-            prompt.append("\nKullanıcının son mesajı: ").append(clip(last.text, 3000)).append("\n");
-        } else if (continuation) {
-            prompt.append("\nSahne devam ediyor; sıradaki karakter olarak bu ana doğal bir tepki ver.\n");
-        }
-        prompt.append("\nKurallar: Yalnızca ").append(speakerName)
-                .append(" olarak tek bir rol içi yanıt yaz. Geçmişte \"Kullanıcı:\" olarak görünen satırlar kullanıcının " +
-                        "kendi sözleridir; kullanıcı veya diğer karakterler adına konuşma. ")
-                .append("Yanıtın başında karakter adını yazma. Türkçe yanıt ver ve sahnenin dışına çıkma.");
-        return prompt.toString();
-    }
-
-    private void appendHistory(StringBuilder prompt, List<Message> history, boolean skipLastUser) {
-        int end = history.size() - (skipLastUser ? 1 : 0);
-        int start = Math.max(0, end - historyDepth());
-        List<String> lines = new ArrayList<>();
-        int budget = historyCharBudget();
-        for (int i = end - 1; i >= start; i--) {
-            Message message = history.get(i);
-            // User records are stored with the display label "Sen"; the transcript must
-            // disambiguate the user from any character, so the prompt uses "Kullanıcı".
-            String who = message.user ? "Kullanıcı" : message.speaker;
-            String line = who + ": " + message.text;
-            if (line.length() > budget) {
-                if (budget > 40) lines.add(0, line.substring(0, budget - 1) + "…");
-                break;
-            }
-            lines.add(0, line);
-            budget -= line.length() + 1;
-        }
-        for (String line : lines) prompt.append(line).append("\n");
-    }
-
-    private void appendAiInstructions(StringBuilder prompt) {
+        // Prompt assembly lives in the pure, unit-tested RoleplayPrompt; MainActivity only
+        // resolves the Android-backed inputs (store lookups, prefs, engine context flag).
         String instructions = clip(prefs().getString("ai_instructions", DEFAULT_AI_INSTRUCTIONS), 600);
-        if (!instructions.isEmpty()) prompt.append("Genel AI talimatı: ").append(instructions).append("\n");
         String themeId = prefs().getString("ai_theme", DEFAULT_AI_THEME);
-        String themeInstruction = aiThemeInstruction(themeId);
-        if (!themeInstruction.isEmpty()) {
-            prompt.append("Sahne teması (").append(aiThemeName(themeId)).append("): ")
-                    .append(themeInstruction).append("\n");
-        }
+        return RoleplayPrompt.build(
+                group.name,
+                speaker,
+                group.characterIds,
+                id -> store.character(id),
+                store.messages(group.id),
+                LocalAiRuntime.INSTANCE.hasConversation(group.id),
+                continuation,
+                instructions,
+                aiThemeName(themeId),
+                aiThemeInstruction(themeId),
+                historyDepth(),
+                historyCharBudget());
     }
 
     private String aiThemeName(String id) {
@@ -2543,224 +2457,4 @@ public class MainActivity extends Activity {
         return getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    static class Store {
-        private final SharedPreferences preferences;
-        // In-memory chat transcripts: messages() used to re-parse the whole JSON array on
-        // every read, making large conversations O(n) main-thread work per message.
-        private final java.util.Map<String, List<Message>> chatCache = new java.util.HashMap<>();
-        // Keys of stored values that exist but cannot be parsed. Writes to them are refused
-        // so the store can never be replaced by an empty default while unreadable.
-        private final java.util.Set<String> integrityIssues = new java.util.HashSet<>();
-
-        Store(Context c) { preferences = c.getSharedPreferences("localrp", Context.MODE_PRIVATE); }
-
-        java.util.Set<String> integrityIssues() { return integrityIssues; }
-
-        void migrateToRoleplay() {
-            List<Group> all = groups();
-            boolean needsDefault = false;
-            boolean changed = false;
-            for (Group group : all) {
-                int originalSize = group.characterIds.size();
-                group.characterIds.removeIf(id -> character(id) == null);
-                if (group.characterIds.size() != originalSize) changed = true;
-                if (!group.roleplay || group.characterIds.isEmpty()) needsDefault = true;
-            }
-            CharacterProfile defaultCharacter = null;
-            if (needsDefault) {
-                defaultCharacter = character(BUILTIN_ROLEPLAY_ID);
-                if (defaultCharacter == null) {
-                    defaultCharacter = new CharacterProfile();
-                    defaultCharacter.id = BUILTIN_ROLEPLAY_ID;
-                    defaultCharacter.name = "Mira";
-                    defaultCharacter.description = "Kullanıcının hikâyesindeki karşı karakter.";
-                    defaultCharacter.personality = "Sıcak, meraklı ve sahneye duyarlı; duygularını doğal biçimde gösterir.";
-                    defaultCharacter.instructions = "Daima Mira olarak, hikâyenin içinde yanıt ver. Kullanıcının eylemlerini veya sözlerini yazma.";
-                    saveCharacter(defaultCharacter);
-                }
-            }
-            if (defaultCharacter != null) {
-                for (Group group : all) {
-                    if (!group.roleplay || group.characterIds.isEmpty()) {
-                        group.roleplay = true;
-                        changed = true;
-                        if (group.characterIds.isEmpty()) group.characterIds.add(defaultCharacter.id);
-                    }
-                }
-            }
-            if (changed) for (Group group : all) saveGroup(group);
-        }
-        List<CharacterProfile> characters() {
-            String raw = preferences.getString("characters", null);
-            PersistenceCodec.Decode<CharacterProfile> decoded = PersistenceCodec.decodeCharacters(raw);
-            if (decoded.rootCorrupt) integrityIssues.add("characters");
-            return decoded.items;
-        }
-        CharacterProfile character(String id) { for (CharacterProfile c : characters()) if (c.id.equals(id)) return c; return null; }
-        boolean saveCharacter(CharacterProfile edited) {
-            String raw = preferences.getString("characters", null);
-            if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("characters"); return false; }
-            List<CharacterProfile> all = PersistenceCodec.decodeCharacters(raw).items;
-            boolean found = false;
-            for (int i = 0; i < all.size(); i++) if (all.get(i).id.equals(edited.id)) { all.set(i, edited); found = true; }
-            if (!found) all.add(edited);
-            return putCharacters(all);
-        }
-        boolean deleteCharacter(String id) {
-            if (BUILTIN_ROLEPLAY_ID.equals(id)) return true;
-            String raw = preferences.getString("characters", null);
-            if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("characters"); return false; }
-            List<CharacterProfile> all = PersistenceCodec.decodeCharacters(raw).items;
-            all.removeIf(c -> c.id.equals(id));
-            putCharacters(all);
-            List<Group> chats = groups();
-            boolean needsDefault = false;
-            for (Group group : chats) {
-                if (group.characterIds.remove(id) && group.characterIds.isEmpty()) needsDefault = true;
-                if (id.equals(preferences.getString("next_speaker_" + group.id, null))) {
-                    preferences.edit().remove("next_speaker_" + group.id).apply();
-                }
-            }
-            CharacterProfile fallback = null;
-            if (needsDefault) {
-                fallback = character(BUILTIN_ROLEPLAY_ID);
-                if (fallback == null) {
-                    fallback = new CharacterProfile();
-                    fallback.id = BUILTIN_ROLEPLAY_ID;
-                    fallback.name = "Mira";
-                    fallback.description = "Kullanıcının hikâyesindeki karşı karakter.";
-                    fallback.personality = "Sıcak, meraklı ve sahneye duyarlı; duygularını doğal biçimde gösterir.";
-                    fallback.instructions = "Daima Mira olarak, hikâyenin içinde yanıt ver. Kullanıcının eylemlerini veya sözlerini yazma.";
-                    saveCharacter(fallback);
-                }
-            }
-            for (Group group : chats) {
-                if (group.characterIds.isEmpty() && fallback != null) group.characterIds.add(fallback.id);
-                group.roleplay = true;
-                saveGroup(group);
-            }
-            return true;
-        }
-        List<Group> groups() {
-            String raw = preferences.getString("groups", null);
-            PersistenceCodec.Decode<Group> decoded = PersistenceCodec.decodeGroups(raw);
-            if (decoded.rootCorrupt) integrityIssues.add("groups");
-            return decoded.items;
-        }
-        Group group(String id) {
-            for (Group group : groups()) if (group.id.equals(id)) return group;
-            return null;
-        }
-        boolean saveGroup(Group edited) {
-            String raw = preferences.getString("groups", null);
-            if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("groups"); return false; }
-            List<Group> all = PersistenceCodec.decodeGroups(raw).items;
-            boolean found = false;
-            for (int i = 0; i < all.size(); i++) if (all.get(i).id.equals(edited.id)) { all.set(i, edited); found = true; }
-            if (!found) all.add(edited);
-            String encoded = PersistenceCodec.encodeGroups(all);
-            if (encoded.isEmpty()) return false;
-            preferences.edit().putString("groups", encoded).apply();
-            return true;
-        }
-        void deleteGroup(String id) {
-            String raw = preferences.getString("groups", null);
-            if (PersistenceCodec.overwriteAllowed(raw)) {
-                List<Group> all = PersistenceCodec.decodeGroups(raw).items;
-                if (all.removeIf(g -> g.id.equals(id))) {
-                    String encoded = PersistenceCodec.encodeGroups(all);
-                    if (!encoded.isEmpty()) preferences.edit().putString("groups", encoded).apply();
-                }
-            } else {
-                // Catalog unreadable: refuse to rewrite it, but the chat payload of the
-                // group being deleted is intentionally removed either way.
-                integrityIssues.add("groups");
-            }
-            preferences.edit().remove("chat_" + id).remove("next_speaker_" + id).apply();
-            chatCache.remove(id);
-            integrityIssues.remove("chat_" + id);
-        }
-        List<Message> messages(String groupId) {
-            List<Message> cached = chatCache.get(groupId);
-            if (cached != null) return cached;
-            String raw = preferences.getString("chat_" + groupId, null);
-            PersistenceCodec.Decode<Message> decoded = PersistenceCodec.decodeMessages(raw);
-            if (decoded.rootCorrupt) integrityIssues.add("chat_" + groupId);
-            chatCache.put(groupId, decoded.items);
-            return decoded.items;
-        }
-        Message lastMessage(String groupId) {
-            List<Message> all = messages(groupId);
-            return all.isEmpty() ? null : all.get(all.size() - 1);
-        }
-        void addMessage(String id, Message message) {
-            String raw = preferences.getString("chat_" + id, null);
-            if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("chat_" + id); return; }
-            List<Message> updated = new ArrayList<>(messages(id));
-            updated.add(message);
-            writeMessages(id, updated);
-        }
-        void clearMessages(String id) {
-            preferences.edit().remove("chat_" + id).apply();
-            chatCache.remove(id);
-            integrityIssues.remove("chat_" + id); // user-initiated clear repairs the slot
-        }
-        private void writeMessages(String id, List<Message> all) {
-            String encoded = PersistenceCodec.encodeMessages(all);
-            if (encoded.isEmpty()) return; // encode failure must not replace valid data
-            preferences.edit().putString("chat_" + id, encoded).apply();
-            chatCache.put(id, all);
-        }
-        private boolean putCharacters(List<CharacterProfile> all) {
-            String encoded = PersistenceCodec.encodeCharacters(all);
-            if (encoded.isEmpty()) return false;
-            preferences.edit().putString("characters", encoded).apply();
-            return true;
-        }
-
-        /**
-         * User-initiated backup restore. Refuses while any catalog is unreadable
-         * (the repair path is still the startup report / chat clear), merges by id,
-         * and replaces a transcript only when the imported copy is strictly longer.
-         */
-        boolean restoreBundle(List<CharacterProfile> characters, List<Group> groups,
-                              java.util.Map<String, List<Message>> chats) {
-            String rawChars = preferences.getString("characters", null);
-            String rawGroups = preferences.getString("groups", null);
-            if (!PersistenceCodec.overwriteAllowed(rawChars) || !PersistenceCodec.overwriteAllowed(rawGroups)) {
-                integrityIssues.add(PersistenceCodec.overwriteAllowed(rawChars) ? "groups" : "characters");
-                return false;
-            }
-            List<CharacterProfile> mergedChars = PersistenceCodec.mergeCharacters(
-                    PersistenceCodec.decodeCharacters(rawChars).items, characters);
-            List<Group> mergedGroups = PersistenceCodec.mergeGroups(
-                    PersistenceCodec.decodeGroups(rawGroups).items, groups);
-            java.util.Map<String, List<Message>> importedChats = new java.util.HashMap<>();
-            java.util.Set<String> knownGroups = new java.util.HashSet<>();
-            for (Group g : mergedGroups) knownGroups.add(g.id);
-            for (java.util.Map.Entry<String, List<Message>> entry : chats.entrySet()) {
-                if (knownGroups.contains(entry.getKey())) importedChats.put(entry.getKey(), entry.getValue());
-            }
-            java.util.Map<String, List<Message>> mergedChats = new java.util.HashMap<>();
-            for (String id : knownGroups) {
-                List<Message> stored = PersistenceCodec.decodeMessages(preferences.getString("chat_" + id, "[]")).items;
-                List<Message> incoming = importedChats.get(id);
-                mergedChats.put(id, incoming != null && incoming.size() > stored.size() ? incoming : stored);
-            }
-            String encodedChars = PersistenceCodec.encodeCharacters(mergedChars);
-            String encodedGroups = PersistenceCodec.encodeGroups(mergedGroups);
-            if (encodedChars.isEmpty() || encodedGroups.isEmpty()) return false;
-            android.content.SharedPreferences.Editor editor = preferences.edit();
-            editor.putString("characters", encodedChars).putString("groups", encodedGroups);
-            for (java.util.Map.Entry<String, List<Message>> entry : mergedChats.entrySet()) {
-                String encoded = PersistenceCodec.encodeMessages(entry.getValue());
-                if (encoded.isEmpty()) return false;
-                editor.putString("chat_" + entry.getKey(), encoded);
-                chatCache.put(entry.getKey(), entry.getValue());
-                integrityIssues.remove("chat_" + entry.getKey());
-            }
-            editor.apply();
-            return true;
-        }
-    }
 }
