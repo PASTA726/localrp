@@ -1226,7 +1226,7 @@ public class MainActivity extends Activity {
                     Toast.makeText(MainActivity.this, "İndirme hatası: " + message, Toast.LENGTH_SHORT).show();
                     if ("models".equals(currentTab)) showModelCatalog();
                 }
-            });
+            }, model.bytes, null);
             if (!accepted) {
                 Toast.makeText(this, "Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene.", Toast.LENGTH_SHORT).show();
             } else {

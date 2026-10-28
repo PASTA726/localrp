@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.9.0 — 2026-10-28
+
+- **GGUF indirme güvenliği ve güvenilirliği** (Görev 04): yeni saf `DownloadPolicy` katmanı (12 JVM testi) ve `ModelDownload` entegrasyonu:
+  - **Kör devam etme yasağı**: 206 yanıtı yalnızca Content-Range kelimesi kelimesine "bytes <elimizdekiOfset>-.../../" ile başlıyorsa eklenir; uyumsuz ofset, eksik/bozuk Content-Range veya Range'i yok sayan 200 yanıtı → .part sıfırdan temiz başlatılır (bütün dosya bozulması kapatıldı).
+  - **https-only politika**: başlangıç URL'i https olmak zorunda; yönlendirme sonrası nihai URL tekrar denetlenir (0.7.2 davranışı korunup politikaya taşındı); `Accept-Encoding: identity` ile uzunluk belirsizliği azaltıldı.
+  - **Dosya adı sertleştirme**: hedef ad yalnızca düz "*.gguf" olabilir — `/`, `\`, `..`, gizli nokta-dosya, kontrol karakterleri ve >96 ad reddedilir (path traversal kapatıldı).
+  - **Katalog boyut doğrulaması**: indirme sırasında katalogun güvenilir bayt bilgisi (model.bytes) tamamlanan dosyayla karşılaştırılır; uyuşmazlıkta dosya silinir, kurulum olmaz.
+  - **SHA-256 altyapısı**: `sha256Hex` + `shaMatches` hazır; katalog artık sağladığında (şu an hiç sağlamıyor — uydurma hash kabul edilemez) tamamlanan dosya doğrulanır, uyuşmazlıkta dosya silinir.
+  - Depolama, iptal/iinterruption ve Content-Length eksikliği davranışları korunarak tek dosyada politika altına alındı.
+- **12 yeni test** (`DownloadPolicyTest`): https politikası, dosya adı teması (traversal/dotfile/boş), `parseContentRange` biçim denetimi, 206/200/eksik başlık devam kararları, SHA-256 referans dize testi ("abc" → ba7816bf…), 64 hanelik olmayan beklenen hash reddi. Toplam **27 test / 0 hata**.
+- versionCode 13 / 0.9.0, user agent 0.9.0.
+
 ## v0.8.0 — 2026-10-28
 
 - **Character.AI / PolyBuzz tarzı arayüz yenilemesi** (Görev 09):
