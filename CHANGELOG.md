@@ -2,6 +2,16 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.11.0 — 2026-10-28
+
+- **Yedekleme ve geri yükleme**: 0.7.4'ten beri beklenen özellik (sözlü verilen taahhüt) tamamlandı:
+  - **Görünüm → Veri yedeği** bölümünden, SAF ile seçtiğin herhangi bir klasöre `localrp-yedek-<tarih>.json` dışa aktarımı: tüm karakterler, sohbetler ve tamamı geçmişler tek dosyada. Dosya cihazdan çıkmaz; aktarım yalnızca senin onayınla SAĞLANIR (uygulama hiçbir veriyi otomatik göndermez).
+  - **Geri yükleme**: aynı kimlikli karakter/sohbetler güncellenir, yeni olanlar eklenir. Geçmişler yalnızca yedekteki kopya **kesinlikle daha uzun** (gerçek devamlar) olduğunda değiştirilir; kısa/eski yedekler hiçbir şeyi küçültmez, tekrarlı içe aktarım mükerrer çoğaltma yapmaz.
+  - **Güvenlik**: mevcut kalıcılık verisi okunamıyorsa geri yükleme reddedilir (startup raporu onarım yolu korunur); bozuk tek kayıtlar (0.7.4 codec'inin aynen davranışıyla) atlanır; 256 MB biyolojik dosya sınırı.
+  - Version-1 bundle: `{ characters:[], groups:[], chats:{ "<groupId>":[messages] } }`.
+- **5 yeni test** (`PersistenceBundleTest`): bundle round trip, geçersiz dosyalardan (array/version-2/bozuk) reddi, bozuk kayıt atlama, kimliklere göre birleştirme, "yalnızca daha uzun geçmiş değişir" kuralı. Toplam **43 test / 0 hata**.
+- versionCode 15 / 0.11.0, user agent 0.11.0.
+
 ## v0.10.0 — 2026-10-28
 
 - **Inference runtime güvenilirliği** (Görev 05): motor değiştirilmedi; karar mantığı saf `RuntimePolicy` katmanına taşındı ve kilit bir UI hatası kapatıldı:

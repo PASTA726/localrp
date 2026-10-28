@@ -48,6 +48,8 @@ import java.util.regex.Pattern;
 /** Native LocalRP screens, local storage, and the on-device GGUF chat flow. */
 public class MainActivity extends Activity {
     private static final int MODEL_PICKER = 74;
+    private static final int BACKUP_EXPORT = 75;
+    private static final int BACKUP_IMPORT = 76;
     private static final String PREFS = "localrp";
     private static final String DEFAULT_AI_INSTRUCTIONS = "Her zaman sahnenin içinde kal. Seçili karakter olarak konuş ve kullanıcının rolünü üstlenme.";
     private static final String BUILTIN_ROLEPLAY_ID = "localrp_builtin_roleplay_character";
@@ -996,6 +998,26 @@ public class MainActivity extends Activity {
             });
             addCardToPage(card);
         }
+        addSection("Veri yedeği", null, null);
+        addInfoCard("Yedekleme", "Karakterler, sohbetler ve geçmişler tek bir .json dosyasına yazılır. "
+                + "Dosya tamamen senin kontrolündedir: uygulama hiçbir veriyi otomatik göndermez.", "Yerel");
+        addPrimary("Yedeği dışa aktar", v -> {
+            String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/json");
+            intent.putExtra(Intent.EXTRA_TITLE, "localrp-yedek-" + stamp + ".json");
+            startActivityForResult(intent, BACKUP_EXPORT);
+        });
+        addSecondary("Yedeği geri yükle", v -> confirm(
+                "Geri yükleme aynı kimlikli karakter/sohbetleri günceller, yeni olanları ekler. " +
+                        "Geçmişler yalnızca yedekteki kopya daha uzunsa değiştirilir. Devam edilsin mi?",
+                () -> {
+                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    startActivityForResult(intent, BACKUP_IMPORT);
+                }));
     }
 
     private void showModelCatalog() {
@@ -1483,6 +1505,14 @@ public class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == BACKUP_EXPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            exportBackup(data.getData());
+            return;
+        }
+        if (requestCode == BACKUP_IMPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            importBackup(data.getData());
+            return;
+        }
         if (requestCode == MODEL_PICKER && resultCode == RESULT_OK && data != null && data.getData() != null) {
             selectedModel = data.getData();
             try { getContentResolver().takePersistableUriPermission(selectedModel, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (SecurityException ignored) {}
@@ -1498,6 +1528,74 @@ public class MainActivity extends Activity {
             showModels();
             loadSelectedModel();
         }
+    }
+
+    /** Streams the full local dataset (characters + groups + transcripts) to the chosen file. */
+    private void exportBackup(android.net.Uri target) {
+        new Thread(() -> {
+            java.util.Map<String, List<Message>> chats = new java.util.HashMap<>();
+            List<Group> groups = store.groups();
+            for (Group group : groups) chats.put(group.id, new ArrayList<>(store.messages(group.id)));
+            PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
+            bundle.characters.addAll(store.characters());
+            bundle.groups.addAll(groups);
+            bundle.chats.putAll(chats);
+            String payload = PersistenceCodec.encodeBundle(bundle);
+            if (payload.isEmpty()) {
+                runOnUiThread(() -> Toast.makeText(this, "Yedek oluşturulamadı (veri okunamıyor).", Toast.LENGTH_LONG).show());
+                return;
+            }
+            try (java.io.OutputStream output = getContentResolver().openOutputStream(target)) {
+                if (output == null) throw new IllegalStateException("Dosya açılamadı.");
+                output.write(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                output.flush();
+            } catch (Exception failure) {
+                runOnUiThread(() -> Toast.makeText(this, "Yedek yazılamadı: " + failure.getMessage(), Toast.LENGTH_LONG).show());
+                return;
+            }
+            runOnUiThread(() -> Toast.makeText(this,
+                    "Yedek yazıldı · " + bundle.characters.size() + " karakter · " + bundle.groups.size() + " sohbet",
+                    Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
+    private void importBackup(android.net.Uri source) {
+        new Thread(() -> {
+            String raw;
+            try (java.io.InputStream input = getContentResolver().openInputStream(source)) {
+                if (input == null) throw new IllegalStateException("Dosya açılamadı.");
+                java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+                byte[] chunk = new byte[8192];
+                int read;
+                while ((read = input.read(chunk)) >= 0) {
+                    buffer.write(chunk, 0, read);
+                    if (buffer.size() > 256L * 1024 * 1024) { // sanity cap; real backups stay far smaller
+                        throw new IllegalStateException("Dosya beklenenden çok büyük.");
+                    }
+                }
+                raw = buffer.toString("UTF-8");
+            } catch (Exception failure) {
+                runOnUiThread(() -> Toast.makeText(this, "Yedek okunamadı: " + failure.getMessage(), Toast.LENGTH_LONG).show());
+                return;
+            }
+            PersistenceCodec.Bundle bundle = PersistenceCodec.decodeBundle(raw);
+            if (bundle == null) {
+                runOnUiThread(() -> Toast.makeText(this, "Bu dosya geçerli bir LocalRP yedeği değil.", Toast.LENGTH_LONG).show());
+                return;
+            }
+            final boolean restored = store.restoreBundle(bundle.characters, bundle.groups, bundle.chats);
+            runOnUiThread(() -> {
+                if (!restored) {
+                    Toast.makeText(this, "Geri yükleme yapılamadı: mevcut veriler okunamıyor.", Toast.LENGTH_LONG).show();
+                    if (!store.integrityIssues().isEmpty()) reportIntegrityIssues();
+                    return;
+                }
+                Toast.makeText(this,
+                        "Geri yüklendi · " + bundle.characters.size() + " karakter · " + bundle.groups.size() + " sohbet",
+                        Toast.LENGTH_LONG).show();
+                showHome();
+            });
+        }).start();
     }
 
     private void loadSelectedModel() {
@@ -2617,6 +2715,51 @@ public class MainActivity extends Activity {
             String encoded = PersistenceCodec.encodeCharacters(all);
             if (encoded.isEmpty()) return false;
             preferences.edit().putString("characters", encoded).apply();
+            return true;
+        }
+
+        /**
+         * User-initiated backup restore. Refuses while any catalog is unreadable
+         * (the repair path is still the startup report / chat clear), merges by id,
+         * and replaces a transcript only when the imported copy is strictly longer.
+         */
+        boolean restoreBundle(List<CharacterProfile> characters, List<Group> groups,
+                              java.util.Map<String, List<Message>> chats) {
+            String rawChars = preferences.getString("characters", null);
+            String rawGroups = preferences.getString("groups", null);
+            if (!PersistenceCodec.overwriteAllowed(rawChars) || !PersistenceCodec.overwriteAllowed(rawGroups)) {
+                integrityIssues.add(PersistenceCodec.overwriteAllowed(rawChars) ? "groups" : "characters");
+                return false;
+            }
+            List<CharacterProfile> mergedChars = PersistenceCodec.mergeCharacters(
+                    PersistenceCodec.decodeCharacters(rawChars).items, characters);
+            List<Group> mergedGroups = PersistenceCodec.mergeGroups(
+                    PersistenceCodec.decodeGroups(rawGroups).items, groups);
+            java.util.Map<String, List<Message>> importedChats = new java.util.HashMap<>();
+            java.util.Set<String> knownGroups = new java.util.HashSet<>();
+            for (Group g : mergedGroups) knownGroups.add(g.id);
+            for (java.util.Map.Entry<String, List<Message>> entry : chats.entrySet()) {
+                if (knownGroups.contains(entry.getKey())) importedChats.put(entry.getKey(), entry.getValue());
+            }
+            java.util.Map<String, List<Message>> mergedChats = new java.util.HashMap<>();
+            for (String id : knownGroups) {
+                List<Message> stored = PersistenceCodec.decodeMessages(preferences.getString("chat_" + id, "[]")).items;
+                List<Message> incoming = importedChats.get(id);
+                mergedChats.put(id, incoming != null && incoming.size() > stored.size() ? incoming : stored);
+            }
+            String encodedChars = PersistenceCodec.encodeCharacters(mergedChars);
+            String encodedGroups = PersistenceCodec.encodeGroups(mergedGroups);
+            if (encodedChars.isEmpty() || encodedGroups.isEmpty()) return false;
+            android.content.SharedPreferences.Editor editor = preferences.edit();
+            editor.putString("characters", encodedChars).putString("groups", encodedGroups);
+            for (java.util.Map.Entry<String, List<Message>> entry : mergedChats.entrySet()) {
+                String encoded = PersistenceCodec.encodeMessages(entry.getValue());
+                if (encoded.isEmpty()) return false;
+                editor.putString("chat_" + entry.getKey(), encoded);
+                chatCache.put(entry.getKey(), entry.getValue());
+                integrityIssues.remove("chat_" + entry.getKey());
+            }
+            editor.apply();
             return true;
         }
     }
