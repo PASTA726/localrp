@@ -86,13 +86,8 @@ object LocalAiRuntime {
      * Keeps the app's character budget inside both the GGUF training context and the
      * native engine's 8192-token context. Turkish text is roughly 2.5 chars/token.
      */
-    fun contextCharBudget(): Int {
-        val manual = manualContextBudget
-        if (manual > 0) return manual.coerceIn(1024, 12000)
-        val modelTokens = modelInfo?.contextLength?.coerceAtLeast(512) ?: 8192
-        val effectiveTokens = minOf(modelTokens, 8192)
-        return (effectiveTokens * 2.5).toInt().coerceIn(2048, 12000)
-    }
+    fun contextCharBudget(): Int =
+        RuntimePolicy.contextCharBudget(manualContextBudget, modelInfo?.contextLength)
 
     @Volatile var manualContextBudget = -1
         private set
@@ -148,7 +143,12 @@ object LocalAiRuntime {
     }
 
     fun loadModel(context: Context, uri: Uri, listener: ModelListener) {
-        if (modelJob?.isActive == true) return
+        if (modelJob?.isActive == true) {
+            // A previous load/unload is still running; refusing silently would leave the
+            // caller's UI in its busy state forever.
+            scope.launch { withContext(Dispatchers.Main) { listener.onStatus("Önceki model işlemi sürüyor; bekleyin.") } }
+            return
+        }
         loadingModel = true
         modelJob = scope.launch {
             try {
@@ -280,7 +280,10 @@ object LocalAiRuntime {
      * (downloaded through the catalog or kept by "model kopyaları").
      */
     fun loadStoredModel(context: Context, file: File, listener: ModelListener) {
-        if (modelJob?.isActive == true) return
+        if (modelJob?.isActive == true) {
+            scope.launch { withContext(Dispatchers.Main) { listener.onStatus("Önceki model işlemi sürüyor; bekleyin.") } }
+            return
+        }
         loadingModel = true
         modelJob = scope.launch {
             try {
@@ -349,6 +352,7 @@ object LocalAiRuntime {
     fun generate(chatId: String, prompt: String, predictLength: Int, listener: GenerationListener) {
         val previousGeneration = generationJob
         previousGeneration?.cancel()
+        val prediction = RuntimePolicy.predictLength(predictLength)
         generationJob = scope.launch {
             try {
                 previousGeneration?.cancelAndJoin()
@@ -363,11 +367,16 @@ object LocalAiRuntime {
                 }
 
                 val state = modelEngine.state.value
-                val needsReload = reloadBeforeNextGeneration ||
-                    (activeChatId != null && activeChatId != chatId) ||
-                    state is InferenceEngine.State.Initialized ||
-                    state is InferenceEngine.State.Error ||
-                    state is InferenceEngine.State.Benchmarking
+                val needsReload = RuntimePolicy.reloadNeeded(
+                    resetRequested = reloadBeforeNextGeneration,
+                    activeChatId = activeChatId,
+                    chatId = chatId,
+                    engineState = when (state) {
+                        is InferenceEngine.State.Initialized -> "initialized"
+                        is InferenceEngine.State.Error -> "error"
+                        is InferenceEngine.State.Benchmarking -> "benchmarking"
+                        else -> "ready"
+                    })
 
                 if (needsReload) {
                     withContext(Dispatchers.Main) { listener.onStatus("Sohbet bağlamı hazırlanıyor…") }
@@ -386,7 +395,7 @@ object LocalAiRuntime {
                 val startedAt = System.nanoTime()
                 var firstTokenAt = 0L
                 var tokenCount = 0
-                modelEngine.sendUserPrompt(prompt, predictLength = predictLength.coerceIn(32, 2048)).collect { token ->
+                modelEngine.sendUserPrompt(prompt, predictLength = prediction).collect { token ->
                     if (firstTokenAt == 0L) firstTokenAt = System.nanoTime()
                     tokenCount++
                     withContext(Dispatchers.Main) { listener.onToken(token) }
@@ -461,7 +470,10 @@ object LocalAiRuntime {
     }
 
     fun unload(listener: ModelListener) {
-        if (modelJob?.isActive == true) return
+        if (modelJob?.isActive == true) {
+            scope.launch { withContext(Dispatchers.Main) { listener.onStatus("Önceki model işlemi sürüyor; bekleyin.") } }
+            return
+        }
         loadingModel = true
         modelJob = scope.launch {
             try {

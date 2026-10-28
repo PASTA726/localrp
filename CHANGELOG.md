@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.10.0 — 2026-10-28
+
+- **Inference runtime güvenilirliği** (Görev 05): motor değiştirilmedi; karar mantığı saf `RuntimePolicy` katmanına taşındı ve kilit bir UI hatası kapatıldı:
+  - **Sonsuz meşgul kilidi düzeltildi**: model yükleme/boşaltma sürerken tekrar denenen `unload`/`loadModel` sessizce reddediyordu ve "Model bellekten kaldırılıyor…" göstergesi sonsuza kadar dönüyordu — artık "Önceki model işlemi sürüyor; bekleyin." durumu geri bildirilir.
+  - **Reload kararı test edilebilir**: `reloadNeeded()` — kullanıcı sıfırlaması, farklı sohbete geçiş ve (initialized/error/benchmarking) bozuk motor durumları nettir; ProcessingSystemPrompt için bekleyen çağrı reload sayılmaz.
+  - **Context bütçesi**: GGUF eğitim uzunluğu (min 512) × 2.5 karakter/token, 8192 motor limitiyle sınırlı, 2048–12000 clamp — aynı sayılar artık 10 testle korundu.
+  - **predictLength clamp** (32–2048) politika katmanında; üretime giren her istek sınırlanır.
+  - Sohbet/grup RP davranışları (v0.7.3 paylaşılır context kuralı) aynen korunur; agresif bellek optimizasyonu yapılmadı.
+- **11 yeni test** (`RuntimePolicyTest`); toplam **38 senaryo / 0 hata**.
+- Donanıma bağlı davranışlar (native llama.cpp hata yolları, gerçek token gecikmeleri) JVM'de test edilemez — cihaz testi listesi aşağıdadır.
+- versionCode 14 / 0.10.0, user agent 0.10.0.
+
 ## v0.9.0 — 2026-10-28
 
 - **GGUF indirme güvenliği ve güvenilirliği** (Görev 04): yeni saf `DownloadPolicy` katmanı (12 JVM testi) ve `ModelDownload` entegrasyonu:
