@@ -210,7 +210,7 @@ object ModelDownload {
         connection.instanceFollowRedirects = true
         connection.connectTimeout = 20_000
         connection.readTimeout = 30_000
-        connection.setRequestProperty("User-Agent", "LocalRP/0.11.0 (+android)")
+        connection.setRequestProperty("User-Agent", "LocalRP/0.12.0 (+android)")
         connection.setRequestProperty("Accept-Encoding", "identity")
         if (rangeStart > 0L) connection.setRequestProperty("Range", "bytes=$rangeStart-")
         return connection

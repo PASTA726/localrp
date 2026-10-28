@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.12.0 — 2026-10-28
+
+- **Uzun sohbet çizim penceresi** (Görev 08 — performans denetimi sonrası tek hedefli değişiklik):
+  - **Ölçüm dürüstlüğü**: telefon bu oturumda bağlı olmadığından cihaz ölçümleri (model yükleme süresi, ilk token gecikmesi, nokta RAM) **alınamadı** ve sayı uydurulmadı. Kod okumasıyla sıralanan en ağır UI hot spot: çok uzun bir RP geçmişinin tamamının tek seferde görünürlüğe alınması (O(n) view, ekran açılışında).
+  - **Çözüm**: sohbet açılışı artık yalnızca en yeni 40 mesajı çizer; daha eskiler, sohbetin üstündeki **"Daha eski mesajlar (n)"** düğmesiyle 40'lık dilimler hâlinde kullanıcının isteğiyle yüklenir (sıra korunur, en üstte eskiler tükendiğinde düğme kaybolur). `ChatWindow` saf yardımcı sınıfı + 3 test pencere aritmetiğini kilitler.
+  - Yan etki yok: mesaj akışı, taslaklar, otomatik üretim ve kalıcılık değişmedi; küçük sohbetler eskisi gibi tam çizilir.
+  - **Uygulamada ölçüm yolu**: Modeller sekmesindeki **Motor testi (bench)** düğmesi model yükleme ve üretim hızını gerçek cihazında ölçer; telefon bağlandığında rakamlar bu yoldan alınacak ve v0.11.x notundaki donanım testi listesiyle birlikte raporlanacaktır.
+- **Sonuç** (kod tarafı, ölçümsüz): 41+ mesajlı sohbetlerde ekran açılışı 40 mesaj çizer; 10.000 mesajlık soyut durumda bile açılış maliyeti sabittir, tarama maliyeti kullanıcının yöneldiği kadar.
+- **3 yeni test** (`ChatWindowTest`: pencere sınırı, ilk gecikme mesajı, üst sınır olmaması). Toplam **57 test / 0 hata** (yerel çalıştırma; CI'da aynı set).
+- versionCode 16 / 0.12.0, user agent 0.12.0.
+
 ## v0.11.0 — 2026-10-28
 
 - **CI ve test tabanı** (Görev 06, APK'da görünmez değişiklik): GitHub Actions workflow'u (push/PR × unit testler + debug derleme, `contents: read` izni, APK yayını yok) ve katalog bütünlük testleri eklendi. Toplam test sayısı 43 → 48 / 0 hata.

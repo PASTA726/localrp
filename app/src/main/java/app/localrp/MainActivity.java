@@ -99,6 +99,13 @@ public class MainActivity extends Activity {
     private EditText chatInput;
     private String chatInputChatId;
     private final java.util.Map<String, String> chatDrafts = new java.util.HashMap<>();
+    // Render window for long conversations (Task 08): the view shows at most the
+    // newest messages; older ones load in chunks only when the user asks.
+    private static final int MAX_INITIAL_RENDER = 40;
+    private static final int RENDER_CHUNK = 40;
+    private List<Message> chatHistory = new ArrayList<>();
+    private int chatRenderStart;
+    private View chatOlderButton;
     private ScrollView chatScroll;
     private LinearLayout chatComposer;
     private View chatEmptyState;
@@ -365,17 +372,71 @@ public class MainActivity extends Activity {
         setPage(group.name, subtitle, "chat", true);
         chatStatusView.setText(chatStatusText(group));
 
-        List<Message> history = store.messages(group.id);
-        if (history.isEmpty()) {
+        // Long chats: opening must not render the whole transcript at once (Task 08).
+        // Only the newest messages enter the view; older ones load on demand upward.
+        chatOlderButton = null;
+        chatHistory = new ArrayList<>(store.messages(group.id));
+        chatRenderStart = ChatWindow.initialStart(chatHistory.size(), MAX_INITIAL_RENDER);
+        chatEmptyState = null;
+        if (chatHistory.isEmpty()) {
             chatEmptyState = addEmpty("RP sahnesi burada başlıyor", "Mesajını yaz; seçili karakter otomatik yanıtlasın.", null, null);
         } else {
-            for (Message message : history) {
+            addOlderMessagesButton();
+            for (int i = chatRenderStart; i < chatHistory.size(); i++) {
+                Message message = chatHistory.get(i);
                 addMessage(content, message.speaker, message.text, message.user, message.at);
             }
         }
         buildChatComposer(group);
         scrollChatToBottom(true);
         maybeAutoGenerate(group);
+    }
+
+    /** Load-on-demand marker above the rendered message window (Task 08). */
+    private void addOlderMessagesButton() {
+        if (chatOlderButton != null && chatOlderButton.getParent() == content) content.removeView(chatOlderButton);
+        if (chatRenderStart <= 0) {
+            chatOlderButton = null;
+            return;
+        }
+        Button view = new Button(this);
+        view.setAllCaps(false);
+        view.setTextSize(13);
+        view.setTextColor(Design.accent());
+        view.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 12));
+        view.setMinHeight(dp(38));
+        view.setPadding(dp(14), 0, dp(14), 0);
+        updateOlderLabel(view);
+        view.setOnClickListener(v -> renderOlderChunk());
+        content.addView(view, fullWidth());
+        LinearLayout.LayoutParams olderParams = (LinearLayout.LayoutParams) view.getLayoutParams();
+        olderParams.setMargins(0, dp(2), 0, dp(10));
+        view.setLayoutParams(olderParams);
+        chatOlderButton = view;
+    }
+
+    private void updateOlderLabel(Button view) {
+        view.setText("Daha eski mesajlar (" + chatRenderStart + ")");
+    }
+
+    /** Prepends the next older chunk in chronological order, above the marker button. */
+    private void renderOlderChunk() {
+        if (chatRenderStart <= 0 || chatOlderButton == null) return;
+        int next = ChatWindow.olderStart(chatRenderStart, RENDER_CHUNK);
+        int insertAt = content.indexOfChild(chatOlderButton);
+        for (int i = next; i < chatRenderStart; i++) {
+            Message message = chatHistory.get(i);
+            TextView row = addMessage(content, message.speaker, message.text, message.user, message.at);
+            content.removeView(row);
+            content.addView(row, Math.min(insertAt++, content.getChildCount()));
+        }
+        chatRenderStart = next;
+        if (chatRenderStart > 0) {
+            updateOlderLabel((Button) chatOlderButton);
+        } else {
+            content.removeView(chatOlderButton);
+            chatOlderButton = null;
+        }
     }
 
     private String chatSubtitle(Group group) {
