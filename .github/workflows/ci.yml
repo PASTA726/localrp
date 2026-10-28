@@ -23,8 +23,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
+      # ubuntu-latest ships the Android command-line tools; accept licenses so AGP can
+      # fetch compileSdk 36 if it is not in the preinstalled set.
+      - name: Accept SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
       - name: Gradle cache
         uses: gradle/actions/setup-gradle@v4
