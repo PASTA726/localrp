@@ -99,6 +99,9 @@ public class MainActivity extends Activity {
     private EditText chatInput;
     private String chatInputChatId;
     private final java.util.Map<String, String> chatDrafts = new java.util.HashMap<>();
+    // Live link from a chat id to its in-flight draft balloon (task G0): re-entering a
+    // chat while its response streams must re-link the new view, not spawn a second one.
+    private final java.util.Map<String, TextView> generationViews = new java.util.HashMap<>();
     // Render window for long conversations (Task 08): the view shows at most the
     // newest messages; older ones load in chunks only when the user asks.
     private static final int MAX_INITIAL_RENDER = 40;
@@ -126,6 +129,8 @@ public class MainActivity extends Activity {
         store = new Store(this, BUILTIN_ROLEPLAY_ID);
         store.migrateToRoleplay();
         if (!store.integrityIssues().isEmpty()) reportIntegrityIssues();
+        // Leftover generation drafts (crash mid-stream) become normal messages once, up front.
+        restoreInterruptedDrafts();
         Design.refresh(this);
         modelsBackAction = this::showHome;
         SharedPreferences prefs = prefs();
@@ -669,6 +674,7 @@ public class MainActivity extends Activity {
         }
         final TextView initialView = group.id.equals(visibleChatId) && content != null
                 ? addMessage(content, speaker.name, "…", false, startedAt) : null;
+        generationViews.put(group.id, initialView);
         scrollChatToBottom(true);
 
         String prompt = buildRoleplayPrompt(group, speaker, continuation);
@@ -684,18 +690,19 @@ public class MainActivity extends Activity {
         contextChars.put(group.id, contextUsed + prompt.length());
         int maxTokens = prefs().getInt("max_output_tokens", 320);
         LocalAiRuntime.INSTANCE.generate(group.id, prompt, maxTokens, new LocalAiRuntime.GenerationListener() {
-            private TextView displayedResponse = initialView;
             private final StringBuilder response = new StringBuilder();
 
             private void finish(boolean stopped, String error) {
                 String finalText = cleanResponse(response.toString(), speaker.name);
+                TextView displayedResponse = generationViews.remove(group.id);
+                clearGenerationDraft(group.id);
                 boolean chatStillExists = store.group(group.id) != null;
                 if (finalText.isEmpty()) {
                     if (displayedResponse != null && displayedResponse.getParent() == content) {
                         content.removeView(displayedResponse);
                     }
-                } else {
-                    if (chatStillExists) store.addMessage(group.id, new Message(speaker.name, finalText, false, startedAt));
+                } else if (chatStillExists) {
+                    store.addMessage(group.id, new Message(speaker.name, finalText, false, startedAt));
                     if (group.id.equals(visibleChatId) && content != null) {
                         if (displayedResponse == null || displayedResponse.getParent() != content) {
                             displayedResponse = addMessage(content, speaker.name, finalText, false, startedAt);
@@ -741,11 +748,19 @@ public class MainActivity extends Activity {
             @Override public void onToken(String token) {
                 response.append(token);
                 contextChars.put(group.id, contextChars.getOrDefault(group.id, 0L) + token.length());
+                // Persist the draft each token (task G0 crash case + G11): if the process
+                // dies mid-stream, restoreInterruptedDrafts keeps the partial reply once.
+                saveGenerationDraft(group.id, speaker.name, response.toString());
+                // Streamed interim text uses the SAME cleanup as the final message, so the
+                // echoed "Name:" prefix and engine token residue never become visible.
+                String streamed = cleanResponse(response.toString(), speaker.name);
                 if (!group.id.equals(visibleChatId) || content == null) return;
-                if (displayedResponse == null || displayedResponse.getParent() != content) {
-                    displayedResponse = addMessage(content, speaker.name, response.toString(), false, startedAt);
+                TextView draft = generationViews.get(group.id);
+                if (draft == null || draft.getParent() != content) {
+                    draft = addMessage(content, speaker.name, streamed, false, startedAt);
+                    generationViews.put(group.id, draft);
                 } else {
-                    renderMessage(displayedResponse, speaker.name, response.toString(), startedAt);
+                    renderMessage(draft, speaker.name, streamed, startedAt);
                 }
                 if (autoScroll) scrollChatToBottom(false);
             }
@@ -1857,17 +1872,55 @@ public class MainActivity extends Activity {
                 .setNegativeButton("Vazgeç", null).show();
     }
 
-    private String cleanResponse(String raw, String speakerName) {
-        if (raw == null) return "";
-        String text = raw.trim();
-        text = text.replace("<|im_end|>", "").replace("<|eot_id|>", "")
-                .replace("<|end_of_text|>", "").replace("</s>", "").trim();
-        if (!text.isEmpty() && speakerName != null && !speakerName.trim().isEmpty()) {
-            String name = Pattern.quote(speakerName.trim());
-            text = text.replaceFirst("(?is)^\\s*\\*{0,2}" + name + "\\*{0,2}\\s*[:：-]\\s*", "");
+    /** Draft text of an in-flight generation; guaranteed against process death (task G0/G11). */
+    private void saveGenerationDraft(String chatId, String speaker, String rawText) {
+        if (rawText == null || rawText.isEmpty()) return;
+        try {
+            JSONObject draft = new JSONObject();
+            draft.put("speaker", speaker == null ? "" : speaker);
+            draft.put("text", rawText);
+            prefs().edit().putString("gen_draft_" + chatId, draft.toString()).apply();
+        } catch (JSONException ignored) {
         }
-        text = text.replaceAll("\n{3,}", "\n\n");
-        return text.trim();
+    }
+
+    private void clearGenerationDraft(String chatId) {
+        prefs().edit().remove("gen_draft_" + chatId).apply();
+    }
+
+    /**
+     * Crash recovery (task G0): a leftover draft means the generation never reached
+     * finish(); restore it as a regular message exactly once and delete the draft.
+     * Runs once at startup, before any screen is rendered.
+     */
+    private void restoreInterruptedDrafts() {
+        SharedPreferences prefs = prefs();
+        java.util.Map<String, ?> all = prefs.getAll();
+        for (String key : all.keySet()) {
+            if (!key.startsWith("gen_draft_")) continue;
+            String chatId = key.substring("gen_draft_".length());
+            prefs.edit().remove(key).apply();
+            try {
+                JSONObject draft = new JSONObject(String.valueOf(all.get(key)));
+                String speaker = draft.optString("speaker", "");
+                String text = ResponseCleanup.clean(draft.optString("text", ""), speaker);
+                if (store.group(chatId) == null || speaker.isEmpty() || text.isEmpty()) continue;
+                Message last = store.lastMessage(chatId);
+                boolean alreadySaved = last != null && !last.user
+                        && last.speaker.equals(speaker) && last.text.equals(text);
+                if (!alreadySaved) {
+                    store.addMessage(chatId, new Message(speaker, text, false, System.currentTimeMillis()));
+                }
+            } catch (Exception broken) {
+                // A corrupt draft key was already removed; no risk to stored chat data.
+            }
+        }
+    }
+
+    private String cleanResponse(String raw, String speakerName) {
+        // Single shared cleanup (task G0): the identical helper also renders the
+        // streaming interim balloon so the echoed label never becomes visible.
+        return ResponseCleanup.clean(raw, speakerName);
     }
 
     private String searchText(String value) {
