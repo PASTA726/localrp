@@ -2,6 +2,15 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## Unreleased (yapılmakta)
+
+- **G0 — Akan yanıt düzeltmeleri** (acil hata görevi, kod incelemesiyle):
+  - Akış sırasındaki ara balon artık final mesajla **aynı temizlik fonksiyonunu** (`ResponseCleanup`) kullanır: modelin yansıttığı "Ad:" öneki, yıldızlı varyantlar (`*Ad*:`, `*Ad* metin`) ve motor özel token'ları (`<|im_end|>` vb.) hiçbir ara balonda görünmez. Konuşmacının bir başkasına hitabı (ör. "Ashe burada, iyi misin?") korunur.
+  - Sohbetten çıkıp geri dönüldüğünde (re-entry) taslak balon `generationViews` haritasıyla yeniden bağlanır; ikinci bir balon oluşmaz, tek balon büyümeye devam eder.
+  - **Çökme dayanıklılığı**: üretilen metin her token'da taslak olarak kaydedilir; süreç ölürse bir sonraki açılışta yarım yanıt **tek kez** normal mesaj olarak geri konur (mükerrere karşı denetimli; `finish`'te taslak silinir).
+  - Not: tek-balon güncelleme deseni v0.7.0'dan beri yapıda; "her token yeni balon" davranışı mevcut kodda yeniden üretilemedi. Kabul kriterindeki iki gerçek boşluk (ara temizlik + re-entry/çöküş taslağı) bu sürümde kapatıldı.
+- **6 yeni test** (`ResponseCleanupTest`): etiket temizliği (iki nokta, tire, tam genişlik iki nokta, yıldızlı biçimler), özel token temizliği, boş satır küçültme, boş girdi. Toplam **63 test / 0 hata**.
+
 ## v0.12.0 — 2026-10-28
 
 - **Uzun sohbet çizim penceresi** (Görev 08 — performans denetimi sonrası tek hedefli değişiklik):
