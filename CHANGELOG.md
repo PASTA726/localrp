@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.13.0-alpha1 — 2026-10-30 (ALFA — arayüz yeniden inşası)
+
+> **Bu bir alfa sürümüdür** (GitHub'da Pre-release işaretli): arayüzün yeni tasarım dili ilk kez bir sürümde tam uygulanıyor ve cihaz üzerinde görsel doğrulama henüz yapılmadı. Görünümdeki hataları bekliyoruz; sorun bulursanız GitHub'da issue açın. Veri saklama, üretim akışı ve indirme doğrulama davranışı v0.12.0 temeline dayanır; değişen yalnızca görsel katmandır.
+
+- **Arayüz yeniden inşası — Faz 2 (aynı dil, tüm kurulum ekranları)**:
+  - Tüm düğmeler stadyum (hap) biçimine alındı: birincil doldurulmuş vurgu, ikincil konturlu vurgu, tehlike yumuşak kırmızı — 26 dp köşe, 48 dp dokunma hedefi (Karakterler, Grup düzenleyici, AI ayarları, Görünüm, Model kataloğu dahil).
+  - Kurulum ekranlarının metin/çok satırlı alanları 18 dp köşeli yumuşak kutulara alındı; kartlar 20 dp köşeye yükseltildi.
+  - Ekran içerikleri ve veri davranışı korundu; değişim yalnızca görsel katman.
+- **Faz 1** (aynı faza dahil bir önceki iş grubu): altı tema paleti 0'dan, mesaj balonlarının C.AI-modern dile geçişi, sohbet girdisinin hap biçimi, Ana ekran ve RP Sohbetleri'nde yan yana başlangıç döşemeleri.
+- **G4 — indirme SHA-256 doğrulaması** ve **G5 — GPU kartlarının dürüst uyarısı**: ayrıntıları aşağıdaki "Unreleased" bölümünde taşınan notlarda.
+
 ## Unreleased (yapılmakta)
 
 - **G4 — indirilen model sayısal olarak doğrulanır**: katalogdaki her girdi, dosyanın Hugging Face LFS işaretçisinden **gerçekten çekilen** resmî SHA-256 özetini taşır (uydurulmadı; 2026-10-30 tarihli). İndirme bittiğinde `DownloadPolicy` dosyayı bu özete karşı doğrular; eğer eşleşmezse indirilen dosya silinir — bozuk ya da müdahale edilmiş bir indirme artık "boyutuna güvenilerek kurulu sayılamaz". `ModelCatalogTest` 64 haneli özet muhafızını kazandı (6 test).

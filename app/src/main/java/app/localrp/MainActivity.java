@@ -2455,7 +2455,7 @@ public class MainActivity extends Activity {
     private void addSecondary(String text, View.OnClickListener listener) {
         Button view = button(text);
         view.setTextColor(Design.accent());
-        view.setBackground(rounded(Design.cardBg(), Design.accentStroke(), 12));
+        view.setBackground(rounded(Design.cardBg(), Design.accentStroke(), 26));
         view.setOnClickListener(listener);
         LinearLayout.LayoutParams p = fullWidth();
         p.setMargins(0, 0, 0, dp(12));
@@ -2466,7 +2466,7 @@ public class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(15), dp(14), dp(15), dp(14));
-        card.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 18));
+        card.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 20));
         return card;
     }
 
@@ -2496,8 +2496,8 @@ public class MainActivity extends Activity {
         button.setAllCaps(false);
         button.setTextColor(Design.onAccent());
         button.setTextSize(15);
-        button.setBackground(rounded(Design.accent(), Design.accent(), 12));
-        button.setElevation(dp(1));
+        button.setMinHeight(dp(48));
+        button.setBackground(rounded(Design.accent(), Design.accent(), 26));
     }
 
     private EditText field(String hint, String value) { return field(hint, value, 1); }
@@ -2514,7 +2514,7 @@ public class MainActivity extends Activity {
         GradientDrawable background = new GradientDrawable();
         background.setColor(Design.cardBg());
         background.setStroke(dp(1), Design.cardStroke());
-        background.setCornerRadius(dp(12));
+        background.setCornerRadius(dp(18));
         input.setBackground(background);
         LinearLayout.LayoutParams p = fullWidth();
         p.setMargins(0, 0, 0, dp(12));
@@ -2531,7 +2531,7 @@ public class MainActivity extends Activity {
     private void addDangerButton(String text, View.OnClickListener listener) {
         Button view = button(text);
         view.setTextColor(Design.danger());
-        view.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 12));
+        view.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 26));
         view.setOnClickListener(listener);
         LinearLayout.LayoutParams p = fullWidth();
         p.setMargins(0, 0, 0, dp(10));
@@ -2543,7 +2543,7 @@ public class MainActivity extends Activity {
         view.setText(text);
         view.setAllCaps(false);
         view.setTextSize(15);
-        view.setMinHeight(dp(46));
+        view.setMinHeight(dp(48));
         return view;
     }
 
