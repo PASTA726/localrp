@@ -691,6 +691,8 @@ public class MainActivity extends Activity {
         int maxTokens = prefs().getInt("max_output_tokens", 320);
         LocalAiRuntime.INSTANCE.generate(group.id, prompt, maxTokens, new LocalAiRuntime.GenerationListener() {
             private final StringBuilder response = new StringBuilder();
+            /** Last draft-save heartbeat (throttled ≥1.5 s; 0 = save on first token). */
+            private long lastDraftSave;
 
             private void finish(boolean stopped, String error) {
                 String finalText = cleanResponse(response.toString(), speaker.name);
@@ -748,9 +750,16 @@ public class MainActivity extends Activity {
             @Override public void onToken(String token) {
                 response.append(token);
                 contextChars.put(group.id, contextChars.getOrDefault(group.id, 0L) + token.length());
-                // Persist the draft each token (task G0 crash case + G11): if the process
-                // dies mid-stream, restoreInterruptedDrafts keeps the partial reply once.
-                saveGenerationDraft(group.id, speaker.name, response.toString());
+                // Draft persistence (task G0 crash case + G11), rate-limited for B1: the full
+                // text is re-serialized per save, so honest per-token writes would make the
+                // token path O(n²) and busy the main thread on slower phones. Save at most
+                // every 1.5 s (first token always); stop/finish paths clear the key, so a
+                // crash after stopping loses at most the last 1.5 s of stream.
+                long now = System.currentTimeMillis();
+                if (lastDraftSave == 0L || now - lastDraftSave >= 1500) {
+                    lastDraftSave = now;
+                    saveGenerationDraft(group.id, speaker.name, response.toString());
+                }
                 // Streamed interim text uses the SAME cleanup as the final message, so the
                 // echoed "Name:" prefix and engine token residue never become visible.
                 String streamed = cleanResponse(response.toString(), speaker.name);

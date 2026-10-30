@@ -1,18 +1,26 @@
 # LocalRP — Architecture
 
-LocalRP is deliberately small: one `MainActivity`, one Kotlin runtime object, and three small design/support classes. There are no XML layouts (all screens are built with platform widgets), no network framework and no database — state is JSON in `SharedPreferences`.
+LocalRP is deliberately small: one `MainActivity` (~2.6k lines), one Kotlin runtime object, one extracted `Store`, and a set of small pure-decision classes that carry the JVM-tested logic. There are no XML layouts (all screens are built with platform widgets), no network framework and no database — state is JSON in `SharedPreferences`.
 
 > Turkish, offline-first roleplay (RP) app. This document describes how the pieces fit; see README for usage and build steps.
 
 ## Modules
 
 ```
-MainActivity.java      2.4k lines — all screens, RP flow, speaker selection, data store
+MainActivity.java      ~2.6k lines — all screens, RP flow, speaker selection, generation orchestration
 LocalAiRuntime.kt      llama.cpp via com.arm:ai-chat (Apache-2.0, upstream: github.com/arm/ai-chat)
+Store.java             SharedPreferences persistence (extracted from MainActivity in v0.11.x)
+RoleplayPrompt.java    pure engine-prompt assembly (persona/cast/history/rules)
 AppTheme.java          6 GUI themes as plain color tokens (light + dark)
 Design.java            static accessor for the active theme + system-bar painting
+Avatar.java            programmatic avatar art for chats/characters
 ModelCatalog.java      curated GGUF download list (CPU/GPU columns, verified URLs)
 ModelDownload.kt       streaming downloader with cancel, single-writer gate and HTTP-Range resume
+DownloadPolicy.kt      pure download decisions (https, filename, Content-Range, size checks)
+RuntimePolicy.kt       pure runtime decisions (context budget, predictLength clamp, reload needed)
+PersistenceCodec.java  tolerant JSON codec + backup bundle encode/decode/merge
+ResponseCleanup.java   shared label/token cleanup for streamed and final response text
+ChatWindow.java        chat render-window arithmetic (long chats draw newest 40, older on demand)
 ```
 
 ### MainActivity
@@ -52,7 +60,7 @@ Two entry points share one tail (`attachModel()`):
 - `loadSelectedModel` — copies a user-picked SAF file into `files/models/`.
 - `loadStoredModel` — loads a file already present (in-app downloads, previous copies).
 
-The tail unloads the previous model, reads GGUF metadata in a header pass (name/arch/quant/training context/size class), applies `setSystemPrompt(currentSystemPrompt())` and reports completion. A failed `bench()` can wedge the engine in the `Benchmarking` state; the UI says so and asks for an app restart.
+The tail unloads the previous model, reads GGUF metadata in a header pass (name/arch/quant/training context/size class), applies `setSystemPrompt(currentSystemPrompt())` and reports completion. A failed `bench()` can wedge the engine in the `Benchmarking` state; generation attempts then best-effort reset the engine (`cleanUp()`) before reloading, and the UI reports the recovery in the status line. A full app restart remains the manual fallback.
 
 ### Downloading (`ModelDownload.kt`)
 
@@ -76,7 +84,7 @@ The tail unloads the previous model, reads GGUF metadata in a header pass (name/
 ## Known limits
 
 - Engine does not expose sampling parameters (temperature/top-p/top-k); steering is prompt- and length-based.
-- Streaming works through the engine (`onToken` per token), so bars append incrementally — no per-character typing bubble is drawn on top.
-- The message store re-parses its JSON blob on every access; very long chats (hundreds of messages) may slow screen rebuilds. Export/backup tooling is a stated next step.
+- Streaming works through the engine (`onToken` per token), so bubbles grow incrementally; the streamed text is re-cleaned per token and the crash draft is persisted at most every 1.5 s (rate-limited to keep the token path O(n)).
+- The message store keeps an in-memory chat cache since v0.7.4 (no re-parse per screen rebuild) and keeps every write out of unreadable keys; safety caps for restore reads are 256 MB. Backup/restore via SAF shipped in v0.11.0; long chats render a 40-message window since v0.12.0.
 - No content-filter layer; RP personas write as fictional characters by system prompt only.
 - `MainActivity` is a single ~2.4k-line class by design (no architecture framework); splitting it further was traded away on purpose to keep dependencies at zero.
