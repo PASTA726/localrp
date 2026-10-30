@@ -169,8 +169,7 @@ public class MainActivity extends Activity {
         backAction = null;
         setPage("LocalRP", "Yerel hikâyelerin, senin kontrolünde", "home");
         addHero();
-        addPrimary("＋  Tek karakterli RP", v -> createSingleCharacterRoleplay());
-        addSecondary("＋  Grup RP", v -> showGroupEditor(null));
+        addHomeActions();
         List<Group> groups = store.groups();
         if (groups.isEmpty()) addEmpty("Henüz bir RP yok", "Bir karakter seçerek bire bir hikâye başlat veya grup kur.", null, null);
         else {
@@ -467,8 +466,8 @@ public class MainActivity extends Activity {
         tools.setGravity(Gravity.CENTER_VERTICAL);
 
         chatSpeakerView = label("", 13, Design.accent());
-        chatSpeakerView.setPadding(dp(11), dp(7), dp(11), dp(7));
-        chatSpeakerView.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 12));
+        chatSpeakerView.setPadding(dp(14), dp(8), dp(14), dp(8));
+        chatSpeakerView.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 30));
         chatSpeakerView.setOnClickListener(v -> showSpeakerPicker(group));
         tools.addView(chatSpeakerView, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
@@ -477,8 +476,8 @@ public class MainActivity extends Activity {
         menu.setTextColor(Design.text());
         menu.setMinWidth(dp(44));
         menu.setMinHeight(dp(38));
-        menu.setPadding(dp(8), 0, dp(8), 0);
-        menu.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 12));
+        menu.setPadding(dp(12), 0, dp(12), 0);
+        menu.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 30));
         menu.setOnClickListener(v -> showChatMenu(group));
         LinearLayout.LayoutParams menuParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -498,8 +497,8 @@ public class MainActivity extends Activity {
         chatContinueButton = button("");
         chatContinueButton.setTextSize(14);
         chatContinueButton.setTextColor(Design.accent());
-        chatContinueButton.setBackground(rounded(Design.cardBg(), Design.accentStroke(), 12));
-        chatContinueButton.setMinHeight(dp(40));
+        chatContinueButton.setBackground(rounded(Design.cardBg(), Design.accentStroke(), 30));
+        chatContinueButton.setMinHeight(dp(44));
         chatContinueButton.setOnClickListener(v -> continueOrRetry(group));
         LinearLayout.LayoutParams continueParams = fullWidth();
         continueParams.setMargins(0, dp(8), 0, 0);
@@ -517,7 +516,7 @@ public class MainActivity extends Activity {
         GradientDrawable inputBackground = new GradientDrawable();
         inputBackground.setColor(Design.cardBg());
         inputBackground.setStroke(dp(1), Design.cardStroke());
-        inputBackground.setCornerRadius(dp(12));
+        inputBackground.setCornerRadius(dp(26));
         input.setBackground(inputBackground);
         chatInput = input;
         chatInputChatId = group.id;
@@ -908,8 +907,7 @@ public class MainActivity extends Activity {
         visibleChatId = null;
         backAction = this::showHome;
         setPage("RP Sohbetleri", "Bire bir ve grup hikâyelerin", "chats");
-        addPrimary("＋  Tek karakterli RP", v -> createSingleCharacterRoleplay());
-        addSecondary("＋  Grup RP", v -> showGroupEditor(null));
+        addHomeActions();
         List<Group> groups = store.groups();
         if (groups.isEmpty()) addEmpty("Burada henüz RP yok", "Bire bir hikâye başlat veya grup kur.", null, null);
         for (Group group : groups) addGroupCard(group);
@@ -2410,6 +2408,40 @@ public class MainActivity extends Activity {
         return body;
     }
 
+    /** Two side-by-side start tiles (C.AI "create" pattern) replacing stacked full-width buttons. */
+    private void addHomeActions() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        String[][] defs = {
+                {"＋", "Tek karakterli RP", "Karakter seç, hikâyeyi başlat"},
+                {"☷", "Grup RP", "Birden çok karakter aynı sahnede"},
+        };
+        Runnable[] actions = {this::createSingleCharacterRoleplay, () -> showGroupEditor(null)};
+        for (int i = 0; i < 2; i++) {
+            final int index = i;
+            LinearLayout tile = new LinearLayout(this);
+            tile.setOrientation(LinearLayout.VERTICAL);
+            tile.setPadding(dp(14), dp(13), dp(14), dp(13));
+            tile.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 18));
+            tile.setOnClickListener(v -> actions[index].run());
+            TextView icon = label(defs[i][0], 20, Design.accent());
+            tile.addView(icon);
+            TextView title = label(defs[i][1], 14, Design.text());
+            title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+            title.setPadding(0, dp(6), 0, 0);
+            tile.addView(title);
+            TextView detail = label(defs[i][2], 11, Design.muted());
+            detail.setPadding(0, dp(3), 0, 0);
+            tile.addView(detail);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+            if (i == 1) params.setMargins(dp(8), 0, 0, 0);
+            row.addView(tile, params);
+        }
+        LinearLayout.LayoutParams p = fullWidth();
+        p.setMargins(0, 0, 0, dp(20));
+        content.addView(row, p);
+    }
+
     private Button addPrimary(String text, View.OnClickListener listener) {
         Button view = button(text);
         stylePrimary(view);
@@ -2516,13 +2548,15 @@ public class MainActivity extends Activity {
     }
 
     private TextView addMessage(LinearLayout parent, String speaker, String text, boolean user, long at) {
-        // Character messages get a cAI/PolyBuzz-like leading avatar + time to be set off
-        // from user messages, which keep the plain offset bubble without an avatar row.
+        // C.AI-modern rebuild: characters speak from a soft, flat card with a leading
+        // 30dp avatar and an accent-colored name; the user's own lines stay compact,
+        // right-weighted bubbles in a softened accent — metrics wider than the rest.
         TextView view = label("", 15, Design.text());
-        view.setPadding(dp(14), dp(11), dp(14), dp(11));
+        view.setPadding(dp(14), dp(10), dp(14), dp(10));
         view.setLineSpacing(dp(2), 1f);
-        view.setBackground(rounded(user ? Design.bubbleUser() : Design.cardBg(),
-                user ? Design.bubbleUserStroke() : Design.cardStroke(), 16));
+        view.setBackground(user
+                ? rounded(Design.bubbleUser(), Design.bubbleUserStroke(), 20)
+                : rounded(Design.cardBg(), Design.cardBg(), 20));
         renderMessage(view, speaker, text, at);
         view.setOnLongClickListener(v -> {
             String value = view.getTag() instanceof String ? (String) view.getTag() : view.getText().toString();
@@ -2533,20 +2567,20 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                 user ? 0.15f : 0.62f);
-        bubbleParams.setMargins(user ? dp(10) : 0, 0, user ? 0 : dp(10), dp(9));
+        bubbleParams.setMargins(user ? dp(10) : 0, 0, user ? 0 : dp(10), dp(10));
 
         LinearLayout row = new LinearLayout(this);
         row.setGravity(user ? Gravity.BOTTOM : Gravity.TOP);
         if (!user) {
-            TextView companion = Avatar.forName(this, speaker, 32);
+            TextView companion = Avatar.forName(this, speaker, 30);
             companion.setPadding(0, 0, 0, 0);
-            LinearLayout.LayoutParams companionParams = new LinearLayout.LayoutParams(dp(32), dp(32));
-            companionParams.setMargins(0,(dp(1)), 0, 0);
+            LinearLayout.LayoutParams companionParams = new LinearLayout.LayoutParams(dp(30), dp(30));
+            companionParams.setMargins(0, dp(3), 0, 0);
             row.addView(companion, companionParams);
         }
         row.addView(view, bubbleParams);
         TextView companionTime = label(clock.format(new Date(at)), 10, Design.muted());
-        companionTime.setPadding(dp(2), 0, dp(2), dp(3));
+        companionTime.setPadding(dp(3), 0, dp(3), dp(3));
         row.addView(companionTime, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
         parent.addView(row, fullWidth());
         return view;
