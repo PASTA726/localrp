@@ -4,6 +4,15 @@ All notable LocalRP changes. The app targets Turkish-speaking users; entries are
 
 ## Unreleased (yapılmakta)
 
+- **G4 — indirilen model sayısal olarak doğrulanır**: katalogdaki her girdi, dosyanın Hugging Face LFS işaretçisinden **gerçekten çekilen** resmî SHA-256 özetini taşır (uydurulmadı; 2026-10-30 tarihli). İndirme bittiğinde `DownloadPolicy` dosyayı bu özete karşı doğrular; eğer eşleşmezse indirilen dosya silinir — bozuk ya da müdahale edilmiş bir indirme artık "boyutuna güvenilerek kurulu sayılamaz". `ModelCatalogTest` 64 haneli özet muhafızını kazandı (6 test).
+- **G5 — GPU kartları dürüst davranır**: paketli kapalı motor yalnızca CPU'dur; GPU sekmesindeki kartlar artık "⚠ Bu motorda çalışmaz — paketli motor yalnızca CPU; Vulkan/MLC motoru gerekir." uyarısını gösterir, hız çipi "GPU  motor yolu yok" olur ve İndir/Modeli yükle düğmeleri pasifleştirilir — çalışmayacak bir modelin indirilmesi engellenir.
+- **Arayüz yeniden inşası — Faz 1 (ekran dili: modern/minimal, Character.AI referanslı)**:
+  - **Yeni renk sistemi**: altı tema (Lavanta, Okyanus, Orman, Gölge, Deniz Gecesi, Gün Batımı) token düzeyinde yeniden yazıldı — koyu temalar gerçek-siyah ana sayfa arka planına geçti, vurgu renkleri modernleştirildi (ör. Gölge #9B7BFF, Lavanta #7C5CFC); tema kimlikleri ve adları korunarak tüm ekranlar tek geçişte modernleşir.
+  - **Mesaj balonları**: karakter mesajları 30 dp avatar + düz yumuşak kart (kontur yok, 20 dp köşe) + vurgu renkli konuşmacı adı; kullanıcı balonları sağa ağırlıklı, yumuşatılmış vurgu dolgusu — uzun basma (kopyala) ve akış/temizlik davranışı değişmedi.
+  - **Sohbet alanı**: girdi alanı hap (stadyum) biçimine alındı (26 dp köşe), konuşmacı seçici "Devam" ve `⋯` düğmeleri pill diline geçti (30 dp köşe, 44 dp dokunma hedefi); dairesel 46 dp gönder/durdur düğmesi korundu.
+  - **Ana ekran ve RP Sohbetleri**: üstte yığılı iki düğme yerine yan yana iki başlangıç döşemesi ("Tek karakterli RP" / "Grup RP", ikon + başlık + kısa açıklama); kalan sohbet/karakter kartları zaten C.AI-kart dilindeydi ve kalır.
+  - Kapsam notu: bu faz Ana ekran, Sohbetler ve sohbet ekranını kapsar; karakter oluşturucu, Grup, Modeller, Katalog, Görünüm ve Gelişmiş AI ekranları sonraki fazlarda aynı dile geçirilir.
+
 - **İnceleme raporu yanıtı (2026-10-30, "LocalRP Proje İnceleme Raporu" belgeleri)**:
   - **B1 — taslak yazımı kısıtlandı**: üretilen metin artık her token'da değil, en fazla **1,5 saniyede bir** kaydedilir (ilk token daima kayıt; durdurma/bitiş yolları anahtarı siler). Önceki halinde tam metin her token'da yeniden serileştirildiği için yanıt uzadıkça her yazım ağırlaşıyordu; bu ana iş parçacığı yükü kaldırıldı.
   - **B2 — dokümanlar güncellendi**: `ARCHITECTURE.md` artık tüm saf sınıfları listeler (Store, RoleplayPrompt, DownloadPolicy, RuntimePolicy, PersistenceCodec, ResponseCleanup, ChatWindow, Avatar); "her erişimde JSON yeniden ayrıştırıldı" ve "yedekleme sonraki adım" gibi v0.7.4/v0.11.0'da bayatlamış ifadeler gerçeği belirten düzeltmelerle değiştirildi. `README.md`'ye yedekleme, ölçeklenebilirlik, test/CI ve lisans satırları eklendi.
