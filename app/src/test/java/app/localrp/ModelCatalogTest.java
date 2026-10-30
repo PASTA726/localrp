@@ -70,6 +70,17 @@ public class ModelCatalogTest {
         }
     }
 
+    @Test
+    public void everyModel_shipsTrustedSha256() {
+        // Task G4/B3: the downloader now verifies the finished file against the catalog
+        // digest. Every entry must carry a full lowercase hex digest so no download can
+        // be verified by size alone.
+        for (ModelCatalog.Model model : allModels()) {
+            assertTrue("sha256 required: " + model.name,
+                    model.sha256 != null && model.sha256.matches("[a-f0-9]{64}"));
+        }
+    }
+
     private static ModelCatalog.Model[] allModels() {
         ModelCatalog.Model[] merged = new ModelCatalog.Model[ModelCatalog.CPU_MODELS.length + ModelCatalog.GPU_MODELS.length];
         System.arraycopy(ModelCatalog.CPU_MODELS, 0, merged, 0, ModelCatalog.CPU_MODELS.length);
