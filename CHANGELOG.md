@@ -2,6 +2,21 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+# Changelog
+
+All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
+
+## v0.13.0-alpha2 — 2026-10-30 (ALFA — görsel sistem parlatması)
+
+> **Hâlen bir ALFA sürümüdür** (Pre-release): alpha1'in geri bildirimine göre görsel sistem yeniden gözden geçirildi. Uygulama görünmeye devam ediyor; veri ve üretim davranışı değişmedi.
+
+- **Yüzen alt gezinme**: tam genişlik şerit yerine kenarlardan boşluklu, 28 dp köşeli yuvarlatılmış gezinme kartı (modern sohbet uygulaması deseni); seçili öğe artık kutu vurgusuyla değil yerinde küçük bir vurgu noktasıyla belirtilir.
+- **Temiz başlık çubukları**: her sayfada tekrarlayan "LOCALRP · YEREL HİKÂYELER" ibaresi kaldırıldı; sayfa başlığı büyütüldü (26–27 dp), altında sessiz açıklama satırı. Ana sayfa markası hero kartında yaşamaya devam eder.
+- **Sessiz geri düğmeleri**: iç sayfaların ve sohbetin geri düğmesi vurgu hapı yerine nötr kart renginde yuvarlak düğme oldu.
+- **Düğme tipografisi**: birincil/ikincil düğme metinleri kalın punta + hafif harf aralığı; stadyum biçim ve 48 dp dokunma hedefi (alpha1'de verildi) korunur.
+- **Sohbet girdi çubuğu**: yazma alanının oturduğu şerit karta değil sayfa zeminine alındı; hap girdi kutusu ve dairesel gönder düğmesi korunur.
+- versionCode 18 / 0.13.0-alpha2, user agent 0.13.0-alpha2.
+
 ## v0.13.0-alpha1 — 2026-10-30 (ALFA — arayüz yeniden inşası)
 
 > **Bu bir alfa sürümüdür** (GitHub'da Pre-release işaretli): arayüzün yeni tasarım dili ilk kez bir sürümde tam uygulanıyor ve cihaz üzerinde görsel doğrulama henüz yapılmadı. Görünümdeki hataları bekliyoruz; sorun bulursanız GitHub'da issue açın. Veri saklama, üretim akışı ve indirme doğrulama davranışı v0.12.0 temeline dayanır; değişen yalnızca görsel katmandır.
