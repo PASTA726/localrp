@@ -1177,6 +1177,12 @@ public class MainActivity extends Activity {
         return partial.isFile() ? partial : null;
     }
 
+    /** True for cards listed in the GPU tab (task G5): the bundled engine is CPU-only. */
+    private boolean isGpuOnlyCard(ModelCatalog.Model model) {
+        for (ModelCatalog.Model m : ModelCatalog.GPU_MODELS) if (m == model) return true;
+        return false;
+    }
+
     private void addCatalogCard(ModelCatalog.Model model, boolean highlight) {
         LinearLayout card = makeCard();
         card.setBackground(rounded(Design.cardBg(), highlight ? Design.accent() : Design.cardStroke(), 18));
@@ -1194,6 +1200,14 @@ public class MainActivity extends Activity {
                 + "  ·  " + model.lang, 12, Design.muted());
         meta.setPadding(0, dp(3), 0, 0);
         card.addView(meta);
+        boolean gpuOnly = isGpuOnlyCard(model);
+        if (gpuOnly) {
+            // Task G5: the bundled closed engine has no Vulkan/GPU backend; these cards
+            // must not pretend otherwise. Warning + disabled download/load below.
+            TextView warning = label("⚠ Bu motorda çalışmaz — paketli motor yalnızca CPU; Vulkan/MLC motoru gerekir.", 12, Design.danger());
+            warning.setPadding(0, dp(6), 0, 0);
+            card.addView(warning);
+        }
         LinearLayout chips = new LinearLayout(this);
         chips.setPadding(0, dp(9), 0, dp(2));
         TextView cpuChip = label("CPU  ~" + model.cpuRange, 12, Design.accent());
@@ -1201,7 +1215,7 @@ public class MainActivity extends Activity {
         cpuChip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 10));
         cpuChip.setPadding(dp(9), dp(4), dp(9), dp(4));
         chips.addView(cpuChip);
-        TextView gpuChip = label("GPU  ~" + model.gpuRange, 12, Design.muted());
+        TextView gpuChip = label(gpuOnly ? "GPU  motor yolu yok" : "GPU  ~" + model.gpuRange, 12, Design.muted());
         gpuChip.setGravity(Gravity.CENTER);
         gpuChip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 10));
         gpuChip.setPadding(dp(9), dp(4), dp(9), dp(4));
@@ -1243,25 +1257,35 @@ public class MainActivity extends Activity {
             load.setTextSize(15);
             load.setTextColor(Design.onAccent());
             load.setBackground(rounded(Design.accent(), Design.accent(), 14));
-            load.setOnClickListener(v -> loadStoredModelFile(stored));
+            if (gpuOnly) {
+                load.setEnabled(false);
+                load.setAlpha(.55f);
+            } else {
+                load.setOnClickListener(v -> loadStoredModelFile(stored));
+            }
             LinearLayout.LayoutParams loadParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             loadParams.setMargins(0, dp(10), 0, 0);
             card.addView(load, loadParams);
         } else {
-            Button download = button("İndir  ·  " + humanSize(model.bytes));
+            Button download = button(gpuOnly ? "İndirme kapalı  ·  " + humanSize(model.bytes) : "İndir  ·  " + humanSize(model.bytes));
             download.setAllCaps(false);
             download.setTextSize(15);
             download.setTextColor(Design.onAccent());
             download.setBackground(rounded(Design.accent(), Design.accent(), 14));
-            download.setOnClickListener(v -> {
-                if (partial != null) {
-                    confirm("Yarı kalan bir indirme var (" + humanSize(partial.length())
-                            + "). İndirme kaldığı yerden devam etsin mi?", "Kaldığı yerden devam", () -> startCatalogDownload(model));
-                } else {
-                    startCatalogDownload(model);
-                }
-            });
+            if (gpuOnly) {
+                download.setEnabled(false);
+                download.setAlpha(.55f);
+            } else {
+                download.setOnClickListener(v -> {
+                    if (partial != null) {
+                        confirm("Yarı kalan bir indirme var (" + humanSize(partial.length())
+                                + "). İndirme kaldığı yerden devam etsin mi?", "Kaldığı yerden devam", () -> startCatalogDownload(model));
+                    } else {
+                        startCatalogDownload(model);
+                    }
+                });
+            }
             LinearLayout.LayoutParams downloadParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             downloadParams.setMargins(0, dp(10), 0, 0);
@@ -1333,7 +1357,7 @@ public class MainActivity extends Activity {
                     Toast.makeText(MainActivity.this, "İndirme hatası: " + message, Toast.LENGTH_SHORT).show();
                     if ("models".equals(currentTab)) showModelCatalog();
                 }
-            }, model.bytes, null);
+            }, model.bytes, model.sha256);
             if (!accepted) {
                 Toast.makeText(this, "Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene.", Toast.LENGTH_SHORT).show();
             } else {
