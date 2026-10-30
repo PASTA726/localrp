@@ -23,6 +23,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -2028,11 +2029,11 @@ public class MainActivity extends Activity {
             header.setGravity(Gravity.CENTER_VERTICAL);
             header.setPadding(dp(12), dp(8), dp(16), dp(8));
             if (backAction != null) {
-                TextView back = label("‹", 20, Design.onAccent());
-                back.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 30));
+                TextView back = label("‹", 22, Design.text());
+                back.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 22));
                 back.setGravity(Gravity.CENTER);
                 back.setOnClickListener(v -> backAction.run());
-                header.addView(back, new LinearLayout.LayoutParams(dp(38), dp(38)));
+                header.addView(back, new LinearLayout.LayoutParams(dp(40), dp(40)));
             }
             // cAI-style leading avatar on the chat header; ids stay legible next to it.
             TextView selfAvatar = Avatar.forName(this, title, 38);
@@ -2058,22 +2059,20 @@ public class MainActivity extends Activity {
             LinearLayout header = new LinearLayout(this);
             header.setOrientation(LinearLayout.HORIZONTAL);
             header.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-            header.setPadding(dp(16), dp(12), dp(16), dp(12));
+            header.setPadding(dp(18), dp(14), dp(18), dp(6));
             if (backAction != null) {
-                TextView back = label("‹", 20, Design.onAccent());
-                back.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 30));
+                TextView back = label("‹", 22, Design.text());
+                back.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 22));
                 back.setGravity(Gravity.CENTER);
                 back.setOnClickListener(v -> backAction.run());
-                header.addView(back, new LinearLayout.LayoutParams(dp(38), dp(38)));
+                header.addView(back, new LinearLayout.LayoutParams(dp(40), dp(40)));
                 LinearLayout headerTexts = new LinearLayout(this);
                 headerTexts.setOrientation(LinearLayout.VERTICAL);
-                headerTexts.setPadding(dp(13), 0, dp(4), 0);
-                TextView eyebrow = label("LOCALRP  ·  YEREL HİKÂYELER", 10, Design.accent());
-                eyebrow.setLetterSpacing(.10f);
-                headerTexts.addView(eyebrow);
+                headerTexts.setPadding(dp(14), 0, dp(4), 0);
                 TextView heading = label(title, 25, Design.text());
                 heading.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-                heading.setPadding(0, dp(5), 0, 0);
+                heading.setSingleLine(true);
+                heading.setEllipsize(TextUtils.TruncateAt.END);
                 headerTexts.addView(heading);
                 TextView sub = label(subtitle, 13, Design.muted());
                 sub.setPadding(0, dp(3), 0, 0);
@@ -2081,15 +2080,11 @@ public class MainActivity extends Activity {
                 pageSubtitleView = sub;
                 header.addView(headerTexts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
             } else {
-                TextView brand = label("LOCALRP  ·  YEREL HİKÂYELER", 10, Design.accent());
-                brand.setLetterSpacing(.10f);
-                header.addView(brand);
-                TextView heading = label(title, 25, Design.text());
+                TextView heading = label(title, 27, Design.text());
                 heading.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-                heading.setPadding(0, dp(5), 0, 0);
                 header.addView(heading);
                 TextView sub = label(subtitle, 13, Design.muted());
-                sub.setPadding(0, dp(3), 0, 0);
+                sub.setPadding(0, dp(6), 0, 0);
                 header.addView(sub);
                 pageSubtitleView = sub;
             }
@@ -2125,7 +2120,7 @@ public class MainActivity extends Activity {
             chatComposer = new LinearLayout(this);
             chatComposer.setOrientation(LinearLayout.VERTICAL);
             chatComposer.setPadding(dp(14), dp(8), dp(14), dp(8));
-            chatComposer.setBackgroundColor(Design.cardBg());
+            chatComposer.setBackgroundColor(Design.pageBg());
             body.addView(chatComposer, fullWidth());
             pageRoot.addView(body, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
@@ -2149,16 +2144,22 @@ public class MainActivity extends Activity {
         }
 
         if (!chat) {
+            // Floating bottom navigation (modern chat-app pattern): a detached,
+            // rounded bar instead of a full-width strip.
+            FrameLayout navWrap = new FrameLayout(this);
+            navWrap.setPadding(dp(14), dp(4), dp(14), dp(10));
             LinearLayout nav = new LinearLayout(this);
-            nav.setGravity(Gravity.CENTER);
-            nav.setPadding(dp(8), dp(7), dp(8), dp(9));
-            nav.setBackgroundColor(Design.cardBg());
+            nav.setOrientation(LinearLayout.HORIZONTAL);
+            nav.setPadding(dp(6), dp(7), dp(6), dp(7));
+            nav.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 28));
             addNavItem(nav, "⌂", "Ana sayfa", "home".equals(tab), this::showHome);
             addNavItem(nav, "◉", "Karakter", "characters".equals(tab), this::showCharacters);
             addNavItem(nav, "▤", "Sohbetler", "chats".equals(tab), this::showChats);
             addNavItem(nav, "⚙", "AI", "models".equals(tab), () -> openModels(null));
             addNavItem(nav, "◐", "Görünüm", "appearance".equals(tab), this::showAppearance);
-            pageRoot.addView(nav, fullWidth());
+            navWrap.addView(nav, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            pageRoot.addView(navWrap, fullWidth());
         }
         setContentView(pageRoot);
         Design.applyBars(this);
@@ -2168,11 +2169,8 @@ public class MainActivity extends Activity {
         LinearLayout item = new LinearLayout(this);
         item.setGravity(Gravity.CENTER);
         item.setOrientation(LinearLayout.VERTICAL);
-        int horizontal = dp(6), vertical = dp(5);
+        int horizontal = dp(6), vertical = dp(6);
         item.setPadding(horizontal, vertical, horizontal, vertical);
-        if (selected) {
-            item.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 14));
-        }
         TextView glyph = label(icon, 18, selected ? Design.accent() : Design.muted());
         glyph.setGravity(Gravity.CENTER);
         TextView name = label(title, 10, selected ? Design.accent() : Design.muted());
@@ -2180,6 +2178,14 @@ public class MainActivity extends Activity {
         name.setPadding(0, dp(2), 0, 0);
         item.addView(glyph);
         item.addView(name);
+        if (selected) {
+            // Small dot indicator instead of a highlighted box: quieter, floating-bar idiom.
+            View dot = new View(this);
+            dot.setBackground(rounded(Design.accent(), Design.accent(), 3));
+            LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(5), dp(5));
+            dotParams.setMargins(0, dp(3), 0, 0);
+            item.addView(dot, dotParams);
+        }
         item.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
         params.setMargins(dp(2), 0, dp(2), 0);
@@ -2454,6 +2460,7 @@ public class MainActivity extends Activity {
 
     private void addSecondary(String text, View.OnClickListener listener) {
         Button view = button(text);
+        view.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         view.setTextColor(Design.accent());
         view.setBackground(rounded(Design.cardBg(), Design.accentStroke(), 26));
         view.setOnClickListener(listener);
@@ -2496,6 +2503,8 @@ public class MainActivity extends Activity {
         button.setAllCaps(false);
         button.setTextColor(Design.onAccent());
         button.setTextSize(15);
+        button.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        button.setLetterSpacing(.01f);
         button.setMinHeight(dp(48));
         button.setBackground(rounded(Design.accent(), Design.accent(), 26));
     }
