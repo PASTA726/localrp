@@ -13,6 +13,10 @@ LocalRP; GGUF modellerle **tamamen çevrimdışı** çalışan, Türkçe arayüz
 - **Detaylı AI ayarları**: sistem promptu, geçmiş mesaj sayısı ve karakter bütçesi, otomatik/elle bağlam bütçesi, karakter zinciri (otomatik devam) sayısı.
 - **6 GUI teması**: Lavanta, Okyanus, Orman (açık) · Gölge, Deniz Gecesi, Gün Batımı (koyu) — kartlar, balonlar ve sistem çubukları tek dokunuşla boyanır.
 - **RP kontrolleri**: Her an durdurma, yeniden dene, uzun basınca kopyala, sohbet geçmişi temizleme, üretim ölçümleri (süre/token/tok-s/bağlam %), motor testi (`bench`).
+- **Yedekleme ve geri yükleme** (v0.11.0): tüm karakterler, sohbetler ve geçmişler Görünüm → Veri yedeği'nden SAF ile istediğin klasöre `.json` olarak dışa aktarılır; geri yükleme kimliği aynı olanları günceller, yalnızca daha uzun geçmişleri değiştirir.
+- **Ölçeklenebilirlik**: uzun sohbetlerde ekran en yeni 40 mesajı çizer, eskiler "Daha eski mesajlar" ile dilimlenir (v0.12.0); üretilen yanıt akışta tek balonda büyür, çökme durumunda yarım yanıt taslağından bir kez kurtarılır.
+- **Testler/CI**: 60+ JVM birim testi; GitHub Actions her push/PR'da test + debug derleme çalıştırır (`contents: read`, APK yayını yok). Sürüm APK'ları GitHub Releases'te.
+- **Lisanslar**: projesi MIT; paketli motor bağımlılığının ve katalog modellerinin lisans bildirimleri için `THIRD_PARTY_NOTICES.md`.
 - **Gizlilik / Privacy**: İnternet izni yalnızca model indirmede kullanılır; anahtar gömülmez; veri `SharedPreferences` + uygulama içi dosyada kalır.
 
 ## Kurulum / Install

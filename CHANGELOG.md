@@ -4,6 +4,12 @@ All notable LocalRP changes. The app targets Turkish-speaking users; entries are
 
 ## Unreleased (yapılmakta)
 
+- **İnceleme raporu yanıtı (2026-10-30, "LocalRP Proje İnceleme Raporu" belgeleri)**:
+  - **B1 — taslak yazımı kısıtlandı**: üretilen metin artık her token'da değil, en fazla **1,5 saniyede bir** kaydedilir (ilk token daima kayıt; durdurma/bitiş yolları anahtarı siler). Önceki halinde tam metin her token'da yeniden serileştirildiği için yanıt uzadıkça her yazım ağırlaşıyordu; bu ana iş parçacığı yükü kaldırıldı.
+  - **B2 — dokümanlar güncellendi**: `ARCHITECTURE.md` artık tüm saf sınıfları listeler (Store, RoleplayPrompt, DownloadPolicy, RuntimePolicy, PersistenceCodec, ResponseCleanup, ChatWindow, Avatar); "her erişimde JSON yeniden ayrıştırıldı" ve "yedekleme sonraki adım" gibi v0.7.4/v0.11.0'da bayatlamış ifadeler gerçeği belirten düzeltmelerle değiştirildi. `README.md`'ye yedekleme, ölçeklenebilirlik, test/CI ve lisans satırları eklendi.
+  - **B11 — `THIRD_PARTY_NOTICES.md` eklendi**: paketli motor (`com.arm:ai-chat`, Apache-2.0), coroutines, yalnızca-test bağımlılıkları ve katalog modellerinin lisans bildirimleri.
+  - **B12 — CHANGELOG yazım düzeltmeleri**: "SAĞLANIR" → "gerçekleşir"; "biyolojik dosya sınırı" → boyut sınırı ve bellek tamponu notu; v0.8.0 girdisindeki anlamsız ifadeler düzeltildi.
+- **B5'in "doğrulanmalı" sorusuna kod kanıtı**: yedek dosyası okuma sırasında belleğe **tamponlandı** (`MainActivity:1648`, 256 MB sanite üst sınırı); gerçek yedeklerin boyutunun çok altında kalmak zorunda olmadığından orta-vadede Room'a geçiş doğru karar olarak kalıyor.
 - **G0 — Akan yanıt düzeltmeleri** (acil hata görevi, kod incelemesiyle):
   - Akış sırasındaki ara balon artık final mesajla **aynı temizlik fonksiyonunu** (`ResponseCleanup`) kullanır: modelin yansıttığı "Ad:" öneki, yıldızlı varyantlar (`*Ad*:`, `*Ad* metin`) ve motor özel token'ları (`<|im_end|>` vb.) hiçbir ara balonda görünmez. Konuşmacının bir başkasına hitabı (ör. "Ashe burada, iyi misin?") korunur.
   - Sohbetten çıkıp geri dönüldüğünde (re-entry) taslak balon `generationViews` haritasıyla yeniden bağlanır; ikinci bir balon oluşmaz, tek balon büyümeye devam eder.
@@ -27,9 +33,9 @@ All notable LocalRP changes. The app targets Turkish-speaking users; entries are
 - **CI ve test tabanı** (Görev 06, APK'da görünmez değişiklik): GitHub Actions workflow'u (push/PR × unit testler + debug derleme, `contents: read` izni, APK yayını yok) ve katalog bütünlük testleri eklendi. Toplam test sayısı 43 → 48 / 0 hata.
 
 - **Yedekleme ve geri yükleme**: 0.7.4'ten beri beklenen özellik (sözlü verilen taahhüt) tamamlandı:
-  - **Görünüm → Veri yedeği** bölümünden, SAF ile seçtiğin herhangi bir klasöre `localrp-yedek-<tarih>.json` dışa aktarımı: tüm karakterler, sohbetler ve tamamı geçmişler tek dosyada. Dosya cihazdan çıkmaz; aktarım yalnızca senin onayınla SAĞLANIR (uygulama hiçbir veriyi otomatik göndermez).
+  - **Görünüm → Veri yedeği** bölümünden, SAF ile seçtiğin herhangi bir klasöre `localrp-yedek-<tarih>.json` dışa aktarımı: tüm karakterler, sohbetler ve tamamı geçmişler tek dosyada. Dosya cihazdan çıkmaz; aktarım yalnızca senin onayınla gerçekleşir (uygulama hiçbir veriyi otomatik göndermez).
   - **Geri yükleme**: aynı kimlikli karakter/sohbetler güncellenir, yeni olanlar eklenir. Geçmişler yalnızca yedekteki kopya **kesinlikle daha uzun** (gerçek devamlar) olduğunda değiştirilir; kısa/eski yedekler hiçbir şeyi küçültmez, tekrarlı içe aktarım mükerrer çoğaltma yapmaz.
-  - **Güvenlik**: mevcut kalıcılık verisi okunamıyorsa geri yükleme reddedilir (startup raporu onarım yolu korunur); bozuk tek kayıtlar (0.7.4 codec'inin aynen davranışıyla) atlanır; 256 MB biyolojik dosya sınırı.
+  - **Güvenlik**: mevcut kalıcılık verisi okunamıyorsa geri yükleme reddedilir (startup raporu onarım yolu korunur); bozuk tek kayıtlar (0.7.4 codec'inin aynen davranışıyla) atlanır; 256 MB boyut sınırı (yedek okuma tamponunun bellek sınırlaması; gerçek yedekler çok daha küçüktür).
   - Version-1 bundle: `{ characters:[], groups:[], chats:{ "<groupId>":[messages] } }`.
 - **5 yeni test** (`PersistenceBundleTest`): bundle round trip, geçersiz dosyalardan (array/version-2/bozuk) reddi, bozuk kayıt atlama, kimliklere göre birleştirme, "yalnızca daha uzun geçmiş değişir" kuralı. Toplam **43 test / 0 hata**.
 - versionCode 15 / 0.11.0, user agent 0.11.0.
@@ -63,9 +69,9 @@ All notable LocalRP changes. The app targets Turkish-speaking users; entries are
 - **Character.AI / PolyBuzz tarzı arayüz yenilemesi** (Görev 09):
   - **Avatar sistemi**: karakterler ve sohbetler artık programlı avatar kullanıyor — ismin ilk harfi + isimden türetilen iki tonlu gradyan çemberi. Hiçbir görsel APK'ya gömülmedi, hiçbir şey indirilmiyor; açık/koyu tema paletine göre tonlanıyor.
   - **Ana ekran**: karakterler artık 2 sütunlu grid kartlarda ("Keşfet" hissi); son sohbetler kartları cAI tarzı avatar + kalın başlık + tek satır önizleme + zaman gösteriyor.
-  - **Sohbet ekranı**: başlıkta sohbet avatarı, karakter mesaj baloncuklarının solunda 32 dp avatar ve aynadaki Sağda saat; kullanıcı baloncukları avatarsız (aynı davranış).
+  - **Sohbet ekranı**: başlıkta sohbet avatarı, karakter mesaj baloncuklarının solunda 32 dp avatar, konuşmacı adı ve saat balon başlığında; kullanıcı baloncukları avatarsız (aynı davranış).
   - **Mesaj baloncukları**: konuşmacı adı aksan rengiyle daha görünür; pad-konumlar cAI ritmine göre yeniden ayarlandı.
-  - **Gönderici**: tam genişlik "Gönder" düğmesi yerine pill giriş alanı + 46 dp dairesel ➤ gönder düğmesi; üretim sırasında düğme kemik "■" durdur varyantına dönüyor (aynı davranış, aynı kilit).
+  - **Gönderici**: tam genişlik "Gönder" düğmesi yerine pill giriş alanı + 46 dp dairesel ➤ gönder düğmesi; üretim sırasında düğme "■" durdur biçimine dönüyor (aynı davranış, aynı kilit).
   - Tüm özellikler ve gezinme korunuyor; animasyon yok; zaten üretim akışını bozma.
 - versionCode 12 / 0.8.0, user agent 0.8.0.
 
