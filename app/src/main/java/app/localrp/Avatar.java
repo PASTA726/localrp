@@ -4,6 +4,8 @@ import android.content.Context;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
+import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 /**
@@ -13,6 +15,47 @@ import android.widget.TextView;
  */
 public final class Avatar {
     private Avatar() {}
+
+    /**
+     * Best avatar for an identity: the stored profile photo (private copy) when the file
+     * still exists, otherwise the derived letter circle. v0.14.0 feature (user request).
+     */
+    public static View forIdentity(Context context, String seed, String avatarPath, int sizeDp) {
+        if (avatarPath != null && !avatarPath.isEmpty()) {
+            ImageView photo = new ImageView(context);
+            android.graphics.Bitmap bitmap = decodeScaled(avatarPath, 512);
+            if (bitmap != null) {
+                photo.setImageBitmap(bitmap);
+                photo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                final float radius = context.getResources().getDisplayMetrics().density * sizeDp / 2f;
+                photo.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                    @Override public void getOutline(View view, android.graphics.Outline outline) {
+                        outline.setOval(0, 0, view.getWidth(), view.getHeight());
+                    }
+                });
+                photo.setClipToOutline(true);
+                photo.setContentDescription(seed == null ? "Avatar" : seed);
+                return photo;
+            }
+        }
+        return forName(context, seed, sizeDp);
+    }
+
+    /** Decodes a local image at most about 512px on its long side; null when unreadable. */
+    private static android.graphics.Bitmap decodeScaled(String path, int target) {
+        try {
+            android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            android.graphics.BitmapFactory.decodeFile(path, bounds);
+            int sample = 1;
+            while (Math.max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= target) sample *= 2;
+            android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+            options.inSampleSize = sample;
+            return android.graphics.BitmapFactory.decodeFile(path, options);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
 
     /** Round TextView avatar with the first letter of the seed (a name). */
     public static TextView forName(Context context, String seed, int sizeDp) {

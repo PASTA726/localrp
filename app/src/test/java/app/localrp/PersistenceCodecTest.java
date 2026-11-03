@@ -2,9 +2,13 @@ package app.localrp;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Unit tests for the SharedPreferences-persisted data codec (Task 03 scenarios):
@@ -187,5 +191,39 @@ public class PersistenceCodecTest {
         assertEquals("A", out.items.get(0).name);
         assertEquals("tam", out.items.get(0).description);
         assertEquals("C", out.items.get(1).name);
+    }
+
+    @Test
+    public void avatarField_roundTripsThroughCharacters() {
+        List<CharacterProfile> items = new ArrayList<>();
+        CharacterProfile c = new CharacterProfile();
+        c.id = "c1";
+        c.name = "Foto";
+        c.avatarPath = "/data/app/avatars/pic-1.png";
+        items.add(c);
+
+        String raw = PersistenceCodec.encodeCharacters(items);
+        assertTrue(raw.contains("\"avatar\""));
+        PersistenceCodec.Decode<CharacterProfile> out = PersistenceCodec.decodeCharacters(raw);
+        assertEquals(1, out.items.size());
+        assertEquals("/data/app/avatars/pic-1.png", out.items.get(0).avatarPath);
+
+        // Absence stays valid: an old record (no avatar key) decodes with an empty path.
+        PersistenceCodec.Decode<CharacterProfile> legacy = PersistenceCodec.decodeCharacters(
+                "[{\"id\":\"c2\",\"name\":\"Eski\"}]");
+        assertEquals("", legacy.items.get(0).avatarPath);
+    }
+
+    @Test
+    public void persona_roundTrips_andFailsSoftly() {
+        String raw = PersistenceCodec.encodePersona("Evren", "Sessiz bahçıvan", "/x/p.png");
+        String[] persona = PersistenceCodec.decodePersona(raw);
+        assertEquals("Evren", persona[0]);
+        assertEquals("Sessiz bahçıvan", persona[1]);
+        assertEquals("/x/p.png", persona[2]);
+
+        assertNull(PersistenceCodec.decodePersona(null));
+        assertNull(PersistenceCodec.decodePersona(""));
+        assertNull(PersistenceCodec.decodePersona("{garbage"));
     }
 }

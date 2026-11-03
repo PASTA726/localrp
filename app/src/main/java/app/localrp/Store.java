@@ -69,8 +69,7 @@ class Store {
         return decoded.items;
     }
     CharacterProfile character(String id) { for (CharacterProfile c : characters()) if (c.id.equals(id)) return c; return null; }
-    boolean saveCharacter(CharacterProfile edited) {
-        String raw = preferences.getString("characters", null);
+    boolean saveCharacter(CharacterProfile edited) {        String raw = preferences.getString("characters", null);
         if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("characters"); return false; }
         List<CharacterProfile> all = PersistenceCodec.decodeCharacters(raw).items;
         boolean found = false;
@@ -78,8 +77,20 @@ class Store {
         if (!found) all.add(edited);
         return putCharacters(all);
     }
-    boolean deleteCharacter(String id) {
-        if (defaultCharacterId.equals(id)) return true;
+
+    /** User persona record: null result = no persona configured (or unreadable). */
+    String[] persona() {
+        return PersistenceCodec.decodePersona(preferences.getString("user_persona", null));
+    }
+
+    boolean savePersona(String name, String description, String avatarPath) {
+        String raw = PersistenceCodec.encodePersona(name, description, avatarPath);
+        if (raw.isEmpty()) return false;
+        preferences.edit().putString("user_persona", raw).apply();
+        return true;
+    }
+
+    boolean deleteCharacter(String id) {        if (defaultCharacterId.equals(id)) return true;
         String raw = preferences.getString("characters", null);
         if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("characters"); return false; }
         List<CharacterProfile> all = PersistenceCodec.decodeCharacters(raw).items;

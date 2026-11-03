@@ -56,6 +56,7 @@ final class PersistenceCodec {
                 o.put("personality", c.personality);
                 o.put("instructions", c.instructions);
                 o.put("examples", c.examples);
+                if (c.avatarPath != null && !c.avatarPath.isEmpty()) o.put("avatar", c.avatarPath);
                 data.put(o);
             }
             return data.toString();
@@ -96,7 +97,35 @@ final class PersistenceCodec {
         c.personality = o.optString("personality");
         c.instructions = o.optString("instructions");
         c.examples = o.optString("examples");
+        c.avatarPath = o.optString("avatar");
         return c;
+    }
+
+    /** Persona record: {name, description, avatar local path}. */
+    static String encodePersona(String name, String description, String avatarPath) {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("name", name == null ? "" : name);
+            o.put("description", description == null ? "" : description);
+            o.put("avatar", avatarPath == null ? "" : avatarPath);
+            return o.toString();
+        } catch (JSONException e) {
+            return "";
+        }
+    }
+
+    /** @return {name, description, avatarPath} or null when the record is unreadable. */
+    static String[] decodePersona(String raw) {
+        if (raw == null || raw.isEmpty()) return null;
+        try {
+            JSONObject o = new JSONObject(raw);
+            String name = o.isNull("name") ? "" : o.optString("name");
+            String description = o.isNull("description") ? "" : o.optString("description");
+            String avatar = o.isNull("avatar") ? "" : o.optString("avatar");
+            return new String[]{name, description, avatar};
+        } catch (JSONException e) {
+            return null;
+        }
     }
 
     static String encodeGroups(List<Group> items) {
