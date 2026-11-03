@@ -20,6 +20,7 @@ import android.text.style.StyleSpan;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -431,9 +432,12 @@ public class MainActivity extends Activity {
         int insertAt = content.indexOfChild(chatOlderButton);
         for (int i = next; i < chatRenderStart; i++) {
             Message message = chatHistory.get(i);
-            TextView row = addMessage(content, message.speaker, message.text, message.user, message.at);
-            content.removeView(row);
-            content.addView(row, Math.min(insertAt++, content.getChildCount()));
+            TextView balloon = addMessage(content, message.speaker, message.text, message.user, message.at);
+            // addMessage appends the balloon inside its avatar row at the end of the list;
+            // move the whole ROW up (the balloon itself is not a direct child of content).
+            LinearLayout wrapper = (LinearLayout) balloon.getParent();
+            content.removeView(wrapper);
+            content.addView(wrapper, Math.min(insertAt++, content.getChildCount()));
         }
         chatRenderStart = next;
         if (chatRenderStart > 0) {
@@ -700,13 +704,13 @@ public class MainActivity extends Activity {
                 clearGenerationDraft(group.id);
                 boolean chatStillExists = store.group(group.id) != null;
                 if (finalText.isEmpty()) {
-                    if (displayedResponse != null && displayedResponse.getParent() == content) {
-                        content.removeView(displayedResponse);
+                    if (balloonInContent(displayedResponse)) {
+                        content.removeView((View) displayedResponse.getParent());
                     }
                 } else if (chatStillExists) {
                     store.addMessage(group.id, new Message(speaker.name, finalText, false, startedAt));
                     if (group.id.equals(visibleChatId) && content != null) {
-                        if (displayedResponse == null || displayedResponse.getParent() != content) {
+                        if (!balloonInContent(displayedResponse)) {
                             displayedResponse = addMessage(content, speaker.name, finalText, false, startedAt);
                         } else {
                             renderMessage(displayedResponse, speaker.name, finalText, startedAt);
@@ -765,7 +769,7 @@ public class MainActivity extends Activity {
                 String streamed = cleanResponse(response.toString(), speaker.name);
                 if (!group.id.equals(visibleChatId) || content == null) return;
                 TextView draft = generationViews.get(group.id);
-                if (draft == null || draft.getParent() != content) {
+                if (!balloonInContent(draft)) {
                     draft = addMessage(content, speaker.name, streamed, false, startedAt);
                     generationViews.put(group.id, draft);
                 } else {
@@ -2554,6 +2558,19 @@ public class MainActivity extends Activity {
         view.setTextSize(15);
         view.setMinHeight(dp(48));
         return view;
+    }
+
+    /**
+     * True when a message balloon TextView is still mounted in the current chat content.
+     * Balloons wrap inside their avatar row, so the TextView's parent is the ROW — never
+     * `content` itself. Bug fix (alpha2 device report): the old `getParent() == content`
+     * checks could never match, so every streaming token re-created the draft balloon
+     * below the frozen ones (only the last one held the full text).
+     */
+    private boolean balloonInContent(TextView balloon) {
+        if (balloon == null || content == null) return false;
+        ViewParent row = balloon.getParent();
+        return row instanceof View && ((View) row).getParent() == content;
     }
 
     private TextView addMessage(LinearLayout parent, String speaker, String text, boolean user, long at) {

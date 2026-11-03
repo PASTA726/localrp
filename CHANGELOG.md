@@ -6,6 +6,15 @@ All notable LocalRP changes. The app targets Turkish-speaking users; entries are
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.13.0-alpha3 — 2026-11-03 (DÜZELTME — akış balonu hatası, cihaz bildirimi)
+
+- **Kritik düzeltme — üretilen yanıt balon balon şişiyordu** (alpha2 kullanıcı bildirimi; teşekkürler):
+  - Belirti: akış sırasında mevcut mesaj güncellenmiyor, her parçada altına **kilitli kopyaları** düşüyordu; yalnızca en alttaki tam metni tutuyordu.
+  - Kök neden: balon, `addMessage` içinde avatar sırasına sarıldığı için balon TextView'ın doğrudan ebeveyni satırdır, `content` değil. Akışın "balon hâlâ ekranda mı" denetimleri (`getParent() == content`) bu yüzden hiçbir zaman eşleşemiyordu → her token'da yeni balon. Hata v0.8.0'ın avatar-sıra tasarımından itibaren yapılıydı; birim testler UI yolunu kapsamadığından yakalanmamıştı, telefon'da gerçek kullanımda bugün görüldü.
+  - Düzeltme: `balloonInContent()` ballo *satırının* ekranda olup olmadığını doğrular; akış (onToken), sonlandırma (finish/kesme/bitiş) ve boş-balon temizliği aynı yardımcıya geçti — **tek balon tekrar yerinde büyür**.
+- **İkinci düzeltme — "Daha eski mesajlar" düğmesi** : doğru ebeveyne (satır) taşıma; yanıltıcı balon penceresinde taşar ve "child already has a parent" çökmesi riski kapanır.
+- versionCode 19 / 0.13.0-alpha3, user agent 0.13.0-alpha3.
+
 ## v0.13.0-alpha2 — 2026-10-30 (ALFA — görsel sistem parlatması)
 
 > **Hâlen bir ALFA sürümüdür** (Pre-release): alpha1'in geri bildirimine göre görsel sistem yeniden gözden geçirildi. Uygulama görünmeye devam ediyor; veri ve üretim davranışı değişmedi.
