@@ -2,6 +2,20 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.15.0-alpha1 — 2026-11-03 (YENİ — Sansürsüz model bölümü, 18+ yaş kapısı)
+
+Kullanıcı isteği: **Model önerileri** ekranına üçüncü sekme **"Sansürsüz"** eklendi. Kilitli başlar; açmak için yaş girişi gerekir:
+
+- **Yaş kapısı**: sekmeye ilk dokunuş ta bir diyalog açar — nümerik yaş girişi. **18 ve üstü onaylanır** ve seçim cihazda saklanır (prefs `uncensored_ack`; yalnızca yerel, hiçbir sunucuya gitmez). 18 altındaki girişler dürüstçe reddedilir; bölüm açılmaz.
+- **Katalog (3 model, Qwen tabanlı abliterated GGUF)** — her kartta kırmızı **"SANSÜRSÜZ · 18+"** rozeti ve dürüst hız tahminleri:
+  - Huihui-Qwen3.5-4B (2,7 GB) — denge önerisi
+  - Qwen3-0.6B ablit. (0,4 GB) — en hızlı giriş
+  - Huihui-Qwen3-8B v2 (5,0 GB) — en yüksek kalite, CPU'da yavaş
+- **Doğrulama**: tüm URL'ler Hugging Face paths-info API'den LFS **SHA-256** ile teyitli (asla uydurulmaz); HTTP resume desteği HEAD ile kontrol edildi. G4 indirme doğrulaması (indirme sonrası digest kontrolü) bu liste için de geçerli.
+- **Sorumluluk görünürlüğü**: sekme başlığında dürüst uyarı — abliterated = filtre katmanı çıkarılmış eğitim; uygulama hiçbir sohbet verisini genel ağa göndermez, çıktı işleme cihazda kalır, sorumluluk kullanıcıya aittir.
+- 1 yeni katalog testi (abliterated listesi bütünlüğü); mevcut 6 test artık üç listeyi de kapsıyor.
+- versionCode 23 / 0.15.0-alpha1.
+
 ## v0.14.0-alpha3 — 2026-11-03 (YENİ — İngilizce dil seçeneği)
 
 Kullanıcı isteği: İngilizce modeller RP'de daha iyi. Tek anahtar iki şeye birden geçer:

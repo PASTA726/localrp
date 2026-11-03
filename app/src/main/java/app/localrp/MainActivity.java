@@ -1342,10 +1342,18 @@ public class MainActivity extends Activity {
             ModelCatalog.Model pick = ModelCatalog.cpuRecommendation();
             addCatalogCard(pick, true);
             for (ModelCatalog.Model model : ModelCatalog.CPU_MODELS) if (model != pick) addCatalogCard(model, false);
-        } else {
+        } else if (catalogFilter == 1) {
             ModelCatalog.Model pick = ModelCatalog.gpuRecommendation();
             addCatalogCard(pick, true);
             for (ModelCatalog.Model model : ModelCatalog.GPU_MODELS) if (model != pick) addCatalogCard(model, false);
+        } else {
+            TextView warning = label(L10n.s("Sansürsüz modeller abliterated (filtre katmanı çıkarılmış) eğitimlidir; 18 yaş üstü içindir."), 13, Design.danger());
+            warning.setPadding(0, dp(4), 0, dp(8));
+            content.addView(warning);
+            addBody(L10n.s("Uygulama hiçbir sohbet verisini genel ağa göndermez; çıktı işleme tamamen bu cihazda çalışır. Sorumluluk kullanıcıya aittir."));
+            ModelCatalog.Model pick = ModelCatalog.UNCENSORED_MODELS[0];
+            addCatalogCard(pick, true);
+            for (ModelCatalog.Model model : ModelCatalog.UNCENSORED_MODELS) if (model != pick) addCatalogCard(model, false);
         }
         addBody("İndirmeler Hugging Face'den doğrudan olur ve uygulamanın özel alanına kaydedilir. Parola veya hesap gerekmez.");
         addBody("GPU hızları * Vulkan/MLC tabanlı motorlar içindir; bu sürümün motoru llama.cpp CPU ile çalışır.");
@@ -1367,7 +1375,8 @@ public class MainActivity extends Activity {
     private void addSegmentedCatalog() {
         LinearLayout row = new LinearLayout(this);
         row.setPadding(0, dp(2), 0, dp(8));
-        String[] labels = {"CPU önerileri", "GPU önerileri"};
+        String[] labels = {"CPU önerileri", "GPU önerileri",
+                L10n.s("Sansürsüz") + (uncensoredUnlocked() ? "" : "  🔒")};
         for (int i = 0; i < labels.length; i++) {
             final int index = i;
             TextView chip = label(labels[i], 14, i == catalogFilter ? Design.onAccent() : Design.muted());
@@ -1377,6 +1386,10 @@ public class MainActivity extends Activity {
             else chip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 14));
             chip.setOnClickListener(v -> {
                 if (catalogFilter != index) {
+                    if (index == 2 && !uncensoredUnlocked()) {
+                        showUncensoredGate();
+                        return;
+                    }
                     catalogFilter = index;
                     showModelCatalog();
                 }
@@ -1386,6 +1399,52 @@ public class MainActivity extends Activity {
             row.addView(chip, params);
         }
         content.addView(row, fullWidth());
+    }
+
+    private boolean uncensoredUnlocked() {
+        return prefs().getBoolean("uncensored_ack", false);
+    }
+
+    /**
+     * Age gate for the uncensored model catalog (18+): numeric age entry, honest
+     * rejection below the threshold, acknowledgment persisted locally only.
+     */
+    private void showUncensoredGate() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(22), dp(18), dp(22), 0);
+        TextView notice = label(L10n.s("Sansürsüz (abliterated) modeller 18 yaş altına uygun değildir. Devam etmek için yaşını gir."), 14, Design.text());
+        box.addView(notice);
+        final EditText ageInput = new EditText(this);
+        ageInput.setHint(L10n.s("Yaşın"));
+        ageInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        ageInput.setTextSize(15);
+        ageInput.setTextColor(Design.text());
+        box.addView(ageInput);
+        new AlertDialog.Builder(this)
+                .setTitle(L10n.s("Sansürsüz modeller (18+)"))
+                .setView(box)
+                .setPositiveButton(L10n.s("Onayla"), (d, w) -> {
+                    String value = ageInput.getText().toString().trim();
+                    int age = -1;
+                    try { if (!value.isEmpty()) age = Integer.parseInt(value); } catch (NumberFormatException ignored) {}
+                    if (age >= 18) {
+                        prefs().edit().putBoolean("uncensored_ack", true).apply();
+                        catalogFilter = 2;
+                        showModelCatalog();
+                        Toast.makeText(this, L10n.s("Sansürsüz bölümü açıldı."), Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, L10n.s("Bu bölüm yalnızca 18 yaş üstüne açık."), Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton("Vazgeç", null)
+                .show();
+        ageInput.requestFocus();
+    }
+
+    private boolean isUncensoredCard(ModelCatalog.Model model) {
+        for (ModelCatalog.Model m : ModelCatalog.UNCENSORED_MODELS) if (m == model) return true;
+        return false;
     }
 
     private File catalogFile(ModelCatalog.Model model) {
@@ -1413,6 +1472,12 @@ public class MainActivity extends Activity {
     private void addCatalogCard(ModelCatalog.Model model, boolean highlight) {
         LinearLayout card = makeCard();
         card.setBackground(rounded(Design.cardBg(), highlight ? Design.accent() : Design.cardStroke(), 18));
+        boolean uncensored = isUncensoredCard(model);
+        if (uncensored) {
+            TextView badge = label(L10n.s("SANSÜRSÜZ  ·  18+"), 10, Design.danger());
+            badge.setLetterSpacing(.09f);
+            card.addView(badge);
+        }
         if (highlight) {
             TextView badge = label("BU CİHAZ İÇİN ÖNERİ", 10, Design.accent());
             badge.setLetterSpacing(.09f);
@@ -1420,7 +1485,7 @@ public class MainActivity extends Activity {
         }
         TextView name = label(model.name, 17, Design.text());
         name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        name.setPadding(0, highlight ? dp(5) : dp(2), 0, 0);
+        name.setPadding(0, highlight || uncensored ? dp(5) : dp(2), 0, 0);
         card.addView(name);
         TextView meta = label(model.family + "  ·  " + model.quant + "  ·  " + humanSize(model.bytes)
                 + "  ·  bağlam " + (model.contextTokens >= 1024 ? (model.contextTokens / 1024) + "K" : String.valueOf(model.contextTokens)) + " token"

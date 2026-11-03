@@ -239,5 +239,20 @@ public final class L10n {
         EN.put("Sahne atmosferi", "Scene tone");
         EN.put("Tema, tüm RP sohbetlerinde sahnenin atmosferini belirler. Değiştirince model bağlamı sıfırlanır.",
                 "The theme sets the mood of all RP chats. Changing it resets the model context.");
+
+        // ---- uncensored catalog (18+, age-gated)
+        EN.put("Sansürsüz", "Uncensored");
+        EN.put("Sansürsüz modeller abliterated (filtre katmanı çıkarılmış) eğitimlidir; 18 yaş üstü içindir.",
+                "Uncensored models are abliterated (filter layer removed); 18+ only.");
+        EN.put("Uygulama hiçbir sohbet verisini genel ağa göndermez; çıktı işleme tamamen bu cihazda çalışır. Sorumluluk kullanıcıya aittir.",
+                "The app never sends chat data online; processing happens entirely on this device. Responsibility lies with the user.");
+        EN.put("SANSÜRSÜZ  ·  18+", "UNCENSORED  ·  18+");
+        EN.put("Sansürsüz modeller (18+)", "Uncensored models (18+)");
+        EN.put("Sansürsüz (abliterated) modeller 18 yaş altına uygun değildir. Devam etmek için yaşını gir.",
+                "Uncensored (abliterated) models are not suitable for minors. Enter your age to continue.");
+        EN.put("Yaşın", "Your age");
+        EN.put("Onayla", "Confirm");
+        EN.put("Sansürsüz bölümü açıldı.", "Uncensored section unlocked.");
+        EN.put("Bu bölüm yalnızca 18 yaş üstüne açık.", "This section is limited to ages 18 and up.");
     }
 }

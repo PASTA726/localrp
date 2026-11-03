@@ -19,6 +19,7 @@ public class ModelCatalogTest {
     public void catalogs_areNotEmpty() {
         assertTrue(ModelCatalog.CPU_MODELS.length > 0);
         assertTrue(ModelCatalog.GPU_MODELS.length > 0);
+        assertTrue(ModelCatalog.UNCENSORED_MODELS.length >= 3);
     }
 
     @Test
@@ -48,6 +49,7 @@ public class ModelCatalogTest {
         // both lists (identical url + fileHint); cross-list repeats are fine.
         checkUnique(ModelCatalog.CPU_MODELS);
         checkUnique(ModelCatalog.GPU_MODELS);
+        checkUnique(ModelCatalog.UNCENSORED_MODELS);
     }
 
     private static void checkUnique(ModelCatalog.Model[] models) {
@@ -82,9 +84,23 @@ public class ModelCatalogTest {
     }
 
     private static ModelCatalog.Model[] allModels() {
-        ModelCatalog.Model[] merged = new ModelCatalog.Model[ModelCatalog.CPU_MODELS.length + ModelCatalog.GPU_MODELS.length];
+        ModelCatalog.Model[] merged = new ModelCatalog.Model[
+                ModelCatalog.CPU_MODELS.length + ModelCatalog.GPU_MODELS.length + ModelCatalog.UNCENSORED_MODELS.length];
         System.arraycopy(ModelCatalog.CPU_MODELS, 0, merged, 0, ModelCatalog.CPU_MODELS.length);
         System.arraycopy(ModelCatalog.GPU_MODELS, 0, merged, ModelCatalog.CPU_MODELS.length, ModelCatalog.GPU_MODELS.length);
+        System.arraycopy(ModelCatalog.UNCENSORED_MODELS, 0, merged,
+                ModelCatalog.CPU_MODELS.length + ModelCatalog.GPU_MODELS.length, ModelCatalog.UNCENSORED_MODELS.length);
         return merged;
+    }
+
+    @Test
+    public void uncensoredCatalog_isSelfDescribingGatedContent() {
+        // The UI gates this list behind an age dialog; the shipped metadata must still
+        // describe what the models are so the release notes and cards stay honest.
+        assertTrue(ModelCatalog.UNCENSORED_MODELS[0].why.contains("abliterated"));
+        for (ModelCatalog.Model model : ModelCatalog.UNCENSORED_MODELS) {
+            assertTrue("url host: " + model.name, model.url.contains("mradermacher"));
+            assertTrue("digest: " + model.name, model.sha256.matches("[a-f0-9]{64}"));
+        }
     }
 }
