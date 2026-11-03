@@ -131,6 +131,9 @@ public class MainActivity extends Activity {
     private Runnable editorAfterSave, editorOnBack;
     private String pickedAvatarPath = "";       // freshly picked character photo, applied on Kaydet
     private String chatHeaderAvatarPath = "";   // photo for the chat header avatar
+    private TextView avatarStatusView;          // in-place status line of the character editor photo section
+    private LinearLayout personaPreviewPane;    // persona editor preview container (swapped in place on pick)
+    private EditText personaNameField;          // persona editor name field (preview label uses live text)
     private final SimpleDateFormat clock = new SimpleDateFormat("HH:mm", Locale.getDefault());
     private int catalogFilter;
     private TextView downloadProgressView;
@@ -252,16 +255,14 @@ public class MainActivity extends Activity {
 
         LinearLayout preview = makeCard();
         preview.setGravity(Gravity.CENTER);
-        View face = Avatar.forIdentity(this,
-                (personaAvatarDraft != null && !personaAvatarDraft.isEmpty())
-                        ? (name.isEmpty() ? "Sen" : name)
-                        : (storedAvatar.isEmpty() ? "Sen" : name),
-                personaAvatarDraft != null && !personaAvatarDraft.isEmpty() ? personaAvatarDraft : storedAvatar, 64);
-        preview.addView(face, new LinearLayout.LayoutParams(dp(64), dp(64)));
+        personaPreviewPane = preview;
+        fillPersonaPreview(preview, name,
+                personaAvatarDraft != null && !personaAvatarDraft.isEmpty() ? personaAvatarDraft : storedAvatar);
         addCardToPage(preview);
 
         EditText nameField = field("Adın (boş bırakılırsa \"Sen\" sayılır)", name, 1);
         nameField.setSingleLine(true);
+        personaNameField = nameField;
         EditText descriptionField = field("Kendini tanıt (davranışını ve sesini etkiler)", description, 3);
         addBody("RP sohbetlerinde mesajların \"Sen\" etiketiyle kalır; model sana \"Kullanıcı kimliği\" bloğunda burada yazdığın bilgilerle davranır.");
         addPrimary("Profil fotoğrafı seç", v -> pickAvatar(true));
@@ -272,7 +273,10 @@ public class MainActivity extends Activity {
                         ? personaAvatarDraft : storedAvatar;
                 deleteAvatarFile(path);
                 personaAvatarDraft = "";
-                showUserProfile();
+                if (personaPreviewPane != null) {
+                    fillPersonaPreview(personaPreviewPane,
+                            personaNameField != null ? personaNameField.getText().toString().trim() : name, "");
+                }
             });
         }
         addPrimary("Profili kaydet", v -> {
@@ -381,14 +385,20 @@ public class MainActivity extends Activity {
         EditText examples = field("Örnek diyalog", editing ? existing.examples : "", 3);
 
         addSection("Profil fotoğrafı", null, null);
-        addBody("Fotoğraf gizli depoya küçük kopya olarak yazılır; seçtiğin kaynak dosya silinmez. Sohbetlerde karakterin avatarı bu foto olur.");
+        addBody("Fotoğraf gizli depoya küçük kopya olarak yazılır; seçtiğin kaynak dosya silinmez. Sohbetlerde karakterin avatarı bu foto olur ve Kaydet ile saklanır.");
+        avatarStatusView = label(pickedAvatarPath.isEmpty()
+                ? "Fotoğraf: seçilmedi" : "Fotoğraf: ✓ hazır", 13, pickedAvatarPath.isEmpty() ? Design.muted() : Design.accent());
+        avatarStatusView.setPadding(0, dp(0), 0, dp(6));
+        content.addView(avatarStatusView, fullWidth());
         addPrimary("Fotoğraf seç", v -> pickAvatar(false));
         if (!pickedAvatarPath.isEmpty()) {
             addDangerButton("Fotoğrafı kaldır", v -> {
                 deleteAvatarFile(pickedAvatarPath);
                 pickedAvatarPath = "";
-                CharacterProfile rebuilt = editing ? store.character(existing.id) : null;
-                showCharacterEditor(rebuilt, editorAfterSave, editorOnBack);
+                if (avatarStatusView != null) {
+                    avatarStatusView.setText("Fotoğraf: seçilmedi");
+                    avatarStatusView.setTextColor(Design.muted());
+                }
             });
         }
 
@@ -1884,20 +1894,35 @@ public class MainActivity extends Activity {
                 return;
             }
             if (avatarPickPersona) {
+                String[] currentPersona = store.persona();
                 String previous = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
-                        ? personaAvatarDraft : (store.persona() != null ? store.persona()[2] : "");
+                        ? personaAvatarDraft
+                        : (currentPersona != null ? currentPersona[2] : "");
                 if (!previous.isEmpty()) deleteAvatarFile(previous);
                 personaAvatarDraft = saved.getPath();
-                showUserProfile();
+                if (personaPreviewPane != null) {
+                    String labelName = personaNameField != null && !personaNameField.getText().toString().trim().isEmpty()
+                            ? personaNameField.getText().toString().trim() : "Sen";
+                    fillPersonaPreview(personaPreviewPane, labelName, saved.getPath());
+                }
             } else {
                 if (!pickedAvatarPath.isEmpty()) deleteAvatarFile(pickedAvatarPath);
                 pickedAvatarPath = saved.getPath();
-                CharacterProfile rebuilt = editorCharacter != null ? store.character(editorCharacter.id) : null;
-                Runnable afterSave = editorAfterSave, onBack = editorOnBack;
-                showCharacterEditor(rebuilt, afterSave, onBack);
+                if (avatarStatusView != null) {
+                    avatarStatusView.setText("Fotoğraf: ✓ hazır (Kaydet ile saklanır)");
+                    avatarStatusView.setTextColor(Design.accent());
+                }
             }
             return;
         }
+    }
+
+    /** Rebuilds the persona preview avatar inside its card without resetting the editor form. */
+    private void fillPersonaPreview(LinearLayout pane, String name, String avatarPath) {
+        pane.removeAllViews();
+        View face = Avatar.forIdentity(this,
+                name == null || name.isEmpty() ? "Sen" : name, avatarPath, 64);
+        pane.addView(face, new LinearLayout.LayoutParams(dp(64), dp(64)));
     }
 
     /** Streams the full local dataset (characters + groups + transcripts) to the chosen file. */

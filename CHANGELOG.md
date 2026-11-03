@@ -6,6 +6,13 @@ All notable LocalRP changes. The app targets Turkish-speaking users; entries are
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.14.0-alpha2 — 2026-11-03 (DÜZELTME — "AI profili eklenmiyor")
+
+- **Fotoğraf seçimi artık düzenleyiciyi yeniden kurmuyor** (cihaz bildirimi):
+  - Belirti: fotoğraf seçildikten sonra düzenleyici kapatılıp yeniden açılıyordu; yeni karakter akışında bu, yazılan tüm alanları ve seçilen fotoğrafı birlikte kaybediyordu — "profil eklenmiyor" bildiriminin kaynağı.
+  - Düzeltme: karakter düzenleyicisinde seçim, "Fotoğraf: ✓ hazır" durum satırını yerinde günceller; persona düzenleyicide önizleme paneli yerinde değişir. Yazılan metinler korunur; **Kaydet** düğmesine basıldığında foto yolu karaktere / kullanıcı profil kaydedilir.
+- versionCode 21 / 0.14.0-alpha2.
+
 ## v0.14.0-alpha1 — 2026-11-03 (ALFA — kullanıcı personası, fotoğraflar, hazır karakterler)
 
 Kullanıcı isteğiyle üç yeni özellik. Veri ve üretim davranışı korunur; alpha3'ün düzeltmeleri değişmez.
