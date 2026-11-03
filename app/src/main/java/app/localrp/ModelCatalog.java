@@ -106,6 +106,34 @@ public final class ModelCatalog {
                 "1,5–3 t/s", "6–11 t/s*", "TR: iyi+", false, false),
     };
 
+    /**
+     * Abliterated / uncensored GGUF builds (18+, age-gated in MainActivity): safety
+     * conditioning removed at training time. Sourced from mradermacher's i1 quants and
+     * the Huihui community catalog. URLs and SHA-256 below were verified against the
+     * Hugging Face paths-info API (LFS oids) and HTTP HEAD resume support on 2026-11-03.
+     * Never fabricated.
+     */
+    public static final Model[] UNCENSORED_MODELS = {
+        new Model("Huihui-Qwen3.5-4B", "Huihui-ai", "Q4_K_M", 2_707_514_688L, 32768,
+                "https://huggingface.co/mradermacher/Huihui-Qwen3.5-4B-abliterated-GGUF/resolve/main/Huihui-Qwen3.5-4B-abliterated.Q4_K_M.gguf",
+                "huihui-qwen35-4b-abl-q4km.gguf",
+                "Denge önerisi: RP'de daha zengin sahne ve daha güçlü karakter sesi; abliterated sürüm geliştirici filtre katmanını çıkarır.",
+                "423f10b6ec2d99c3378143d7cd3b80eb4887b3ed92103103ac59173b404f4f7c",
+                "1,5–3 t/s", "5–9 t/s*", "TR: iyi", true, false),
+        new Model("Qwen3-0.6B ablit.", "mradermacher i1", "Q4_K_M", 396_705_792L, 32768,
+                "https://huggingface.co/mradermacher/qwen3-0.6b-abliterated-i1-GGUF/resolve/main/qwen3-0.6b-abliterated.i1-Q4_K_M.gguf",
+                "qwen3-06b-abl-q4km.gguf",
+                "En hızlı giriş: bu listedeki en hızlı modeldir; küçük boyut nedeniyle uzun sahnelerde derinlik sınırlıdır.",
+                "f7a515182e8df7d12db11a1f2ef0edfe478ba87a6c3f8f042d872914d94364f4",
+                "6–12 t/s", "15–25 t/s*", "TR: orta", false, false),
+        new Model("Huihui-Qwen3-8B v2", "Huihui-ai", "Q4_K_M", 5_027_780_352L, 32768,
+                "https://huggingface.co/mradermacher/Huihui-Qwen3-8B-abliterated-v2-GGUF/resolve/main/Huihui-Qwen3-8B-abliterated-v2.Q4_K_M.gguf",
+                "huihui-qwen3-8b-abl-v2-q4km.gguf",
+                "En yüksek sahne kalitesi; ağır maliyeti vardır: 8B model CPU'da yavaştır, güçlü cihaz + sabır gerektirir.",
+                "0bdba3b32d450374b3c404d9ad531703db139b33798149efc84e2bce45eedbb5",
+                "0,5–1,5 t/s", "2–4 t/s*", "TR: iyi+", false, false),
+    };
+
     private ModelCatalog() {}
 
     public static Model cpuRecommendation() { return CPU_MODELS[1]; } // Llama-3.2-1B
