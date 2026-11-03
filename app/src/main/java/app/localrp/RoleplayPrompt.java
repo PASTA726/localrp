@@ -28,7 +28,7 @@ final class RoleplayPrompt {
                         String aiInstructions, String themeName, String themeInstruction,
                         int historyDepth, int historyCharBudget) {
         return build(sceneName, speaker, castIds, castLookup, history, continuing, continuation,
-                aiInstructions, themeName, themeInstruction, historyDepth, historyCharBudget, null);
+                aiInstructions, themeName, themeInstruction, historyDepth, historyCharBudget, null, false);
     }
 
     /**
@@ -39,30 +39,52 @@ final class RoleplayPrompt {
                         boolean continuing, boolean continuation,
                         String aiInstructions, String themeName, String themeInstruction,
                         int historyDepth, int historyCharBudget, String[] persona) {
+        return build(sceneName, speaker, castIds, castLookup, history, continuing, continuation,
+                aiInstructions, themeName, themeInstruction, historyDepth, historyCharBudget, persona, false);
+    }
+
+    /**
+     * @param english true = assemble the whole engine prompt in English and instruct the
+     *                model to reply in English (English-tuned models roleplay better).
+     *                false = the byte-identical Turkish prompt of earlier versions.
+     */
+    static String build(String sceneName, CharacterProfile speaker, List<String> castIds,
+                        Function<String, CharacterProfile> castLookup, List<Message> history,
+                        boolean continuing, boolean continuation,
+                        String aiInstructions, String themeName, String themeInstruction,
+                        int historyDepth, int historyCharBudget, String[] persona, boolean english) {
         StringBuilder prompt = new StringBuilder();
         String speakerName = clip(speaker.name, 80);
         Message last = history.isEmpty() ? null : history.get(history.size() - 1);
 
         if (aiInstructions != null && !aiInstructions.isEmpty()) {
-            prompt.append("Genel AI talimatı: ").append(aiInstructions).append("\n");
+            prompt.append(english ? "General AI instruction: " : "Genel AI talimatı: ").append(aiInstructions).append("\n");
         }
         if (themeInstruction != null && !themeInstruction.isEmpty()) {
-            prompt.append("Sahne teması (").append(themeName == null ? "" : themeName).append("): ")
+            prompt.append(english ? "Scene tone (" : "Sahne teması (").append(themeName == null ? "" : themeName).append("): ")
                     .append(themeInstruction).append("\n");
         }
-        prompt.append("Sahne: ").append(oneLine(sceneName, 160)).append("\n");
-        prompt.append("Bu tur yalnızca ").append(speakerName).append(" karakterini konuşacak şekilde yanıt ver.\n");
+        prompt.append(english ? "Scene: " : "Sahne: ").append(oneLine(sceneName, 160)).append("\n");
+        if (english) {
+            prompt.append("This turn, reply speaking ONLY as ").append(speakerName).append(".\n");
+        } else {
+            prompt.append("Bu tur yalnızca ").append(speakerName).append(" karakterini konuşacak şekilde yanıt ver.\n");
+        }
         if (!continuing) {
             String description = clip(speaker.description, 700);
             String personality = clip(speaker.personality, 900);
             String instructions = clip(speaker.instructions, 900);
             String examples = clip(speaker.examples, 1200);
-            if (!description.isEmpty()) prompt.append("Karakter tanımı: ").append(description).append("\n");
-            if (!personality.isEmpty()) prompt.append("Kişilik ve konuşma tarzı: ").append(personality).append("\n");
-            if (!instructions.isEmpty()) prompt.append("Karakter talimatları: ").append(instructions).append("\n");
-            if (!examples.isEmpty()) prompt.append("Örnek diyalog:\n").append(examples).append("\n");
+            if (!description.isEmpty())
+                prompt.append(english ? "Character description: " : "Karakter tanımı: ").append(description).append("\n");
+            if (!personality.isEmpty())
+                prompt.append(english ? "Personality and speech style: " : "Kişilik ve konuşma tarzı: ").append(personality).append("\n");
+            if (!instructions.isEmpty())
+                prompt.append(english ? "Character instructions: " : "Karakter talimatları: ").append(instructions).append("\n");
+            if (!examples.isEmpty())
+                prompt.append(english ? "Example dialogue:\n" : "Örnek diyalog:\n").append(examples).append("\n");
 
-            prompt.append("Sahnedeki diğer karakterler:\n");
+            prompt.append(english ? "Other characters in the scene:\n" : "Sahnedeki diğer karakterler:\n");
             boolean otherCharacter = false;
             for (String id : castIds) {
                 CharacterProfile character = castLookup.apply(id);
@@ -73,25 +95,27 @@ final class RoleplayPrompt {
                 if (!detail.trim().isEmpty()) prompt.append(": ").append(oneLine(detail, 220));
                 prompt.append("\n");
             }
-            if (!otherCharacter) prompt.append("- Yok (bire bir sahne)\n");
+            if (!otherCharacter) prompt.append(english ? "- None (solo scene)\n" : "- Yok (bire bir sahne)\n");
 
-            appendPersona(prompt, persona);
+            appendPersona(prompt, persona, english);
 
             if (history.size() > 1) {
-                prompt.append("\nYakın sahne geçmişi:\n");
-                appendHistory(prompt, history, last != null && last.user, historyDepth, historyCharBudget);
+                prompt.append(english ? "\nRecent scene history:\n" : "\nYakın sahne geçmişi:\n");
+                appendHistory(prompt, history, last != null && last.user, historyDepth, historyCharBudget, english);
             }
         } else {
             // The engine keeps ONE shared context per conversation; on continuing turns the
             // model would otherwise stay anchored to the previous speaker's persona.
             // Re-inject this turn's identity compactly. (Kullanıcı kusuru: grup RP'de rol kayması)
-            prompt.append("Bağlam devam ediyor; sahneyi koru ama bu turun karakter kimliği aşağıdadır.\n");
+            prompt.append(english
+                    ? "Context continues; keep the scene, but this turn's character identity is below.\n"
+                    : "Bağlam devam ediyor; sahneyi koru ama bu turun karakter kimliği aşağıdadır.\n");
             String hint = clip(speaker.description, 160);
             if (hint.isEmpty()) hint = clip(speaker.personality, 160);
-            prompt.append("Rol kimliği: ").append(speakerName);
+            prompt.append(english ? "Role identity: " : "Rol kimliği: ").append(speakerName);
             if (!hint.isEmpty()) prompt.append(" — ").append(hint);
             prompt.append("\n");
-            if (persona != null) appendPersona(prompt, persona);
+            if (persona != null) appendPersona(prompt, persona, english);
             StringBuilder otherNames = new StringBuilder();
             int otherBudget = 280;
             for (String id : castIds) {
@@ -104,33 +128,45 @@ final class RoleplayPrompt {
                 otherBudget -= name.length();
             }
             if (otherNames.length() > 0) {
-                prompt.append("Sahnedeki diğer karakterler (adlarına yazma): ").append(otherNames).append("\n");
+                prompt.append(english
+                        ? "Other characters (do not write their lines): "
+                        : "Sahnedeki diğer karakterler (adlarına yazma): ").append(otherNames).append("\n");
             }
         }
         if (last != null && last.user) {
-            prompt.append("\nKullanıcının son mesajı: ").append(clip(last.text, 3000)).append("\n");
+            prompt.append(english ? "\nThe user's last message: " : "\nKullanıcının son mesajı: ")
+                    .append(clip(last.text, 3000)).append("\n");
         } else if (continuation) {
-            prompt.append("\nSahne devam ediyor; sıradaki karakter olarak bu ana doğal bir tepki ver.\n");
+            prompt.append(english
+                    ? "\nThe scene continues; react naturally to this moment as the next character.\n"
+                    : "\nSahne devam ediyor; sıradaki karakter olarak bu ana doğal bir tepki ver.\n");
         }
-        prompt.append("\nKurallar: Yalnızca ").append(speakerName)
-                .append(" olarak tek bir rol içi yanıt yaz. Geçmişte \"Kullanıcı:\" olarak görünen satırlar kullanıcının " +
-                        "kendi sözleridir; kullanıcı veya diğer karakterler adına konuşma. ")
-                .append("Yanıtın başında karakter adını yazma. Türkçe yanıt ver ve sahnenin dışına çıkma.");
+        if (english) {
+            prompt.append("\nRules: Write one in-character reply ONLY as ").append(speakerName)
+                    .append(". Lines labeled \"User:\" in the history are the user's own words; do not ")
+                    .append("speak for the user or other characters. Do not begin your reply with the ")
+                    .append("character's name. Reply in English and stay within the scene.");
+        } else {
+            prompt.append("\nKurallar: Yalnızca ").append(speakerName)
+                    .append(" olarak tek bir rol içi yanıt yaz. Geçmişte \"Kullanıcı:\" olarak görünen satırlar kullanıcının " +
+                            "kendi sözleridir; kullanıcı veya diğer karakterler adına konuşma. ")
+                    .append("Yanıtın başında karakter adını yazma. Türkçe yanıt ver ve sahnenin dışına çıkma.");
+        }
         return prompt.toString();
     }
 
     /** User identity block: v0.14.0 feature; omitted entirely when no persona is set. */
-    private static void appendPersona(StringBuilder prompt, String[] persona) {
+    private static void appendPersona(StringBuilder prompt, String[] persona, boolean english) {
         if (persona == null) return;
         String name = clip(persona.length > 0 ? persona[0] : "", 80);
         String description = clip(persona.length > 1 ? persona[1] : "", 400);
-        prompt.append("Kullanıcı kimliği: ").append(name.isEmpty() ? "Sen" : name);
+        prompt.append(english ? "User identity: " : "Kullanıcı kimliği: ").append(name.isEmpty() ? (english ? "You" : "Sen") : name);
         if (!description.isEmpty()) prompt.append(" — ").append(oneLine(description, 400));
         prompt.append("\n");
     }
 
     private static void appendHistory(StringBuilder prompt, List<Message> history, boolean skipLastUser,
-                                      int historyDepth, int historyCharBudget) {
+                                      int historyDepth, int historyCharBudget, boolean english) {
         int end = history.size() - (skipLastUser ? 1 : 0);
         int start = Math.max(0, end - historyDepth);
         List<String> lines = new ArrayList<>();
@@ -138,8 +174,9 @@ final class RoleplayPrompt {
         for (int i = end - 1; i >= start; i--) {
             Message message = history.get(i);
             // User records are stored with the display label "Sen"; the transcript must
-            // disambiguate the user from any character, so the prompt uses "Kullanıcı".
-            String who = message.user ? "Kullanıcı" : message.speaker;
+            // disambiguate the user from any character, so the prompt label is explicit
+            // ("Kullanıcı" in Turkish mode, "User" in English mode).
+            String who = message.user ? (english ? "User" : "Kullanıcı") : message.speaker;
             String line = who + ": " + message.text;
             if (line.length() > budget) {
                 if (budget > 40) lines.add(0, line.substring(0, budget - 1) + "…");

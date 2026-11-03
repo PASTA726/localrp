@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
     private static final int AVATAR_PICK = 77;
     private static final String PREFS = "localrp";
     private static final String DEFAULT_AI_INSTRUCTIONS = "Her zaman sahnenin içinde kal. Seçili karakter olarak konuş ve kullanıcının rolünü üstlenme.";
+    private static final String DEFAULT_AI_INSTRUCTIONS_EN = "Stay inside the scene at all times. Speak as the selected character and never take over the user's role.";
     private static final String BUILTIN_ROLEPLAY_ID = "localrp_builtin_roleplay_character";
     private static final String DEFAULT_AI_THEME = "serbest";
     private static final String[][] AI_THEMES = {
@@ -147,6 +148,7 @@ public class MainActivity extends Activity {
         if (!store.integrityIssues().isEmpty()) reportIntegrityIssues();
         // Leftover generation drafts (crash mid-stream) become normal messages once, up front.
         restoreInterruptedDrafts();
+        L10n.refresh(prefs().getString("app_language", "tr"));
         Design.refresh(this);
         modelsBackAction = this::showHome;
         SharedPreferences prefs = prefs();
@@ -622,7 +624,8 @@ public class MainActivity extends Activity {
     }
 
     private void updateOlderLabel(Button view) {
-        view.setText("Daha eski mesajlar (" + chatRenderStart + ")");
+        view.setText(L10n.english ? "Older messages (" + chatRenderStart + ")"
+                : "Daha eski mesajlar (" + chatRenderStart + ")");
     }
 
     /** Prepends the next older chunk in chronological order, above the marker button. */
@@ -651,11 +654,11 @@ public class MainActivity extends Activity {
     private String chatSubtitle(Group group) {
         if (!LocalAiRuntime.INSTANCE.isModelReady()) {
             if (LocalAiRuntime.INSTANCE.loadedModelPath() != null) {
-                return "Model yeniden hazırlanacak · çevrimdışı";
+                return L10n.s("Model yeniden hazırlanacak · çevrimdışı");
             }
-            return "Çevrimdışı yanıtlar için önce AI ayarlarından model yükle";
+            return L10n.s("Çevrimdışı yanıtlar için önce AI ayarlarından model yükle");
         }
-        return group.characterIds.size() == 1 ? "Bire bir karakter RP · cihaz içinde" : "Grup RP · cihaz içinde";
+        return group.characterIds.size() == 1 ? L10n.s("Bire bir karakter RP · cihaz içinde") : L10n.s("Grup RP · cihaz içinde");
     }
 
     private boolean modelCanRespond() {
@@ -710,7 +713,7 @@ public class MainActivity extends Activity {
         chatComposer.addView(chatContinueButton, continueParams);
 
         EditText input = new EditText(this);
-        input.setHint("Hikâyeye bir şey yaz…");
+        input.setHint(L10n.s("Hikâyeye bir şey yaz…"));
         input.setMinLines(1);
         input.setMaxLines(5);
         input.setGravity(Gravity.TOP);
@@ -923,20 +926,20 @@ public class MainActivity extends Activity {
                 Group visible = visibleChatId == null ? null : store.group(visibleChatId);
                 if (visible != null) updateChatControls(visible);
                 if (group.id.equals(visibleChatId) && chatStatusView != null) {
-                    if (error != null) chatStatusView.setText(finalText.isEmpty() ? "Yanıt üretilemedi" : "Yanıt yarıda kesildi");
-                    else if (finalText.isEmpty()) chatStatusView.setText("Model boş yanıt döndürdü");
-                    else if (stopped) chatStatusView.setText("Yanıt durduruldu.");
+                    if (error != null) chatStatusView.setText(finalText.isEmpty() ? L10n.s("Yanıt üretilemedi") : L10n.s("Yanıt yarıda kesildi"));
+                    else if (finalText.isEmpty()) chatStatusView.setText(L10n.s("Model boş yanıt döndürdü"));
+                    else if (stopped) chatStatusView.setText(L10n.s("Yanıt durduruldu."));
                 }
                 if (error != null && finalText.isEmpty() && group.id.equals(visibleChatId) && uiAlive()) {
                     AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this)
-                            .setTitle("Yanıt üretilemedi")
+                            .setTitle(L10n.s("Yanıt üretilemedi"))
                             .setMessage(error);
                     if (modelCanRespond()) {
-                        dialog.setPositiveButton("Yeniden dene", (d, w) -> continueOrRetry(group))
-                                .setNegativeButton("Kapat", null);
+                        dialog.setPositiveButton(L10n.s("Yeniden dene"), (d, w) -> continueOrRetry(group))
+                                .setNegativeButton(L10n.s("Kapat"), null);
                     } else {
-                        dialog.setPositiveButton("AI ayarları", (d, w) -> openModels(() -> openChat(group.id)))
-                                .setNegativeButton("Kapat", null);
+                        dialog.setPositiveButton(L10n.s("AI ayarları"), (d, w) -> openModels(() -> openChat(group.id)))
+                                .setNegativeButton(L10n.s("Kapat"), null);
                     }
                     dialog.show();
                 }
@@ -1016,7 +1019,7 @@ public class MainActivity extends Activity {
         }
         if (chatSpeakerView != null) {
             CharacterProfile manual = manualSpeaker(group);
-            chatSpeakerView.setText("Sıra: " + (manual == null ? "Otomatik" : manual.name) + "  ▾");
+            chatSpeakerView.setText(L10n.s("Sıra: ") + (manual == null ? L10n.s("Otomatik") : manual.name) + "  ▾");
         }
         if (chatStatusView != null) chatStatusView.setText(chatStatusText(group));
         if (chatModelHint != null) chatModelHint.setVisibility(modelCanRespond() ? View.GONE : View.VISIBLE);
@@ -1058,7 +1061,7 @@ public class MainActivity extends Activity {
     }
 
     private void showChatMenu(Group group) {
-        String[] items = {"RP ayarları", "AI ayarları", "Sohbet geçmişini temizle", "Sohbet listesine dön"};
+        String[] items = {L10n.s("RP ayarları"), L10n.s("AI ayarları"), L10n.s("Sohbet geçmişini temizle"), L10n.s("Sohbet listesine dön")};
         new AlertDialog.Builder(this).setItems(items, (dialog, which) -> {
             if (which == 0) showGroupEditor(group, () -> openChat(group.id));
             else if (which == 1) openModels(() -> openChat(group.id));
@@ -1069,11 +1072,11 @@ public class MainActivity extends Activity {
 
     private void clearChat(Group group) {
         if (group.id.equals(generatingChatId)) {
-            new AlertDialog.Builder(this).setMessage("Yanıt üretilirken sohbet temizlenemez. Önce yanıtı durdur.")
-                    .setPositiveButton("Tamam", null).show();
+            new AlertDialog.Builder(this).setMessage(L10n.s("Yanıt üretilirken sohbet temizlenemez. Önce yanıtı durdur."))
+                    .setPositiveButton(L10n.s("Tamam"), null).show();
             return;
         }
-        confirm("Bu sohbetin tüm mesajları silinsin mi?", "Temizle", () -> {
+        confirm(L10n.s("Bu sohbetin tüm mesajları silinsin mi?"), L10n.s("Temizle"), () -> {
             store.clearMessages(group.id);
             forgetAutoAttempts(group.id);
             chatMetrics.remove(group.id);
@@ -1085,21 +1088,21 @@ public class MainActivity extends Activity {
 
     private String chatStatusText(Group group) {
         if (group.id.equals(generatingChatId)) {
-            return (generatingSpeaker == null ? "Karakter" : generatingSpeaker) + " yanıt yazıyor…";
+            return L10n.speaker(generatingSpeaker == null ? "Karakter" : generatingSpeaker) + L10n.s("yanıt yazıyor…");
         }
-        if (generatingChatId != null) return "Başka bir sohbette AI yanıt üretiyor…";
-        if (LocalAiRuntime.INSTANCE.isModelLoading()) return "Model yükleniyor…";
-        if (LocalAiRuntime.INSTANCE.isBenchmarking()) return "Motor testi sürüyor…";
+        if (generatingChatId != null) return L10n.s("Başka bir sohbette AI yanıt üretiyor…");
+        if (LocalAiRuntime.INSTANCE.isModelLoading()) return L10n.s("Model yükleniyor…");
+        if (LocalAiRuntime.INSTANCE.isBenchmarking()) return L10n.s("Motor testi sürüyor…");
         if (LocalAiRuntime.INSTANCE.isModelReady()) {
             int percent = contextPercent(group);
             String metrics = chatMetrics.get(group.id);
-            if (metrics != null) return "Son yanıt: " + metrics + " · bağlam %" + percent;
-            return "Sahne hazır · bağlam %" + percent + " · çevrimdışı";
+            if (metrics != null) return L10n.s("Son yanıt: ") + metrics + L10n.s(" · bağlam %") + percent;
+            return L10n.s("Sahne hazır · bağlam %") + percent + L10n.s(" · çevrimdışı");
         }
         if (LocalAiRuntime.INSTANCE.loadedModelPath() != null) {
-            return "Model yeniden hazırlanacak · yanıt biraz sürebilir";
+            return L10n.s("Model yeniden hazırlanacak · yanıt biraz sürebilir");
         }
-        return selectedModel == null ? "Yanıtlar için bir GGUF modeli seç" : "Model seçildi · yüklemek için AI ayarları";
+        return selectedModel == null ? L10n.s("Yanıtlar için bir GGUF modeli seç") : L10n.s("Model seçildi · yüklemek için AI ayarları");
     }
 
     private int contextPercent(Group group) {
@@ -1230,6 +1233,27 @@ public class MainActivity extends Activity {
         } else {
             addBody("Hız testi için önce modeli yükle.");
         }
+
+        addSection("Dil / Language", null, null);
+        addBody(L10n.english
+                ? "Switches the app UI and the AI roleplay language together. Turkish models: choose back."
+                : "Uygulama arayüzü ile AI rol yapma dilini birlikte değiştirir. English mode: better RP with English-tuned models.");
+        addSecondary(L10n.english ? "Türkçe (aktif)" : "Türkçe", v -> switchAppLanguage("tr"));
+        addSecondary(L10n.english ? "English (active)" : "English (recommended: better RP)", v -> switchAppLanguage("en"));
+    }
+
+    /** Switches the shared UI + prompt language and re-renders cleanly. */
+    private void switchAppLanguage(String language) {
+        String current = prefs().getString("app_language", "tr");
+        if (current.equals(language)) { showModels(); return; }
+        prefs().edit().putString("app_language", language).apply();
+        L10n.refresh(language);
+        contextChars.clear();
+        LocalAiRuntime.INSTANCE.resetConversation(null);
+        showModels();
+        Toast.makeText(this, language.equals("en")
+                ? "Yanıt dili İngilizce olarak ayarlandı — model promptları artık İngilizce."
+                : "Dil Türkçe olarak ayarlandı.", Toast.LENGTH_SHORT).show();
     }
 
     private void showAppearance() {
@@ -2125,7 +2149,9 @@ public class MainActivity extends Activity {
     private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation) {
         // Prompt assembly lives in the pure, unit-tested RoleplayPrompt; MainActivity only
         // resolves the Android-backed inputs (store lookups, prefs, engine context flag).
-        String instructions = clip(prefs().getString("ai_instructions", DEFAULT_AI_INSTRUCTIONS), 600);
+        boolean english = L10n.english;
+        String instructions = clip(prefs().getString("ai_instructions",
+                english ? DEFAULT_AI_INSTRUCTIONS_EN : DEFAULT_AI_INSTRUCTIONS), 600);
         String themeId = prefs().getString("ai_theme", DEFAULT_AI_THEME);
         String[] persona = store.persona();
         String[] personaText = persona != null ? new String[]{persona[0], persona[1]} : null;
@@ -2142,17 +2168,18 @@ public class MainActivity extends Activity {
                 aiThemeInstruction(themeId),
                 historyDepth(),
                 historyCharBudget(),
-                personaText);
+                personaText,
+                english);
     }
 
     private String aiThemeName(String id) {
-        for (String[] theme : AI_THEMES) if (theme[0].equals(id)) return theme[1];
-        return AI_THEMES[0][1];
+        for (String[] theme : AI_THEMES) if (theme[0].equals(id)) return L10n.s(theme[1]);
+        return L10n.s(AI_THEMES[0][1]);
     }
 
     private String aiThemeInstruction(String id) {
-        for (String[] theme : AI_THEMES) if (theme[0].equals(id)) return theme[2];
-        return "";
+        for (String[] theme : AI_THEMES) if (theme[0].equals(id)) return L10n.s(theme[2]);
+        return L10n.s(AI_THEMES[0][2]);
     }
 
     private String aiThemeDescription(String id) {
@@ -2555,11 +2582,11 @@ public class MainActivity extends Activity {
         String preview;
         String when = "";
         if (group.id.equals(generatingChatId)) {
-            preview = (generatingSpeaker == null ? "Karakter" : generatingSpeaker) + " yanıt yazıyor…";
+            preview = L10n.speaker(generatingSpeaker == null ? "Karakter" : generatingSpeaker) + L10n.s("yanıt yazıyor…");
         } else if (last == null) {
             preview = "Sahneyi başlatmak için dokun";
         } else {
-            preview = (last.user ? "Sen" : last.speaker) + ": " + oneLine(last.text, 90);
+            preview = (last.user ? L10n.speaker("Sen") : last.speaker) + ": " + oneLine(last.text, 90);
             when = clock.format(new Date(last.at));
         }
         CharacterProfile face = group.characterIds.isEmpty() ? null : store.character(group.characterIds.get(0));
@@ -2777,7 +2804,7 @@ public class MainActivity extends Activity {
 
     private TextView label(String text, int size, int color) {
         TextView view = new TextView(this);
-        view.setText(text);
+        view.setText(L10n.s(text));
         view.setTextSize(size);
         view.setTextColor(color);
         return view;
@@ -2804,7 +2831,7 @@ public class MainActivity extends Activity {
     private EditText field(String hint, String value) { return field(hint, value, 1); }
     private EditText field(String hint, String value, int lines) {
         EditText input = new EditText(this);
-        input.setHint(hint);
+        input.setHint(L10n.s(hint));
         input.setText(value);
         input.setTextSize(15);
         input.setMinLines(lines);
@@ -2841,7 +2868,7 @@ public class MainActivity extends Activity {
 
     private Button button(String text) {
         Button view = new Button(this);
-        view.setText(text);
+        view.setText(L10n.s(text));
         view.setAllCaps(false);
         view.setTextSize(15);
         view.setMinHeight(dp(48));
@@ -2923,16 +2950,17 @@ public class MainActivity extends Activity {
 
     private void renderMessage(TextView view, String speaker, String text, long at) {
         view.setTag(text);
-        String header = at > 0 ? speaker + "  ·  " + clock.format(new Date(at)) : speaker;
+        String display = L10n.speaker(speaker);
+        String header = at > 0 ? display + "  ·  " + clock.format(new Date(at)) : display;
         String value = header + "\n" + text;
         SpannableString styled = new SpannableString(value);
-        styled.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), 0, speaker.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), 0, display.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         // Character names pop as accent-on-accentSoft like the cAI chat card, not
         // invisible-on-invisible; the span colors the whole "Name  ·  12:04" head line.
         int headLength = header.length();
-        styled.setSpan(new ForegroundColorSpan(Design.accent()), 0, speaker.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(new ForegroundColorSpan(Design.accent()), 0, display.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (at > 0) {
-            styled.setSpan(new ForegroundColorSpan(Design.muted()), speaker.length(), headLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            styled.setSpan(new ForegroundColorSpan(Design.muted()), display.length(), headLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         view.setText(styled);
     }
