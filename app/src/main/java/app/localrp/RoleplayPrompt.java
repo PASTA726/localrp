@@ -27,6 +27,18 @@ final class RoleplayPrompt {
                         boolean continuing, boolean continuation,
                         String aiInstructions, String themeName, String themeInstruction,
                         int historyDepth, int historyCharBudget) {
+        return build(sceneName, speaker, castIds, castLookup, history, continuing, continuation,
+                aiInstructions, themeName, themeInstruction, historyDepth, historyCharBudget, null);
+    }
+
+    /**
+     * @param persona optional user persona: {name, description} (may be null; length-2)
+     */
+    static String build(String sceneName, CharacterProfile speaker, List<String> castIds,
+                        Function<String, CharacterProfile> castLookup, List<Message> history,
+                        boolean continuing, boolean continuation,
+                        String aiInstructions, String themeName, String themeInstruction,
+                        int historyDepth, int historyCharBudget, String[] persona) {
         StringBuilder prompt = new StringBuilder();
         String speakerName = clip(speaker.name, 80);
         Message last = history.isEmpty() ? null : history.get(history.size() - 1);
@@ -63,6 +75,8 @@ final class RoleplayPrompt {
             }
             if (!otherCharacter) prompt.append("- Yok (bire bir sahne)\n");
 
+            appendPersona(prompt, persona);
+
             if (history.size() > 1) {
                 prompt.append("\nYakın sahne geçmişi:\n");
                 appendHistory(prompt, history, last != null && last.user, historyDepth, historyCharBudget);
@@ -77,6 +91,7 @@ final class RoleplayPrompt {
             prompt.append("Rol kimliği: ").append(speakerName);
             if (!hint.isEmpty()) prompt.append(" — ").append(hint);
             prompt.append("\n");
+            if (persona != null) appendPersona(prompt, persona);
             StringBuilder otherNames = new StringBuilder();
             int otherBudget = 280;
             for (String id : castIds) {
@@ -102,6 +117,16 @@ final class RoleplayPrompt {
                         "kendi sözleridir; kullanıcı veya diğer karakterler adına konuşma. ")
                 .append("Yanıtın başında karakter adını yazma. Türkçe yanıt ver ve sahnenin dışına çıkma.");
         return prompt.toString();
+    }
+
+    /** User identity block: v0.14.0 feature; omitted entirely when no persona is set. */
+    private static void appendPersona(StringBuilder prompt, String[] persona) {
+        if (persona == null) return;
+        String name = clip(persona.length > 0 ? persona[0] : "", 80);
+        String description = clip(persona.length > 1 ? persona[1] : "", 400);
+        prompt.append("Kullanıcı kimliği: ").append(name.isEmpty() ? "Sen" : name);
+        if (!description.isEmpty()) prompt.append(" — ").append(oneLine(description, 400));
+        prompt.append("\n");
     }
 
     private static void appendHistory(StringBuilder prompt, List<Message> history, boolean skipLastUser,

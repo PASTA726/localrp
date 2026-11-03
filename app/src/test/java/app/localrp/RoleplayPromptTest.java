@@ -79,6 +79,37 @@ public class RoleplayPromptTest {
     }
 
     @Test
+    public void userPersona_isInjectedOnFreshScenes() {
+        Map<String, CharacterProfile> registry = new HashMap<>();
+        registry.put("spk", speaker("Elif"));
+        String prompt = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                new ArrayList<>(), false, false, "", "", "", 8, 2600,
+                new String[]{"Evren", "Huzurevinde çalışan sessiz bir bahçıvan; dedektif hikâyelerinde yardımcı ister."});
+
+        assertTrue(prompt.contains("Kullanıcı kimliği: Evren — Huzurevinde çalışan sessiz bir bahçıvan"));
+        assertTrue(prompt.contains("Kullanıcı kimliği: Evren"));
+    }
+
+    @Test
+    public void userPersona_isCompactOnContinuingScenes_omittedWhenNull() {
+        Map<String, CharacterProfile> registry = new HashMap<>();
+        registry.put("spk", speaker("Elif"));
+        String continuing = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), true, false, "", "", "", 8, 2600,
+                new String[]{"Evren", ""});
+        assertTrue(continuing.contains("Kullanıcı kimliği: Evren"));
+        // The compact re-injection must not carry the fresh-scene full blocks either.
+        assertFalse(continuing.contains("Karakter tanımı:"));
+
+        String withoutPersona = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                new ArrayList<>(), false, false, "", "", "", 8, 2600, null);
+        assertFalse(withoutPersona.contains("Kullanıcı kimliği:"));
+    }
+
+    @Test
     public void historyLabelsUserAsKullanıcıNotSen() {
         // History lines are only assembled for FRESH scenes (continuing=false); on a
         // continuing scene the model keeps its own context and sees only the last user message.

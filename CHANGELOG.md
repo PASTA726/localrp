@@ -6,6 +6,16 @@ All notable LocalRP changes. The app targets Turkish-speaking users; entries are
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.14.0-alpha1 — 2026-11-03 (ALFA — kullanıcı personası, fotoğraflar, hazır karakterler)
+
+Kullanıcı isteğiyle üç yeni özellik. Veri ve üretim davranışı korunur; alpha3'ün düzeltmeleri değişmez.
+
+- **Kullanıcı personası**: Karakterler ekranının en üstündeki **"Sen (kullanıcı profili)"** kartından adını, kendini tanıtımını ve profil fotoğrafını kaydedebilirsin. Persona tanımlı değilken hiçbir şey değişmez; tanımlıysa model promptuna **"Kullanıcı kimliği: ad — tanıtım"** bloğu girer (taze sahnede tam blok, devam eden sahnede kompakt kimlik satırı). `RoleplayPrompt` yeni isteğe bağlı parametreyi kabul eder; eski imza kalır ve kilitli prompt biçimi testleri değişmedi.
+- **Profil fotoğrafları (bot + kullanıcı)**: Karakter düzenleyicide "Profil fotoğrafı seç / kaldır"; persona düzenleyicide aynı yetenek. Fotoğraf 512 px'e küçültülmüş PNG kopya olarak gizli depolamada (`filesDir/avatars/`) yaşar; seçtiğin kaynak dosyaya dokunulmaz. Fotoğrafı olan karakterin avatarı şuralarda görünür: sohbet başlığı, mesaj balonları, grup kartındaki yüz, karakter ızgarası/kartları, kullanıcı profili kartı. Fotoğraf yoksa harf-çemberi avatar aynı şekilde kullanılır.
+- **Hazır karakterler**: Karakterler ekranında **"Hazır karakterler"** bölümü — altı Türkçe RP karakteri (dedektif, tamirci, arşivci, denizci, çizgi roman sanatçısı, emekli aktris). Tek dokunuşla listene normal bir karakter olarak kopyalanır; kopya tümüyle düzenlenebilir. Katalog bütünlüğü testle kilitli (isim tekilliği, alan dolgunluğu, örnek diyaloğun konuşmacı etiketi).
+- **Depolama**: karakter kaydında opsiyonel `avatar` alanı (`PersistenceCodec`); persona `user_persona` anahtarında JSON. Eski yedek ve kayıtlar uyumlu kalır (alan yoksa boş avatar).
+- versionCode 20 / 0.14.0-alpha1.
+
 ## v0.13.0-alpha3 — 2026-11-03 (DÜZELTME — akış balonu hatası, cihaz bildirimi)
 
 - **Kritik düzeltme — üretilen yanıt balon balon şişiyordu** (alpha2 kullanıcı bildirimi; teşekkürler):

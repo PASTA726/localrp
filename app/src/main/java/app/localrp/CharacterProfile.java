@@ -10,4 +10,6 @@ class CharacterProfile {
     String personality = "";
     String instructions = "";
     String examples = "";
+    /** Optional local profile photo (private copy path). Empty = derived letter avatar. */
+    String avatarPath = "";
 }

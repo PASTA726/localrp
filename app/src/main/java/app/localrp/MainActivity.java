@@ -7,6 +7,8 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -52,6 +54,7 @@ public class MainActivity extends Activity {
     private static final int MODEL_PICKER = 74;
     private static final int BACKUP_EXPORT = 75;
     private static final int BACKUP_IMPORT = 76;
+    private static final int AVATAR_PICK = 77;
     private static final String PREFS = "localrp";
     private static final String DEFAULT_AI_INSTRUCTIONS = "Her zaman sahnenin içinde kal. Seçili karakter olarak konuş ve kullanıcının rolünü üstlenme.";
     private static final String BUILTIN_ROLEPLAY_ID = "localrp_builtin_roleplay_character";
@@ -120,6 +123,14 @@ public class MainActivity extends Activity {
     private final Set<String> autoAttempted = new HashSet<>();
     private final java.util.Map<String, Long> contextChars = new java.util.HashMap<>();
     private final java.util.Map<String, String> chatMetrics = new java.util.HashMap<>();
+
+    // v0.14.0 feature set: user persona + profile photos + preset characters.
+    private boolean avatarPickPersona;          // target of AVATAR_PICK: true = user persona, false = character
+    private String personaAvatarDraft;          // freshly picked persona photo, applied on Kaydet
+    private CharacterProfile editorCharacter;   // character being edited (null = creating)
+    private Runnable editorAfterSave, editorOnBack;
+    private String pickedAvatarPath = "";       // freshly picked character photo, applied on Kaydet
+    private String chatHeaderAvatarPath = "";   // photo for the chat header avatar
     private final SimpleDateFormat clock = new SimpleDateFormat("HH:mm", Locale.getDefault());
     private int catalogFilter;
     private TextView downloadProgressView;
@@ -188,10 +199,161 @@ public class MainActivity extends Activity {
         visibleChatId = null;
         backAction = this::showHome;
         setPage("Karakterler", "Hikâyendeki kişileri yönet", "characters");
+        addUserProfileCard();
         addPrimary("＋  Yeni karakter", v -> showCharacterEditor(null));
         List<CharacterProfile> characters = store.characters();
         if (characters.isEmpty()) addEmpty("İlk karakterini oluştur", "Adını, kişiliğini ve hikâyedeki yerini belirle.", "Karakter oluştur", v -> showCharacterEditor(null));
         else addCharacterGrid(characters);
+        addSection("Hazır karakterler", "Tek dokunuşla ekle", null);
+        addBody("Beğendiğin hazır karakter kopyalanıp tamamen düzenlenebilir bir karakter olarak listene geçer.");
+        addPresetGrid();
+    }
+
+    /** v0.14.0: "Sen (kullanıcı profili)" card leading the characters screen. */
+    private void addUserProfileCard() {
+        String[] persona = store.persona();
+        String name = persona != null ? persona[0] : "";
+        String description = persona != null ? persona[1] : "";
+        String avatar = personaAvatarDraft != null ? personaAvatarDraft
+                : (persona != null ? persona[2] : "");
+        LinearLayout card = makeCard();
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        View face = Avatar.forIdentity(this, name.isEmpty() ? "Sen" : name, avatar, 44);
+        row.addView(face, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setPadding(dp(12), 0, 0, 0);
+        TextView title = label(name.isEmpty() ? "Sen" : name + "  (kullanıcı)", 16, Design.text());
+        title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        texts.addView(title);
+        TextView detail = label(description.isEmpty()
+                ? "Kullanıcı personası tanımlı değil — dokunup kendini tanıt"
+                : brief(description), 12, Design.muted());
+        detail.setPadding(0, dp(3), 0, 0);
+        detail.setSingleLine(true);
+        detail.setEllipsize(TextUtils.TruncateAt.END);
+        texts.addView(detail);
+        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        card.addView(row);
+        card.setOnClickListener(v -> showUserProfile());
+        addCardToPage(card);
+    }
+
+    /** v0.14.0: user persona editor (name + self-description + optional photo). */
+    private void showUserProfile() {
+        visibleChatId = null;
+        backAction = this::showCharacters;
+        setPage("Sen (kullanıcı profili)", "Yapay zekâ sana bu kimlikle davranır", "characters");
+        String[] persona = store.persona();
+        String name = persona != null ? persona[0] : "";
+        String description = persona != null ? persona[1] : "";
+        final String storedAvatar = persona != null ? persona[2] : "";
+
+        LinearLayout preview = makeCard();
+        preview.setGravity(Gravity.CENTER);
+        View face = Avatar.forIdentity(this,
+                (personaAvatarDraft != null && !personaAvatarDraft.isEmpty())
+                        ? (name.isEmpty() ? "Sen" : name)
+                        : (storedAvatar.isEmpty() ? "Sen" : name),
+                personaAvatarDraft != null && !personaAvatarDraft.isEmpty() ? personaAvatarDraft : storedAvatar, 64);
+        preview.addView(face, new LinearLayout.LayoutParams(dp(64), dp(64)));
+        addCardToPage(preview);
+
+        EditText nameField = field("Adın (boş bırakılırsa \"Sen\" sayılır)", name, 1);
+        nameField.setSingleLine(true);
+        EditText descriptionField = field("Kendini tanıt (davranışını ve sesini etkiler)", description, 3);
+        addBody("RP sohbetlerinde mesajların \"Sen\" etiketiyle kalır; model sana \"Kullanıcı kimliği\" bloğunda burada yazdığın bilgilerle davranır.");
+        addPrimary("Profil fotoğrafı seç", v -> pickAvatar(true));
+        if ((personaAvatarDraft != null && !personaAvatarDraft.isEmpty())
+                || !storedAvatar.isEmpty()) {
+            addDangerButton("Fotoğrafı kaldır", v -> {
+                String path = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
+                        ? personaAvatarDraft : storedAvatar;
+                deleteAvatarFile(path);
+                personaAvatarDraft = "";
+                showUserProfile();
+            });
+        }
+        addPrimary("Profili kaydet", v -> {
+            String savedName = nameField.getText().toString().trim();
+            String savedDescription = descriptionField.getText().toString().trim();
+            String savedAvatar = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
+                    ? personaAvatarDraft : storedAvatar;
+            personaAvatarDraft = null;
+            if (!store.savePersona(savedName, savedDescription, savedAvatar)) {
+                Toast.makeText(this, "Profil kayda geçemedi.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Toast.makeText(this, "Kullanıcı profili kaydedildi.", Toast.LENGTH_SHORT).show();
+            showCharacters();
+        });
+    }
+
+    /** One-tap copies a preset into the user's own editable character list. */
+    private void addPresetGrid() {
+        int rows = (PresetCharacters.PRESETS.length + 1) / 2;
+        for (int i = 0; i < rows; i++) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            for (int j = 0; j < 2; j++) {
+                int index = i * 2 + j;
+                LinearLayout.LayoutParams cell = new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                if (j == 1) cell.setMargins(dp(6), 0, 0, 0);
+                if (index < PresetCharacters.PRESETS.length) {
+                    row.addView(presetCell(PresetCharacters.PRESETS[index]), cell);
+                } else {
+                    row.addView(new View(this), cell);
+                }
+            }
+            LinearLayout.LayoutParams rowParams = fullWidth();
+            rowParams.setMargins(0, 0, 0, dp(8));
+            content.addView(row, rowParams);
+        }
+    }
+
+    /** Vertical preset card mirroring the character grid cells, with a copy affordance. */
+    private LinearLayout presetCell(PresetCharacters.Preset preset) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER);
+        card.setPadding(dp(10), dp(13), dp(10), dp(13));
+        card.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 20));
+        View avatar = Avatar.forName(this, preset.name, 52);
+        card.addView(avatar, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        TextView name = label(preset.name, 15, Design.text());
+        name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        name.setGravity(Gravity.CENTER);
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setPadding(0, dp(8), 0, 0);
+        card.addView(name);
+        TextView desc = label(brief(preset.description).replace("\n", " "), 12, Design.muted());
+        desc.setGravity(Gravity.CENTER);
+        desc.setMaxLines(2);
+        desc.setEllipsize(TextUtils.TruncateAt.END);
+        desc.setPadding(0, dp(3), 0, 0);
+        card.addView(desc);
+        TextView copyHint = label("＋ Ekle", 13, Design.accent());
+        copyHint.setGravity(Gravity.CENTER);
+        copyHint.setPadding(0, dp(7), 0, 0);
+        card.addView(copyHint);
+        card.setOnClickListener(v -> confirm(preset.name + " karakter listene kopyalansın mı? Kopyalandıktan sonra tamamen düzenlenebilir.", () -> {
+            CharacterProfile copied = new CharacterProfile();
+            copied.name = preset.name;
+            copied.description = preset.description;
+            copied.personality = preset.personality;
+            copied.instructions = preset.instructions;
+            copied.examples = preset.examples;
+            if (!store.saveCharacter(copied)) {
+                Toast.makeText(this, "Karakter kaydedilemedi: verisi okunamıyor.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            Toast.makeText(this, preset.name + " eklendi.", Toast.LENGTH_SHORT).show();
+            showCharacters();
+        }));
+        return card;
     }
 
     private void showCharacterEditor(CharacterProfile existing) {
@@ -206,6 +368,10 @@ public class MainActivity extends Activity {
         visibleChatId = null;
         backAction = onBack != null ? onBack : this::showCharacters;
         final boolean editing = existing != null;
+        editorCharacter = existing;
+        editorAfterSave = afterSave;
+        editorOnBack = onBack;
+        pickedAvatarPath = editing && existing.avatarPath != null ? existing.avatarPath : "";
         setPage(editing ? "Karakteri düzenle" : "Yeni karakter", "Bilgiler bu telefonda saklanır", "characters");
         EditText name = field("Karakter adı", editing ? existing.name : "");
         name.setSingleLine(true);
@@ -213,6 +379,19 @@ public class MainActivity extends Activity {
         EditText personality = field("Kişilik ve konuşma tarzı", editing ? existing.personality : "", 3);
         EditText instructions = field("Karakter talimatları", editing ? existing.instructions : "", 4);
         EditText examples = field("Örnek diyalog", editing ? existing.examples : "", 3);
+
+        addSection("Profil fotoğrafı", null, null);
+        addBody("Fotoğraf gizli depoya küçük kopya olarak yazılır; seçtiğin kaynak dosya silinmez. Sohbetlerde karakterin avatarı bu foto olur.");
+        addPrimary("Fotoğraf seç", v -> pickAvatar(false));
+        if (!pickedAvatarPath.isEmpty()) {
+            addDangerButton("Fotoğrafı kaldır", v -> {
+                deleteAvatarFile(pickedAvatarPath);
+                pickedAvatarPath = "";
+                CharacterProfile rebuilt = editing ? store.character(existing.id) : null;
+                showCharacterEditor(rebuilt, editorAfterSave, editorOnBack);
+            });
+        }
+
         addPrimary("Kaydet", v -> {
             if (name.getText().toString().trim().isEmpty()) { name.setError("Bir ad gerekli"); return; }
             CharacterProfile character = editing ? existing : new CharacterProfile();
@@ -221,6 +400,9 @@ public class MainActivity extends Activity {
             character.personality = personality.getText().toString().trim();
             character.instructions = instructions.getText().toString().trim();
             character.examples = examples.getText().toString().trim();
+            character.avatarPath = pickedAvatarPath;
+            editorCharacter = null;
+            pickedAvatarPath = "";
             if (!store.saveCharacter(character)) {
                 Toast.makeText(this, "Değişiklik kaydedilemedi: karakter verisi okunamıyor.", Toast.LENGTH_LONG).show();
             }
@@ -376,6 +558,14 @@ public class MainActivity extends Activity {
         autoScroll = true;
         String subtitle = chatSubtitle(group);
         setPage(group.name, subtitle, "chat", true);
+        chatHeaderAvatarPath = "";
+        for (String id : group.characterIds) {
+            CharacterProfile face = store.character(id);
+            if (face != null && face.avatarPath != null && !face.avatarPath.isEmpty()) {
+                chatHeaderAvatarPath = face.avatarPath;
+                break;
+            }
+        }
         chatStatusView.setText(chatStatusText(group));
 
         // Long chats: opening must not render the whole transcript at once (Task 08).
@@ -1615,6 +1805,52 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Opens the system image picker for either the user persona or the open character editor. */
+    private void pickAvatar(boolean forPersona) {
+        avatarPickPersona = forPersona;
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        startActivityForResult(intent, AVATAR_PICK);
+    }
+
+    /** Copies the picked image into private storage as a ~512px PNG copy; null on failure. */
+    private File saveAvatarCopy(Uri picked) {
+        try {
+            android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            try (java.io.InputStream first = getContentResolver().openInputStream(picked)) {
+                Bitmap rawBounds = BitmapFactory.decodeStream(first, null, bounds);
+                if (rawBounds != null) rawBounds.recycle();
+            }
+            int sample = 1;
+            while (Math.max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 512) sample *= 2;
+            Bitmap bitmap;
+            try (java.io.InputStream second = getContentResolver().openInputStream(picked)) {
+                android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+                options.inSampleSize = sample;
+                bitmap = BitmapFactory.decodeStream(second, null, options);
+            }
+            if (bitmap == null) return null;
+            File directory = new File(getFilesDir(), "avatars");
+            if (!directory.exists() && !directory.mkdirs()) return null;
+            File output = new File(directory, "pic-" + java.util.UUID.randomUUID() + ".png");
+            try (java.io.FileOutputStream stream = new java.io.FileOutputStream(output)) {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+            }
+            bitmap.recycle();
+            return output;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Best-effort removal of a replaced/removed private avatar copy. */
+    private void deleteAvatarFile(String path) {
+        if (path == null || path.isEmpty()) return;
+        new File(path).delete();
+    }
+
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == BACKUP_EXPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
@@ -1639,6 +1875,28 @@ public class MainActivity extends Activity {
                     .putString("selected_model_name", selectedModelName).apply();
             showModels();
             loadSelectedModel();
+            return;
+        }
+        if (requestCode == AVATAR_PICK && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            File saved = saveAvatarCopy(data.getData());
+            if (saved == null) {
+                Toast.makeText(this, "Fotoğraf açılamadı; başka bir dosya deneyin.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (avatarPickPersona) {
+                String previous = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
+                        ? personaAvatarDraft : (store.persona() != null ? store.persona()[2] : "");
+                if (!previous.isEmpty()) deleteAvatarFile(previous);
+                personaAvatarDraft = saved.getPath();
+                showUserProfile();
+            } else {
+                if (!pickedAvatarPath.isEmpty()) deleteAvatarFile(pickedAvatarPath);
+                pickedAvatarPath = saved.getPath();
+                CharacterProfile rebuilt = editorCharacter != null ? store.character(editorCharacter.id) : null;
+                Runnable afterSave = editorAfterSave, onBack = editorOnBack;
+                showCharacterEditor(rebuilt, afterSave, onBack);
+            }
+            return;
         }
     }
 
@@ -1844,6 +2102,8 @@ public class MainActivity extends Activity {
         // resolves the Android-backed inputs (store lookups, prefs, engine context flag).
         String instructions = clip(prefs().getString("ai_instructions", DEFAULT_AI_INSTRUCTIONS), 600);
         String themeId = prefs().getString("ai_theme", DEFAULT_AI_THEME);
+        String[] persona = store.persona();
+        String[] personaText = persona != null ? new String[]{persona[0], persona[1]} : null;
         return RoleplayPrompt.build(
                 group.name,
                 speaker,
@@ -1856,7 +2116,8 @@ public class MainActivity extends Activity {
                 aiThemeName(themeId),
                 aiThemeInstruction(themeId),
                 historyDepth(),
-                historyCharBudget());
+                historyCharBudget(),
+                personaText);
     }
 
     private String aiThemeName(String id) {
@@ -2040,7 +2301,7 @@ public class MainActivity extends Activity {
                 header.addView(back, new LinearLayout.LayoutParams(dp(40), dp(40)));
             }
             // cAI-style leading avatar on the chat header; ids stay legible next to it.
-            TextView selfAvatar = Avatar.forName(this, title, 38);
+            View selfAvatar = Avatar.forIdentity(this, title, chatHeaderAvatarPath, 38);
             LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(dp(38), dp(38));
             avatarParams.setMargins(dp(9), 0, 0, 0);
             header.addView(selfAvatar, avatarParams);
@@ -2282,8 +2543,10 @@ public class MainActivity extends Activity {
         LinearLayout card = makeCard();
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        TextView avatar = Avatar.forName(this, face != null ? face.name : group.name, 44);
-        row.addView(avatar, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        View faceView = Avatar.forIdentity(this,
+                face != null ? face.name : group.name,
+                face != null && face.avatarPath != null ? face.avatarPath : "", 44);
+        row.addView(faceView, new LinearLayout.LayoutParams(dp(44), dp(44)));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(dp(12), 0, 0, 0);
@@ -2334,8 +2597,8 @@ public class MainActivity extends Activity {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER);
         card.setPadding(dp(10), dp(13), dp(10), dp(13));
-        card.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 16));
-        TextView avatar = Avatar.forName(this, character.name, 52);
+        card.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 20));
+        View avatar = Avatar.forIdentity(this, character.name, character.avatarPath, 52);
         card.addView(avatar, new LinearLayout.LayoutParams(dp(52), dp(52)));
         TextView name = label(character.name, 15, Design.text());
         name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
@@ -2363,7 +2626,7 @@ public class MainActivity extends Activity {
         LinearLayout card = makeCard();
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        TextView avatar = Avatar.forName(this, character.name, 42);
+        View avatar = Avatar.forIdentity(this, character.name, character.avatarPath, 42);
         row.addView(avatar, new LinearLayout.LayoutParams(dp(42), dp(42)));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
@@ -2598,7 +2861,8 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(user ? Gravity.BOTTOM : Gravity.TOP);
         if (!user) {
-            TextView companion = Avatar.forName(this, speaker, 30);
+            String speakerAvatar = speechAvatarPath(speaker);
+            View companion = Avatar.forIdentity(this, speaker, speakerAvatar, 30);
             companion.setPadding(0, 0, 0, 0);
             LinearLayout.LayoutParams companionParams = new LinearLayout.LayoutParams(dp(30), dp(30));
             companionParams.setMargins(0, dp(3), 0, 0);
@@ -2610,6 +2874,15 @@ public class MainActivity extends Activity {
         row.addView(companionTime, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
         parent.addView(row, fullWidth());
         return view;
+    }
+
+    /** Local photo for a character, resolved by name (message balloons carry only labels). */
+    private String speechAvatarPath(String speaker) {
+        if (speaker == null) return "";
+        for (CharacterProfile character : store.characters()) {
+            if (character.name.equals(speaker)) return character.avatarPath == null ? "" : character.avatarPath;
+        }
+        return "";
     }
 
     private void showMessageActions(String speaker, String text) {
