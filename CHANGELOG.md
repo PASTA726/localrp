@@ -2,15 +2,20 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
-# Changelog
+## v0.14.0-alpha3 — 2026-11-03 (YENİ — İngilizce dil seçeneği)
 
-All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
+Kullanıcı isteği: İngilizce modeller RP'de daha iyi. Tek anahtar iki şeye birden geçer:
+
+- **Dil / Language bölümü** — AI ayarları ekranında **"Türkçe"** ve **"English"** düğmeleri. English seçilince uygulama arayüzü sözlük üzerinden İngilizce olur (başlıklar, gezinme, sohbet, düzenleyiciler, AI ayarları kartları) ve model promptu tamamen İngilizce yazılır: `General AI instruction:`, `Scene:`, `User identity:`, `Recent scene history:` + `User:` geçmiş etiketi, kural kuyruğu `Reply in English and stay within the scene.` AI tema adları ve talimatları da promptta İngilizce'dir. Değişim yapılırken model bağlamı sıfırlanır.
+- **Kapsam notu (düürst alfa)**: sözlük tam kapsamlı değildir; çevrilmemiş/dinamik dizgeler Türkçe kalır. Karakter metinleri, hazır karakterler ve kullanıcının kendi talimat Promptları her zaman kullanıcının yazdığı dilde kalır.
+- **Prompt biçimi korunur**: eski Türkçe prompt bayt bayt aynıdır — `RoleplayPrompt` yeni `english` bayrağı yalnızca ayrı bir aşırı yüklemede; altı kilitli biçim testi değişmedi, 2 yeni İngilizce mod testi eklendi.
+- versionCode 22 / 0.14.0-alpha3.
 
 ## v0.14.0-alpha2 — 2026-11-03 (DÜZELTME — "AI profili eklenmiyor")
 
 - **Fotoğraf seçimi artık düzenleyiciyi yeniden kurmuyor** (cihaz bildirimi):
   - Belirti: fotoğraf seçildikten sonra düzenleyici kapatılıp yeniden açılıyordu; yeni karakter akışında bu, yazılan tüm alanları ve seçilen fotoğrafı birlikte kaybediyordu — "profil eklenmiyor" bildiriminin kaynağı.
-  - Düzeltme: karakter düzenleyicisinde seçim, "Fotoğraf: ✓ hazır" durum satırını yerinde günceller; persona düzenleyicide önizleme paneli yerinde değişir. Yazılan metinler korunur; **Kaydet** düğmesine basıldığında foto yolu karaktere / kullanıcı profil kaydedilir.
+  - Düzeltme: karakter düzenleyicisinde seçim, "Fotoğraf: ✓ hazır" durum satırını yerinde günceller; persona düzenleyicide önizleme paneli yerinde değişir. Yazılan metinler korunur; **Kaydet** düğmesine basıldığında foto yolu karaktere / kullanıcı profiline kaydedilir.
 - versionCode 21 / 0.14.0-alpha2.
 
 ## v0.14.0-alpha1 — 2026-11-03 (ALFA — kullanıcı personası, fotoğraflar, hazır karakterler)

@@ -110,6 +110,47 @@ public class RoleplayPromptTest {
     }
 
     @Test
+    public void englishMode_assemblesEnglishPromptWithUserReplyRule() {
+        Map<String, CharacterProfile> registry = new HashMap<>();
+        registry.put("spk", speaker("Elif"));
+        String prompt = RoleplayPrompt.build(
+                "Pirate ship", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), false, false, "Be brief.", "Dark fantasy", "Gothic mood.", 8, 2600,
+                new String[]{"Evren", "A quiet gardener."}, true);
+
+        assertTrue(prompt.contains("General AI instruction: Be brief."));
+        assertTrue(prompt.contains("Scene tone (Dark fantasy): Gothic mood."));
+        assertTrue(prompt.contains("Scene: Pirate ship"));
+        assertTrue(prompt.contains("This turn, reply speaking ONLY as Elif."));
+        assertTrue(prompt.contains("Character description: Denizci kaptan"));
+        assertTrue(prompt.contains("User identity: Evren — A quiet gardener."));
+        assertTrue(prompt.contains("\nRecent scene history:\n"));
+        assertTrue(prompt.contains("User: merhaba kaptan"));
+        // The last stored message is the character's own reply, so no last-user line.
+        assertFalse(prompt.contains("The user's last message:"));
+        assertTrue(prompt.contains("Rules: Write one in-character reply ONLY as Elif."));
+        assertTrue(prompt.contains("Reply in English and stay within the scene."));
+        // English mode must not leak the Turkish scaffolding.
+        assertFalse(prompt.contains("Kurallar"));
+        assertFalse(prompt.contains("Kullanıcı"));
+    }
+
+    @Test
+    public void englishMode_continuingTurnReinjectsIdentityInEnglish() {
+        Map<String, CharacterProfile> registry = new HashMap<>();
+        registry.put("spk", speaker("Elif"));
+        String prompt = RoleplayPrompt.build(
+                "Pirate ship", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), true, false, "", "", "", 8, 2600, null, true);
+
+        assertTrue(prompt.contains("Context continues; keep the scene"));
+        assertTrue(prompt.contains("Role identity: Elif — Denizci kaptan"));
+        assertFalse(prompt.contains("Character description:"));
+        assertFalse(prompt.contains("Rol kimliği"));
+        assertTrue(prompt.contains("Reply in English and stay within the scene."));
+    }
+
+    @Test
     public void historyLabelsUserAsKullanıcıNotSen() {
         // History lines are only assembled for FRESH scenes (continuing=false); on a
         // continuing scene the model keeps its own context and sees only the last user message.
