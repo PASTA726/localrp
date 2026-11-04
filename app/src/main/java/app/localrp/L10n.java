@@ -250,7 +250,12 @@ public final class L10n {
                 "Uncensored (abliterated) models are not suitable for minors. Enter your age to continue.");
         EN.put("Yaşın", "Your age");
         EN.put("Onayla", "Confirm");
-        EN.put("Sansürsüz bölümü açıldı.", "Uncensored section unlocked.");
+        EN.put("Sansürsüz bölümü bu oturum için açıldı.", "Uncensored section unlocked for this session.");
+        EN.put("Onaylamak için kelimeyi yaz: ", "Type the word to confirm: ");
+        EN.put("onaylıyorum", "I confirm");
+        EN.put("Onay kelimesini tam yazmalısın.", "You must type the word exactly.");
+        EN.put("Açılma bu oturum için geçerlidir; uygulama kapandığında yeniden sorulur.",
+                "The unlock lasts for this session only; you will be asked again when the app restarts.");
         EN.put("Bu bölüm yalnızca 18 yaş üstüne açık.", "This section is limited to ages 18 and up.");
 
         // ---- v0.16: single Settings hub + prompt sources + custom theme
@@ -347,6 +352,8 @@ public final class L10n {
                 "WARNING: these models have no safety filter and no content protection for minors.");
         EN.put("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir. Devam için yaşını gir ve uyarıyı onayla.",
                 "Processing runs fully on this device, offline; you take responsibility. Enter your age and acknowledge the warning.");
+        EN.put("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir.",
+                "Processing runs fully on this device, offline; you take responsibility.");
         EN.put("Uyarıyı okudum; 18 yaş üstü olduğumu onaylıyorum.", "I have read the warning and confirm I am 18 or older.");
         EN.put("Önce uyarıyı onaylaman gerekli.", "You must acknowledge the warning first.");
 
