@@ -2,6 +2,14 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.17.0-alpha1 — 2026-11-04 (Minimal UI yenilemesi · NSFW kapısı sertleştirmesi)
+
+- **Minimal UI yenilemesi (geniş)**: tasarım dili sadeleştirildi — kartlar çerçevesiz, yumuşak 22–24 yarıçaplı düz yüzeylere geçti; bölüm başlıkları küçük, harf aralıklı, soluk (sessiz hiyerarşi); alt gezinme metin-bazlı hap bar'a döndü (seçili sekme aksan füme vurgulu); ayar satırları dolgusuz buton yerine sakin liste satırı; bilgi kartlarındaki büyük harf rozet kalktı; hero, tile, karakter hücreleri ve sohbet composer'ı aynı yumuşak dile geçti; sayfa başlıkları daha ferah tipografiyle (26–22 sp) eşleşti; sohbette ayrı çizgi kaldırıldı.
+- **Sansürsüz (18+) kapısı sertleştirdi**: artık dört eşik var: uyarı kutucuku, sayısal yaş girişi, ekranda görülen onay kelimesinin **birebir yazılması** ("onaylıyorum" / EN "I confirm") ve **10 saniyelik geri sayım** (Onayla düğmesi 10'dan geriye sayılarak, dolmadan etkinleşmez). Onaylamayan hallerde diyalog açık kalır ve dürüst geri bildirim gösterilir.
+- **Onay artık kalıcı değil**: `uncensored_ack` pref'i kullanımdan kaldırıldı; açılma yalnızca mevcut uygulama oturumunda geçerli. Uygulama her kapanıp açıldığında kapı yeniden sorulur — bir kere geçmek yetmez.
+- **Görsel modeller**: bu sürüme dahil edilmedi; sohbet içinde görüntü üretimi (yerel stable-diffusion hattı) ayrı bir planlama konusu olarak sonraki alfa sürümlerine bırakıldı.
+- versionCode 26 / 0.17.0-alpha1.
+
 ## v0.16.0-alpha2 — 2026-11-04 (İngilizce kapsamı genişletildi — English mode arayüzü eksiksiz)
 
 - **İngilizce kapsamı genişletildi**: sözlük ~245 anahtardan ~400 anahtara taşındı. English modunda artık tüm ana ekranlar İngilizceye dönüyor: karakter listesi ve düzenleyici, grup düzenleyici, sohbet listesi, sohbet üst başlığı, model yönetimi, katalog kartları ve hız testi, yedek/geri yükleme diyaloğu ve bildirimleri, konuşmacı seçici, 18+ kapısı, ana sayfa hero başlığı ("Hikâyen\nburada başlıyor." → "Your story starts here.") ve "KENDİ DÜNYANI KUR" köşe imlesi dâhil.

@@ -149,6 +149,8 @@ public class MainActivity extends Activity {
     private EditText personaNameField;          // persona editor name field (preview label uses live text)
     private final SimpleDateFormat clock = new SimpleDateFormat("HH:mm", Locale.getDefault());
     private int catalogFilter;
+    /** Per-session only uncensored unlock (v0.17): cleared on every process start. */
+    private boolean uncensoredSessionUnlock;
     private TextView downloadProgressView;
     private long downloadBytes, downloadTotal = -1L;
     private final java.util.Map<String, Integer> chainCounts = new java.util.HashMap<>();
@@ -697,9 +699,9 @@ public class MainActivity extends Activity {
         tools.setOrientation(LinearLayout.HORIZONTAL);
         tools.setGravity(Gravity.CENTER_VERTICAL);
 
-        chatSpeakerView = label("", 13, Design.accent());
-        chatSpeakerView.setPadding(dp(14), dp(8), dp(14), dp(8));
-        chatSpeakerView.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 30));
+        chatSpeakerView = label("", 13, Design.text());
+        chatSpeakerView.setPadding(dp(14), dp(9), dp(14), dp(9));
+        chatSpeakerView.setBackground(rounded(Design.cardBg(), Design.cardBg(), 24));
         chatSpeakerView.setOnClickListener(v -> showSpeakerPicker(group));
         tools.addView(chatSpeakerView, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
@@ -709,7 +711,7 @@ public class MainActivity extends Activity {
         menu.setMinWidth(dp(44));
         menu.setMinHeight(dp(38));
         menu.setPadding(dp(12), 0, dp(12), 0);
-        menu.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 30));
+        menu.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
         menu.setOnClickListener(v -> showChatMenu(group));
         LinearLayout.LayoutParams menuParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -729,7 +731,7 @@ public class MainActivity extends Activity {
         chatContinueButton = button("");
         chatContinueButton.setTextSize(14);
         chatContinueButton.setTextColor(Design.accent());
-        chatContinueButton.setBackground(rounded(Design.cardBg(), Design.accentStroke(), 30));
+        chatContinueButton.setBackground(rounded(Design.cardBg(), Design.cardBg(), 24));
         chatContinueButton.setMinHeight(dp(44));
         chatContinueButton.setOnClickListener(v -> continueOrRetry(group));
         LinearLayout.LayoutParams continueParams = fullWidth();
@@ -747,7 +749,6 @@ public class MainActivity extends Activity {
         input.setHintTextColor(Design.muted());
         GradientDrawable inputBackground = new GradientDrawable();
         inputBackground.setColor(Design.cardBg());
-        inputBackground.setStroke(dp(1), Design.cardStroke());
         inputBackground.setCornerRadius(dp(26));
         input.setBackground(inputBackground);
         chatInput = input;
@@ -1424,14 +1425,16 @@ public class MainActivity extends Activity {
     }
 
     private boolean uncensoredUnlocked() {
-        return prefs().getBoolean("uncensored_ack", false);
+        // v0.17: the acknowledgement deliberately does not persist — every app start
+        // re-locks the uncensored section, so the ceremony cannot be a one-time thing.
+        return uncensoredSessionUnlock;
     }
 
     /**
-     * Age gate for the uncensored model catalog (18+): a mandatory warning the user
-     * must explicitly acknowledge (checkbox), numeric age entry, and honest refusal
-     * below the threshold — the dialog stays open on any invalid state, so the warning
-     * cannot be skipped.
+     * Age gate for the uncensored model catalog, hardened in v0.17: four checkpoints —
+     * a mandatory warning checkbox, a numeric age (18+), an exact typed confirmation
+     * phrase, and a 10-second cooldown before the confirm button activates. The unlock
+     * lasts only for this session; the dialog stays open on any invalid state.
      */
     private void showUncensoredGate() {
         LinearLayout box = new LinearLayout(this);
@@ -1440,7 +1443,8 @@ public class MainActivity extends Activity {
         TextView warning = label(L10n.s("UYARI: Bu modellerde güvenlik filtresi yoktur; 18 yaş altına uygun içerik koruması içermez."), 13, Design.danger());
         warning.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         box.addView(warning);
-        TextView notice = label(L10n.s("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir. Devam için yaşını gir ve uyarıyı onayla."), 14, Design.text());
+        TextView notice = label(L10n.s("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir."),
+                14, Design.text());
         notice.setPadding(0, dp(10), 0, 0);
         box.addView(notice);
         final CheckBox acknowledged = new CheckBox(this);
@@ -1454,32 +1458,70 @@ public class MainActivity extends Activity {
         ageInput.setTextSize(15);
         ageInput.setTextColor(Design.text());
         box.addView(ageInput);
+        final String phrase = L10n.s("onaylıyorum");
+        TextView phraseHint = label(L10n.s("Onaylamak için kelimeyi yaz: ") + phrase, 13, Design.text());
+        phraseHint.setPadding(0, dp(12), 0, dp(4));
+        box.addView(phraseHint);
+        final EditText phraseInput = new EditText(this);
+        phraseInput.setHint(phrase);
+        phraseInput.setTextSize(15);
+        phraseInput.setTextColor(Design.text());
+        phraseInput.setHintTextColor(Design.muted());
+        box.addView(phraseInput);
+        TextView sessionNote = label(L10n.s("Açılma bu oturum için geçerlidir; uygulama kapandığında yeniden sorulur."), 12, Design.muted());
+        sessionNote.setPadding(0, dp(10), 0, 0);
+        box.addView(sessionNote);
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(L10n.s("Sansürsüz modeller (18+)"))
                 .setView(box)
                 .setPositiveButton(L10n.s("Onayla"), null)
                 .setNegativeButton(L10n.s("Vazgeç"), null)
                 .create();
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            if (!acknowledged.isChecked()) {
-                Toast.makeText(this, L10n.s("Önce uyarıyı onaylaman gerekli."), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            int age = -1;
-            try {
-                String value = ageInput.getText().toString().trim();
-                if (!value.isEmpty()) age = Integer.parseInt(value);
-            } catch (NumberFormatException ignored) {}
-            if (age >= 18) {
-                prefs().edit().putBoolean("uncensored_ack", true).apply();
+        final android.os.Handler countdown = new android.os.Handler();
+        dialog.setOnShowListener(d -> {
+            final Button confirm = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            final int[] secondsLeft = {10};
+            confirm.setEnabled(false);
+            confirm.setText(L10n.s("Onayla") + " (" + secondsLeft[0] + ")");
+            final Runnable tick = new Runnable() {
+                @Override public void run() {
+                    secondsLeft[0]--;
+                    if (secondsLeft[0] <= 0) {
+                        confirm.setEnabled(true);
+                        confirm.setText(L10n.s("Onayla"));
+                    } else {
+                        confirm.setText(L10n.s("Onayla") + " (" + secondsLeft[0] + ")");
+                        countdown.postDelayed(this, 1000);
+                    }
+                }
+            };
+            countdown.postDelayed(tick, 1000);
+            confirm.setOnClickListener(v -> {
+                if (!acknowledged.isChecked()) {
+                    Toast.makeText(this, L10n.s("Önce uyarıyı onaylaman gerekli."), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                int age = -1;
+                try {
+                    String value = ageInput.getText().toString().trim();
+                    if (!value.isEmpty()) age = Integer.parseInt(value);
+                } catch (NumberFormatException ignored) {}
+                if (age < 18) {
+                    Toast.makeText(this, L10n.s("Bu bölüm yalnızca 18 yaş üstüne açık."), Toast.LENGTH_LONG).show();
+                    return;
+                }
+                if (!phraseInput.getText().toString().trim().equalsIgnoreCase(phrase)) {
+                    Toast.makeText(this, L10n.s("Onay kelimesini tam yazmalısın."), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                uncensoredSessionUnlock = true;
                 catalogFilter = 2;
                 dialog.dismiss();
                 showModelCatalog();
-                Toast.makeText(this, L10n.s("Sansürsüz bölümü açıldı."), Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, L10n.s("Bu bölüm yalnızca 18 yaş üstüne açık."), Toast.LENGTH_LONG).show();
-            }
-        }));
+                Toast.makeText(this, L10n.s("Sansürsüz bölümü bu oturum için açıldı."), Toast.LENGTH_SHORT).show();
+            });
+        });
+        dialog.setOnDismissListener(d -> countdown.removeCallbacksAndMessages(null));
         dialog.show();
         ageInput.requestFocus();
     }
@@ -2579,10 +2621,10 @@ public class MainActivity extends Activity {
         if (chat) {
             LinearLayout header = new LinearLayout(this);
             header.setGravity(Gravity.CENTER_VERTICAL);
-            header.setPadding(dp(12), dp(8), dp(16), dp(8));
+            header.setPadding(dp(14), dp(10), dp(18), dp(10));
             if (backAction != null) {
                 TextView back = label("‹", 22, Design.text());
-                back.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 22));
+                back.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
                 back.setGravity(Gravity.CENTER);
                 back.setOnClickListener(v -> backAction.run());
                 header.addView(back, new LinearLayout.LayoutParams(dp(40), dp(40)));
@@ -2611,18 +2653,18 @@ public class MainActivity extends Activity {
             LinearLayout header = new LinearLayout(this);
             header.setOrientation(LinearLayout.HORIZONTAL);
             header.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-            header.setPadding(dp(18), dp(14), dp(18), dp(6));
+            header.setPadding(dp(22), dp(18), dp(22), dp(10));
             if (backAction != null) {
                 TextView back = label("‹", 22, Design.text());
-                back.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 22));
+                back.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
                 back.setGravity(Gravity.CENTER);
                 back.setOnClickListener(v -> backAction.run());
                 header.addView(back, new LinearLayout.LayoutParams(dp(40), dp(40)));
                 LinearLayout headerTexts = new LinearLayout(this);
                 headerTexts.setOrientation(LinearLayout.VERTICAL);
                 headerTexts.setPadding(dp(14), 0, dp(4), 0);
-                TextView heading = label(title, 25, Design.text());
-                heading.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+                TextView heading = label(title, 22, Design.text());
+                heading.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
                 heading.setSingleLine(true);
                 heading.setEllipsize(TextUtils.TruncateAt.END);
                 headerTexts.addView(heading);
@@ -2632,11 +2674,12 @@ public class MainActivity extends Activity {
                 pageSubtitleView = sub;
                 header.addView(headerTexts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
             } else {
-                TextView heading = label(title, 27, Design.text());
-                heading.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+                TextView heading = label(title, 26, Design.text());
+                heading.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
+                heading.setLetterSpacing(.01f);
                 header.addView(heading);
                 TextView sub = label(subtitle, 13, Design.muted());
-                sub.setPadding(0, dp(6), 0, 0);
+                sub.setPadding(0, dp(4), 0, 0);
                 header.addView(sub);
                 pageSubtitleView = sub;
             }
@@ -2660,14 +2703,10 @@ public class MainActivity extends Activity {
             });
             content = new LinearLayout(this);
             content.setOrientation(LinearLayout.VERTICAL);
-            content.setPadding(dp(20), dp(4), dp(20), dp(12));
+            content.setPadding(dp(20), dp(6), dp(20), dp(12));
             chatScroll.addView(content);
             body.addView(chatScroll, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-
-            View divider = new View(this);
-            divider.setBackgroundColor(Design.divider());
-            body.addView(divider, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)));
 
             chatComposer = new LinearLayout(this);
             chatComposer.setOrientation(LinearLayout.VERTICAL);
@@ -2689,21 +2728,23 @@ public class MainActivity extends Activity {
             scroll.setFillViewport(true);
             content = new LinearLayout(this);
             content.setOrientation(LinearLayout.VERTICAL);
-            content.setPadding(dp(20), dp(6), dp(20), dp(24));
+            // Extra bottom padding so the last card clears the floating nav bar.
+            content.setPadding(dp(22), dp(8), dp(22), dp(104));
             scroll.addView(content);
             pageRoot.addView(scroll, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         }
 
         if (!chat) {
-            // Floating bottom navigation (modern chat-app pattern): a detached,
-            // rounded bar instead of a full-width strip.
+            // Floating bottom navigation: a detached rounded bar with quiet text-only
+            // items — the selected label takes the accent, everyone else stays muted.
             FrameLayout navWrap = new FrameLayout(this);
-            navWrap.setPadding(dp(14), dp(4), dp(14), dp(10));
+            navWrap.setPadding(dp(14), dp(4), dp(14), dp(12));
             LinearLayout nav = new LinearLayout(this);
             nav.setOrientation(LinearLayout.HORIZONTAL);
-            nav.setPadding(dp(6), dp(7), dp(6), dp(7));
-            nav.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 28));
+            nav.setPadding(dp(10), dp(9), dp(10), dp(9));
+            nav.setBackground(rounded(Design.cardBg(), Design.cardBg(), 26));
+            nav.setElevation(dp(3));
             addNavItem(nav, "⌂", L10n.s("Ana sayfa"), "home".equals(tab), this::showHome);
             addNavItem(nav, "◉", L10n.s("Karakter"), "characters".equals(tab), this::showCharacters);
             addNavItem(nav, "▤", L10n.s("Sohbetler"), "chats".equals(tab), this::showChats);
@@ -2717,45 +2758,39 @@ public class MainActivity extends Activity {
     }
 
     private void addNavItem(LinearLayout nav, String icon, String title, boolean selected, Runnable action) {
-        LinearLayout item = new LinearLayout(this);
+        // Text-only item: the icon parameter is kept for callers but intentionally unused.
+        TextView item = label(title, 13, selected ? Design.accent() : Design.muted());
         item.setGravity(Gravity.CENTER);
-        item.setOrientation(LinearLayout.VERTICAL);
-        int horizontal = dp(6), vertical = dp(6);
-        item.setPadding(horizontal, vertical, horizontal, vertical);
-        TextView glyph = label(icon, 18, selected ? Design.accent() : Design.muted());
-        glyph.setGravity(Gravity.CENTER);
-        TextView name = label(title, 10, selected ? Design.accent() : Design.muted());
-        name.setGravity(Gravity.CENTER);
-        name.setPadding(0, dp(2), 0, 0);
-        item.addView(glyph);
-        item.addView(name);
+        item.setTypeface(android.graphics.Typeface.SANS_SERIF, selected
+                ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
         if (selected) {
-            // Small dot indicator instead of a highlighted box: quieter, floating-bar idiom.
-            View dot = new View(this);
-            dot.setBackground(rounded(Design.accent(), Design.accent(), 3));
-            LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(5), dp(5));
-            dotParams.setMargins(0, dp(3), 0, 0);
-            item.addView(dot, dotParams);
+            LinearLayout.LayoutParams highlight = new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.35f);
+            item.setBackground(rounded(Design.accentSoft(), Design.accentSoft(), 22));
+            item.setPadding(dp(4), dp(9), dp(4), dp(9));
+            item.setOnClickListener(v -> action.run());
+            nav.addView(item, highlight);
+        } else {
+            item.setPadding(dp(4), dp(9), dp(4), dp(9));
+            item.setOnClickListener(v -> action.run());
+            nav.addView(item, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         }
-        item.setOnClickListener(v -> action.run());
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
-        params.setMargins(dp(2), 0, dp(2), 0);
-        nav.addView(item, params);
     }
 
     private void addHero() {
         LinearLayout hero = new LinearLayout(this);
         hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setPadding(dp(18), dp(17), dp(18), dp(17));
+        hero.setPadding(dp(20), dp(19), dp(20), dp(19));
         GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{Design.heroA(), Design.heroB()});
-        bg.setCornerRadius(dp(20));
+        bg.setCornerRadius(dp(24));
         hero.setBackground(bg);
-        TextView eyebrow = label("KENDİ DÜNYANI KUR", 11, Design.heroSub());
-        eyebrow.setLetterSpacing(.08f);
+        TextView eyebrow = label("KENDİ DÜNYANI KUR", 10, Design.heroSub());
+        eyebrow.setLetterSpacing(.12f);
+        eyebrow.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
         hero.addView(eyebrow);
-        TextView title = label("Hikâyen\nburada başlıyor.", 25, Design.heroText());
-        title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        TextView title = label("Hikâyen\nburada başlıyor.", 26, Design.heroText());
+        title.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
         title.setPadding(0, dp(9), 0, dp(8));
         hero.addView(title);
         TextView detail = label(store.characters().size() + " karakter  ·  " + store.groups().size() + " sohbet", 14, Design.heroSub());
@@ -2766,10 +2801,12 @@ public class MainActivity extends Activity {
     }
 
     private void addSection(String title, String actionText, Runnable action) {
+        // Quiet section headers: small, letterspaced, muted — content breathes around them.
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        TextView heading = label(title, 18, Design.text());
-        heading.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        TextView heading = label(title, 13, Design.muted());
+        heading.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
+        heading.setLetterSpacing(.06f);
         row.addView(heading, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         if (actionText != null && action != null) {
             TextView link = label(actionText + "  ›", 13, Design.accent());
@@ -2777,7 +2814,7 @@ public class MainActivity extends Activity {
             row.addView(link);
         }
         LinearLayout.LayoutParams p = fullWidth();
-        p.setMargins(0, dp(2), 0, dp(10));
+        p.setMargins(0, dp(16), 0, dp(8));
         content.addView(row, p);
     }
 
@@ -2785,28 +2822,26 @@ public class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setGravity(Gravity.CENTER);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(22), dp(20), dp(20));
-        box.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 18));
-        TextView symbol = label("✦", 27, Design.accent());
-        box.addView(symbol);
-        TextView heading = label(title, 17, Design.text());
-        heading.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        box.setPadding(dp(20), dp(26), dp(20), dp(24));
+        box.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
+        TextView heading = label(title, 16, Design.text());
+        heading.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
         heading.setGravity(Gravity.CENTER);
-        heading.setPadding(0, dp(5), 0, dp(4));
         box.addView(heading);
         TextView body = label(detail, 13, Design.muted());
         body.setGravity(Gravity.CENTER);
+        body.setPadding(0, dp(5), 0, 0);
         box.addView(body);
         if (actionText != null && action != null) {
             Button button = button(actionText);
             stylePrimary(button);
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(46));
-            p.setMargins(0, dp(13), 0, 0);
+            p.setMargins(0, dp(14), 0, 0);
             box.addView(button, p);
             button.setOnClickListener(action);
         }
         LinearLayout.LayoutParams p = fullWidth();
-        p.setMargins(0, 0, 0, dp(16));
+        p.setMargins(0, 0, 0, dp(14));
         content.addView(box, p);
         return box;
     }
@@ -2882,8 +2917,8 @@ public class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER);
-        card.setPadding(dp(10), dp(13), dp(10), dp(13));
-        card.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 20));
+        card.setPadding(dp(10), dp(14), dp(10), dp(14));
+        card.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
         View avatar = Avatar.forIdentity(this, character.name, character.avatarPath, 52);
         card.addView(avatar, new LinearLayout.LayoutParams(dp(52), dp(52)));
         TextView name = label(character.name, 15, Design.text());
@@ -2953,15 +2988,18 @@ public class MainActivity extends Activity {
     }
 
     private TextView addInfoCard(String title, String detail, String tag) {
+        // Minimal refresh: the uppercase tag badge is gone — title leads, muted body follows.
         LinearLayout card = makeCard();
-        TextView badge = label(tag.toUpperCase(), 10, Design.accent());
-        badge.setLetterSpacing(.07f);
-        card.addView(badge);
-        TextView heading = label(title, 16, Design.text());
-        heading.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        heading.setPadding(0, dp(6), 0, dp(4));
+        TextView heading = label(title, 15, Design.text());
+        heading.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
         card.addView(heading);
+        if (tag != null) {
+            TextView side = label(tag, 12, Design.accent());
+            side.setPadding(0, dp(3), 0, 0);
+            card.addView(side);
+        }
         TextView body = label(detail, 13, Design.muted());
+        body.setPadding(0, dp(5), 0, 0);
         card.addView(body);
         addCardToPage(card);
         return body;
@@ -2981,12 +3019,12 @@ public class MainActivity extends Activity {
             LinearLayout tile = new LinearLayout(this);
             tile.setOrientation(LinearLayout.VERTICAL);
             tile.setPadding(dp(14), dp(13), dp(14), dp(13));
-            tile.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 18));
+            tile.setBackground(rounded(Design.cardBg(), Design.cardBg(), 20));
             tile.setOnClickListener(v -> actions[index].run());
             TextView icon = label(defs[i][0], 20, Design.accent());
             tile.addView(icon);
             TextView title = label(defs[i][1], 14, Design.text());
-            title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+            title.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
             title.setPadding(0, dp(6), 0, 0);
             tile.addView(title);
             TextView detail = label(defs[i][2], 11, Design.muted());
@@ -3013,26 +3051,31 @@ public class MainActivity extends Activity {
 
     private void addSecondary(String text, View.OnClickListener listener) {
         Button view = button(text);
-        view.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        view.setTextColor(Design.accent());
-        view.setBackground(rounded(Design.cardBg(), Design.accentStroke(), 26));
+        view.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.NORMAL);
+        view.setTextColor(Design.text());
+        view.setTextSize(15);
+        view.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        view.setPadding(dp(16), 0, dp(16), 0);
+        view.setMinHeight(dp(46));
+        view.setBackground(rounded(Design.cardBg(), Design.cardBg(), 18));
         view.setOnClickListener(listener);
         LinearLayout.LayoutParams p = fullWidth();
-        p.setMargins(0, 0, 0, dp(12));
+        p.setMargins(0, 0, 0, dp(8));
         content.addView(view, p);
     }
 
     private LinearLayout makeCard() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(15), dp(14), dp(15), dp(14));
-        card.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 20));
+        card.setPadding(dp(16), dp(15), dp(16), dp(15));
+        // Flat, calm surfaces: same fill on both sides of the drawable so no stroke is drawn.
+        card.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
         return card;
     }
 
     private void addCardToPage(View card) {
         LinearLayout.LayoutParams p = fullWidth();
-        p.setMargins(0, 0, 0, dp(9));
+        p.setMargins(0, 0, 0, dp(10));
         content.addView(card, p);
     }
 
@@ -3056,10 +3099,9 @@ public class MainActivity extends Activity {
         button.setAllCaps(false);
         button.setTextColor(Design.onAccent());
         button.setTextSize(15);
-        button.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        button.setLetterSpacing(.01f);
-        button.setMinHeight(dp(48));
-        button.setBackground(rounded(Design.accent(), Design.accent(), 26));
+        button.setLetterSpacing(0f);
+        button.setMinHeight(dp(50));
+        button.setBackground(rounded(Design.accent(), Design.accent(), 20));
     }
 
     private EditText field(String hint, String value) { return field(hint, value, 1); }
@@ -3075,8 +3117,7 @@ public class MainActivity extends Activity {
         input.setHintTextColor(Design.muted());
         GradientDrawable background = new GradientDrawable();
         background.setColor(Design.cardBg());
-        background.setStroke(dp(1), Design.cardStroke());
-        background.setCornerRadius(dp(18));
+        background.setCornerRadius(dp(16));
         input.setBackground(background);
         LinearLayout.LayoutParams p = fullWidth();
         p.setMargins(0, 0, 0, dp(12));
@@ -3086,17 +3127,18 @@ public class MainActivity extends Activity {
 
     private void addBody(String text) {
         TextView view = label(text, 13, Design.muted());
-        view.setPadding(0, dp(4), 0, dp(10));
+        view.setPadding(0, dp(4), 0, dp(12));
+        view.setLineSpacing(dp(1), 1f);
         content.addView(view);
     }
 
     private void addDangerButton(String text, View.OnClickListener listener) {
         Button view = button(text);
         view.setTextColor(Design.danger());
-        view.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 26));
+        view.setBackground(rounded(Design.dangerSoft(), Design.dangerSoft(), 18));
         view.setOnClickListener(listener);
         LinearLayout.LayoutParams p = fullWidth();
-        p.setMargins(0, 0, 0, dp(10));
+        p.setMargins(0, 0, 0, dp(8));
         content.addView(view, p);
     }
 
