@@ -2,6 +2,15 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.16.0-alpha2 — 2026-11-04 (İngilizce kapsamı genişletildi — English mode arayüzü eksiksiz)
+
+- **İngilizce kapsamı genişletildi**: sözlük ~245 anahtardan ~400 anahtara taşındı. English modunda artık tüm ana ekranlar İngilizceye dönüyor: karakter listesi ve düzenleyici, grup düzenleyici, sohbet listesi, sohbet üst başlığı, model yönetimi, katalog kartları ve hız testi, yedek/geri yükleme diyaloğu ve bildirimleri, konuşmacı seçici, 18+ kapısı, ana sayfa hero başlığı ("Hikâyen\nburada başlıyor." → "Your story starts here.") ve "KENDİ DÜNYANI KUR" köşe imlesi dâhil.
+- **Çağrı yerleri sarmalandı**: label/button/field/confirm merkezî çevirmeye ek olarak doğrudan setText / Toast / AlertDialog / modelStatus setMessage noktaları L10n.s ile sarıldı; bileşik dizgeler parça anahtarlarla (" yüklendi.", " · boş: " vb.) çevrilir.
+- **İndirme motoru durumları çevrildi**: ModelDownload.kt içindeki ilerleme/hata mesajları (dosya boyutu uyuşmazlığı, depolama yetersizliği, SHA-256 doğrulaması, https zorunluluğu, sunucu kodu) İngilizce sözlüğe eklendi.
+- **Katalog "why" açıklamaları**: CPU / GPU / sansürsüz kartlarındaki model öneri metinleri İngilizceye çevrildi; dil değişince kartlar güncel metni gösterir.
+- **Küçük düzeltme**: "Karakter yazıyor…" göstergesi artık ayrı "Bir karakter" anahtarı kullanır; alt gezinmedeki çoğul "Characters" etiketiyle çakışmaz.
+- versionCode 25 / 0.16.0-alpha2.
+
 ## v0.16.0-alpha1 — 2026-11-04 (YENİ — tek Ayarlar ekranı · prompt dil seçenekleri · özel AI teması · sıkılaştırılmış 18+ kapısı)
 
 Kullanıcı bildirimleri doğrultusunda büyük paket:
