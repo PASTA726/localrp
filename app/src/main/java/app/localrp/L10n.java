@@ -254,5 +254,104 @@ public final class L10n {
         EN.put("Onayla", "Confirm");
         EN.put("Sansürsüz bölümü açıldı.", "Uncensored section unlocked.");
         EN.put("Bu bölüm yalnızca 18 yaş üstüne açık.", "This section is limited to ages 18 and up.");
+
+        // ---- v0.16: single Settings hub + prompt sources + custom theme
+        EN.put("Ana sayfa", "Home");
+        EN.put("Karakter", "Characters");
+        EN.put("Sohbetler", "Chats");
+        EN.put("Ayarlar", "Settings");
+        EN.put("Dil · model · yanıt tarzı · görünüm · veri", "Language · model · reply style · look · data");
+        EN.put("Model", "Model");
+        EN.put("Modeli yükle ve yönet", "Load and manage model");
+        EN.put("Yanıt tarzı", "Reply style");
+        EN.put("Prompt dilleri ve talimatlar", "Prompt languages and instructions");
+        EN.put("Sahne hafızası ve zincir", "Scene memory and chaining");
+        EN.put("Model yönetimi", "Model management");
+        EN.put("GGUF seç, yükle ve belleği izle", "Pick a GGUF, load it, watch memory");
+        EN.put("Yanıt biçimi", "Reply shape");
+        EN.put("Modeli bellekten kaldır", "Unload model from memory");
+        EN.put("Seçili modeli yükle", "Load selected model");
+        EN.put("Henüz model seçilmedi", "No model picked yet");
+        EN.put("Model seçilmedi", "No model picked");
+        EN.put("Hazır · bu işlem için internet gerekmez", "Ready · no internet needed");
+        EN.put("Seçildi · yüklemeye hazır", "Picked · ready to load");
+        EN.put("Seçildi · yükleme başlatılıyor…", "Picked · loading…");
+        EN.put("Model önerileri", "Model suggestions");
+        EN.put("Öneri", "Suggestion");
+        EN.put("CPU önerileri", "CPU picks");
+        EN.put("GPU önerileri", "GPU picks");
+        EN.put("Katalog", "Catalog");
+        EN.put("Sahne atmosferi", "Scene tone");
+
+        // prompt sources
+        EN.put("Prompt dilleri", "Prompt languages");
+        EN.put("Genel talimat ve sistem promptu", "General instruction and system prompt");
+        EN.put("Genel AI talimatı", "General AI instruction");
+        EN.put("Her promptun \"Genel AI talimatı\" satırını seçer: varsayılanlar dile göre belirlenir; özel seçtiğinde kendi metnin kullanılır.",
+                "Chooses the \"General AI instruction:\" line of every prompt: defaults follow the language, or use your own text.");
+        EN.put("Varsayılan (Türkçe)", "Default (Turkish)");
+        EN.put("Varsayılan (English)", "Default (English)");
+        EN.put("Özel", "Custom");
+        EN.put("AI'nin genel yanıt yönergesi", "The AI's general reply instruction");
+        EN.put("Özel talimatı kaydet", "Save custom instruction");
+        EN.put("Özel talimat kaydedildi.", "Custom instruction saved.");
+        EN.put("Genel talimat tercihleri güncellendi.", "General instruction preference updated.");
+        EN.put("Motorun dünya görüşünü belirleyen çekirdek prompt; karakter tanımından önce gelir.",
+                "The core prompt shaping the engine's worldview; comes before the character definition.");
+        EN.put("Sistem promptu", "System prompt");
+        EN.put("Motor varsayılanı", "Engine default");
+        EN.put("Özel sistem promptunu kaydet", "Save custom system prompt");
+        EN.put("Sistem promptu kaydedildi; model bağlamı yeniden kurulacak.", "System prompt saved; the model context will be rebuilt.");
+        EN.put("Sistem promptu tercihi güncellendi.", "System prompt preference updated.");
+        EN.put("Motor kavrayışının çekirdeği", "The core of what the engine understands");
+        EN.put("Değişiklikler model bağlamını sıfırlar; ilk yanıt biraz daha uzun sürebilir.", "Changes reset the model context; the first reply may take longer.");
+
+        // advanced page
+        EN.put("Sahne hafızası", "Scene memory");
+        EN.put("Model bağlamının derinliği", "Depth of the model context");
+        EN.put("Bağlam davranışı", "Context behavior");
+        EN.put("Karakter zinciri", "Character chaining");
+        EN.put("Kendiliğinden devam sayısı", "Auto-continue count");
+        EN.put("Kapalı", "Off");
+        EN.put(" zincir", " chain");
+        EN.put(" mesaj", " messages");
+        EN.put(" metin", " of text");
+
+        // theme picker + custom theme
+        EN.put("AI sahne teması", "AI scene tone");
+        EN.put("Özel tema (kendin yaz)", "Custom tone (write your own)");
+        EN.put("Özel tema", "Custom tone");
+        EN.put("Tema adı", "Theme name");
+        EN.put("Sahne talimatı (prompta girer)", "Scene instruction (goes into the prompt)");
+        EN.put("Özel temayı kaydet ve uygula", "Save and apply custom tone");
+        EN.put("Bir tema adı gerekli.", "A theme name is required.");
+        EN.put(" teması seçildi.", " tone selected.");
+        EN.put(" teması uygulandı.", " tone applied.");
+        EN.put("Yanıt üretilirken tema değiştirilemez.", "Cannot change the tone while a reply is streaming.");
+        EN.put("Model yüklenirken tema değiştirilemez.", "Cannot change the tone while the model is loading.");
+        EN.put("Motor testi sürerken tema değiştirilemez.", "Cannot change the tone during the engine benchmark.");
+        EN.put("Buhar punk", "Steam punk");
+        EN.put("Pirinç, buhar ve mekanik ayrıntılar; endüstriyel devrim atmosferini abartmadan koru.",
+                "Brass, steam and mechanical detail; keep the industrial-revolution mood without excess.");
+        EN.put("Sürreal rüya", "Surreal dream");
+        EN.put("Mantık yerine çağrışım kullan: kayan nesneler, değişen mekânlar, rüya mantığı.",
+                "Use association over logic: floating objects, shifting places, dream logic.");
+        EN.put("Savaş ve entrika", "War and intrigue");
+        EN.put("Siyasal baskı, askerî zorunluluk ve güven bunalımı; kimseye sığınak sağlama.",
+                "Political pressure, military necessity and broken trust; give no one shelter.");
+        EN.put("Sıcak slice of life", "Warm slice of life");
+        EN.put("Gündelik küçük anlar, sıcak davranışlar; dram yerine samimiyet taşı.",
+                "Everyday small moments, warm behavior; carry intimacy over drama.");
+        EN.put("Uzun yol macerası", "Long-road adventure");
+        EN.put("Bir hedefe giden gezi sahnesi: yol arkadaşları, bulmacalar ve zorlayıcı seçimler.",
+                "A journey toward a goal: fellow travelers, puzzles and hard choices.");
+
+        // stricter 18+ gate
+        EN.put("UYARI: Bu modellerde güvenlik filtresi yoktur; 18 yaş altına uygun içerik koruması içermez.",
+                "WARNING: these models have no safety filter and no content protection for minors.");
+        EN.put("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir. Devam için yaşını gir ve uyarıyı onayla.",
+                "Processing runs fully on this device, offline; you take responsibility. Enter your age and acknowledge the warning.");
+        EN.put("Uyarıyı okudum; 18 yaş üstü olduğumu onaylıyorum.", "I have read the warning and confirm I am 18 or older.");
+        EN.put("Önce uyarıyı onaylaman gerekli.", "You must acknowledge the warning first.");
     }
 }
