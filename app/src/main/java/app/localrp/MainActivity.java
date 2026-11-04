@@ -58,6 +58,8 @@ public class MainActivity extends Activity {
     private static final String PREFS = "localrp";
     private static final String DEFAULT_AI_INSTRUCTIONS = "Her zaman sahnenin içinde kal. Seçili karakter olarak konuş ve kullanıcının rolünü üstlenme.";
     private static final String DEFAULT_AI_INSTRUCTIONS_EN = "Stay inside the scene at all times. Speak as the selected character and never take over the user's role.";
+    private static final String SYS_PROMPT_TR = "Sen bir rol yapma asistanısın. Daima sahnenin içinde kal; seçili karakter olarak konuş; kullanıcı ve diğer karakterler adına yazma; anlatı, aksiyon ve diyalogu tutarlı sürdür.";
+    private static final String SYS_PROMPT_EN = "You are a roleplay assistant. Stay inside the scene at all times; speak as the selected character; never write for the user or other characters; keep narration, action and dialogue consistent.";
     private static final String BUILTIN_ROLEPLAY_ID = "localrp_builtin_roleplay_character";
     private static final String DEFAULT_AI_THEME = "serbest";
     private static final String[][] AI_THEMES = {
@@ -75,7 +77,17 @@ public class MainActivity extends Activity {
             {"anime", "Anime / hafif roman",
                     "Canlı duygular, iç monolog ve komik zamanlama kullan; sahneyi abartısız sürdür."},
             {"korku", "Korku",
-                    "Gerilim, belirsizlik ve görünmeyen tehdit yarat; kan ve şiddeti ölçülü tut."}
+                    "Gerilim, belirsizlik ve görünmeyen tehdit yarat; kan ve şiddeti ölçülü tut."},
+            {"buhar", "Buhar punk",
+                    "Pirinç, buhar ve mekanik ayrıntılar; endüstriyel devrim atmosferini abartmadan koru."},
+            {"sur-real", "Sürreal rüya",
+                    "Mantık yerine çağrışım kullan: kayan nesneler, değişen mekânlar, rüya mantığı."},
+            {"savas", "Savaş ve entrika",
+                    "Siyasal baskı, askerî zorunluluk ve güven bunalımı; kimseye sığınak sağlama."},
+            {"razo", "Sıcak slice of life",
+                    "Gündelik küçük anlar, sıcak davranışlar; dram yerine samimiyet taşı."},
+            {"macera", "Uzun yol macerası",
+                    "Bir hedefe giden gezi sahnesi: yol arkadaşları, bulmacalar ve zorlayıcı seçimler."}
     };
     private static final int MAX_HISTORY_MESSAGES = 8;
     private static final int MAX_HISTORY_CHARS = 2600;
@@ -152,7 +164,19 @@ public class MainActivity extends Activity {
         Design.refresh(this);
         modelsBackAction = this::showHome;
         SharedPreferences prefs = prefs();
-        LocalAiRuntime.INSTANCE.setCustomSystemPrompt(prefs.getString("custom_sys_prompt", null));
+        // v0.16 migration: users who saved a custom system prompt before prompt sources
+        // existed keep their text by mapping it to the "custom" source explicitly.
+        if (prefs.getString("custom_sys_prompt", null) != null
+                && !prefs.getString("custom_sys_prompt", "").isEmpty()
+                && prefs.getString("sys_prompt_source", null) == null) {
+            prefs.edit().putString("sys_prompt_source", "custom").apply();
+        }
+        // Same for a previously saved general instruction: it was by definition custom.
+        if (!prefs.getString("ai_instructions", "").isEmpty()
+                && prefs.getString("general_prompt_source", null) == null) {
+            prefs.edit().putString("general_prompt_source", "custom").apply();
+        }
+        applySystemPrompt();
         LocalAiRuntime.INSTANCE.setManualContextBudget(prefs.getInt("context_budget_chars", -1));
         String modelUri = prefs.getString("selected_model_uri", null);
         if (modelUri != null) selectedModel = Uri.parse(modelUri);
@@ -1123,13 +1147,61 @@ public class MainActivity extends Activity {
 
     private void openModels(Runnable back) {
         visibleChatId = null;
-        modelsBackAction = back != null ? back : this::showHome;
+        modelsBackAction = back != null ? back : this::showSettings;
         showModels();
     }
 
+    /** Single Settings hub: language, model, prompt style, appearance, backup. */
+    private void showSettings() {
+        visibleChatId = null;
+        backAction = null;
+        setPage("Ayarlar", "Dil · model · yanıt tarzı · görünüm · veri", "settings");
+
+        addSection("Dil / Language", null, null);
+        addBody("Uygulama arayüzü ile AI rol yapma dilini birlikte değiştirir. English mode: better RP with English-tuned models.");
+        addSecondary("Türkçe" + (prefs().getString("app_language", "tr").equals("tr") ? "  ✓" : ""), v -> switchAppLanguage("tr"));
+        addSecondary("English (recommended: better RP)" + (prefs().getString("app_language", "tr").equals("en") ? "  ✓" : ""), v -> switchAppLanguage("en"));
+
+        addSection("Model", null, null);
+        addInfoCard(selectedModelName, modelStatus, "GGUF");
+        addSecondary("Modeli yükle ve yönet", v -> showModels());
+        addSecondary("Model önerilerini gör ve indir", v -> showModelCatalog());
+
+        addSection("Yanıt tarzı", null, null);
+        String themeId = prefs().getString("ai_theme", DEFAULT_AI_THEME);
+        addInfoCard(aiThemeName(themeId), aiThemeDescription(themeId), "Sahne atmosferi");
+        addSecondary("Prompt dilleri ve talimatlar", v -> showPromptStyle());
+        addSecondary("AI temasını değiştir", v -> showThemePicker());
+        addSecondary("Sahne hafızası ve zincir", v -> showAiAdvanced());
+
+        addSection("Görünüm", null, null);
+        addSecondary("GUI temasını değiştir", v -> showAppearance());
+
+        addSection("Veri yedeği", null, null);
+        addInfoCard("Yedekleme", "Karakterler, sohbetler ve geçmişler tek bir .json dosyasına yazılır. "
+                + "Dosya tamamen senin kontrolündedir: uygulama hiçbir veriyi otomatik göndermez.", "Yerel");
+        addPrimary("Yedeği dışa aktar", v -> {
+            String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/json");
+            intent.putExtra(Intent.EXTRA_TITLE, "localrp-yedek-" + stamp + ".json");
+            startActivityForResult(intent, BACKUP_EXPORT);
+        });
+        addSecondary("Yedeği geri yükle", v -> confirm(
+                "Geri yükleme aynı kimlikli karakter/sohbetleri günceller, yeni olanları ekler. " +
+                        "Geçmişler yalnızca yedekteki kopya daha uzunsa değiştirilir. Devam edilsin mi?",
+                () -> {
+                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    startActivityForResult(intent, BACKUP_IMPORT);
+                }));
+    }
+
     private void showModels() {
-        backAction = modelsBackAction != null ? modelsBackAction : this::showHome;
-        setPage("AI ayarları", "Modelini ve yanıt biçimini buradan yönet", "models");
+        backAction = modelsBackAction != null ? modelsBackAction : this::showSettings;
+        setPage("Model yönetimi", "GGUF seç, yükle ve belleği izle", "settings");
         addModelCard();
         boolean loading = modelLoading || LocalAiRuntime.INSTANCE.isModelLoading();
         boolean benchmarking = LocalAiRuntime.INSTANCE.isBenchmarking();
@@ -1178,26 +1250,9 @@ public class MainActivity extends Activity {
         }
         addBody("Model dosyası uygulamanın özel alanına kopyalanır; seçtiğin kaynak dosya silinmez.");
 
-        addSection("Model önerileri", "Katalog", () -> showModelCatalog());
-        addInfoCard(ModelCatalog.cpuRecommendation().name + "  ·  CPU önerisi",
-                "Bu cihazda metin RP için hız/kalite dengesi iyi. Katalogda GPU önerileri de var; indirme tamamen çevrimiçi bir kez yapılır, oynatma çevrimdışı sürer.",
-                "Öneri");
-        addSecondary("Model önerilerini gör ve indir", v -> showModelCatalog());
-
-        addSection("Gelişmiş AI", null, null);
-        addSecondary("Gelişmiş AI ayarları", v -> showAiAdvanced());
-        addBody("Sistem promptunu, geçmiş derinliğini, bağlam bütçesini ve karakter zinciri davranışını buradan ayarla.");
-
-        addSecondary("GUI temasını değiştir", v -> showAppearance());
-
-        addSection("AI teması", null, null);
         SharedPreferences prefs = prefs();
-        String themeId = prefs.getString("ai_theme", DEFAULT_AI_THEME);
-        addInfoCard(aiThemeName(themeId), aiThemeDescription(themeId), "Sahne atmosferi");
-        addSecondary("AI temasını değiştir", v -> showThemePicker());
-        addBody("Tema, tüm RP sohbetlerinde sahnenin atmosferini belirler. Değiştirince model bağlamı sıfırlanır.");
 
-        addSection("Yanıt ayarları", null, null);
+        addSection("Yanıt biçimi", null, null);
         addBody("Yanıt uzunluğu");
         int savedLength = prefs.getInt("max_output_tokens", 320);
         TextView lengthLabel = label(savedLength + " token", 14, Design.text());
@@ -1217,12 +1272,6 @@ public class MainActivity extends Activity {
         content.addView(length, fullWidth());
         addBody("Düşük değer daha kısa yanıt verir. Bu motor sürümü temperature/top-p ayarlarını dışa açmıyor; yanıt uzunluğu ve sahne temasıyla yönlendirme yapılabilir.");
         addBody("Sohbet değiştirildiğinde model bağlamı sıfırlanır; o sohbetteki ilk yanıt biraz daha uzun sürebilir.");
-        addBody("Genel AI talimatı");
-        EditText instructions = field("AI'nin genel yanıt yönergesi", prefs.getString("ai_instructions", DEFAULT_AI_INSTRUCTIONS), 4);
-        addPrimary("Talimatı kaydet", v -> {
-            prefs.edit().putString("ai_instructions", instructions.getText().toString().trim()).apply();
-            Toast.makeText(this, "AI talimatı kaydedildi.", Toast.LENGTH_SHORT).show();
-        });
 
         addSection("Motor testi", null, null);
         if (benchmarking) {
@@ -1233,24 +1282,17 @@ public class MainActivity extends Activity {
         } else {
             addBody("Hız testi için önce modeli yükle.");
         }
-
-        addSection("Dil / Language", null, null);
-        addBody(L10n.english
-                ? "Switches the app UI and the AI roleplay language together. Turkish models: choose back."
-                : "Uygulama arayüzü ile AI rol yapma dilini birlikte değiştirir. English mode: better RP with English-tuned models.");
-        addSecondary(L10n.english ? "Türkçe (aktif)" : "Türkçe", v -> switchAppLanguage("tr"));
-        addSecondary(L10n.english ? "English (active)" : "English (recommended: better RP)", v -> switchAppLanguage("en"));
     }
 
     /** Switches the shared UI + prompt language and re-renders cleanly. */
     private void switchAppLanguage(String language) {
         String current = prefs().getString("app_language", "tr");
-        if (current.equals(language)) { showModels(); return; }
+        if (current.equals(language)) { showSettings(); return; }
         prefs().edit().putString("app_language", language).apply();
         L10n.refresh(language);
         contextChars.clear();
         LocalAiRuntime.INSTANCE.resetConversation(null);
-        showModels();
+        showSettings();
         Toast.makeText(this, language.equals("en")
                 ? "Yanıt dili İngilizce olarak ayarlandı — model promptları artık İngilizce."
                 : "Dil Türkçe olarak ayarlandı.", Toast.LENGTH_SHORT).show();
@@ -1258,8 +1300,8 @@ public class MainActivity extends Activity {
 
     private void showAppearance() {
         visibleChatId = null;
-        backAction = this::showHome;
-        setPage("Görünüm", "Uygulamanın temasını seç", "appearance");
+        backAction = this::showSettings;
+        setPage("Görünüm", "Uygulamanın temasını seç", "settings");
         addInfoCard("Tema sistemi", "Her tema kartları, sohbet balonlarını, gezinmeyi ve sistem çubuklarını tek seferde boyar.", "GUI");
         addBody("Seçim anında uygulanır; model bağlamı etkilenmez.");
         for (AppTheme candidate : AppTheme.ALL) {
@@ -1310,32 +1352,12 @@ public class MainActivity extends Activity {
             });
             addCardToPage(card);
         }
-        addSection("Veri yedeği", null, null);
-        addInfoCard("Yedekleme", "Karakterler, sohbetler ve geçmişler tek bir .json dosyasına yazılır. "
-                + "Dosya tamamen senin kontrolündedir: uygulama hiçbir veriyi otomatik göndermez.", "Yerel");
-        addPrimary("Yedeği dışa aktar", v -> {
-            String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
-            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("application/json");
-            intent.putExtra(Intent.EXTRA_TITLE, "localrp-yedek-" + stamp + ".json");
-            startActivityForResult(intent, BACKUP_EXPORT);
-        });
-        addSecondary("Yedeği geri yükle", v -> confirm(
-                "Geri yükleme aynı kimlikli karakter/sohbetleri günceller, yeni olanları ekler. " +
-                        "Geçmişler yalnızca yedekteki kopya daha uzunsa değiştirilir. Devam edilsin mi?",
-                () -> {
-                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    intent.setType("*/*");
-                    startActivityForResult(intent, BACKUP_IMPORT);
-                }));
     }
 
     private void showModelCatalog() {
         visibleChatId = null;
         backAction = this::showModels;
-        setPage("Model önerileri", "CPU ve GPU dengelerine göre GGUF seç ve indir", "models");
+        setPage("Model önerileri", "CPU ve GPU dengelerine göre GGUF seç ve indir", "settings");
         addDeviceCard();
         addSegmentedCatalog();
         if (catalogFilter == 0) {
@@ -1406,39 +1428,59 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Age gate for the uncensored model catalog (18+): numeric age entry, honest
-     * rejection below the threshold, acknowledgment persisted locally only.
+     * Age gate for the uncensored model catalog (18+): a mandatory warning the user
+     * must explicitly acknowledge (checkbox), numeric age entry, and honest refusal
+     * below the threshold — the dialog stays open on any invalid state, so the warning
+     * cannot be skipped.
      */
     private void showUncensoredGate() {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(22), dp(18), dp(22), 0);
-        TextView notice = label(L10n.s("Sansürsüz (abliterated) modeller 18 yaş altına uygun değildir. Devam etmek için yaşını gir."), 14, Design.text());
+        TextView warning = label(L10n.s("UYARI: Bu modellerde güvenlik filtresi yoktur; 18 yaş altına uygun içerik koruması içermez."), 13, Design.danger());
+        warning.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        box.addView(warning);
+        TextView notice = label(L10n.s("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir. Devam için yaşını gir ve uyarıyı onayla."), 14, Design.text());
+        notice.setPadding(0, dp(10), 0, 0);
         box.addView(notice);
+        final CheckBox acknowledged = new CheckBox(this);
+        acknowledged.setText(L10n.s("Uyarıyı okudum; 18 yaş üstü olduğumu onaylıyorum."));
+        acknowledged.setTextSize(13);
+        acknowledged.setTextColor(Design.text());
+        box.addView(acknowledged);
         final EditText ageInput = new EditText(this);
         ageInput.setHint(L10n.s("Yaşın"));
         ageInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         ageInput.setTextSize(15);
         ageInput.setTextColor(Design.text());
         box.addView(ageInput);
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(L10n.s("Sansürsüz modeller (18+)"))
                 .setView(box)
-                .setPositiveButton(L10n.s("Onayla"), (d, w) -> {
-                    String value = ageInput.getText().toString().trim();
-                    int age = -1;
-                    try { if (!value.isEmpty()) age = Integer.parseInt(value); } catch (NumberFormatException ignored) {}
-                    if (age >= 18) {
-                        prefs().edit().putBoolean("uncensored_ack", true).apply();
-                        catalogFilter = 2;
-                        showModelCatalog();
-                        Toast.makeText(this, L10n.s("Sansürsüz bölümü açıldı."), Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(this, L10n.s("Bu bölüm yalnızca 18 yaş üstüne açık."), Toast.LENGTH_LONG).show();
-                    }
-                })
-                .setNegativeButton("Vazgeç", null)
-                .show();
+                .setPositiveButton(L10n.s("Onayla"), null)
+                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            if (!acknowledged.isChecked()) {
+                Toast.makeText(this, L10n.s("Önce uyarıyı onaylaman gerekli."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            int age = -1;
+            try {
+                String value = ageInput.getText().toString().trim();
+                if (!value.isEmpty()) age = Integer.parseInt(value);
+            } catch (NumberFormatException ignored) {}
+            if (age >= 18) {
+                prefs().edit().putBoolean("uncensored_ack", true).apply();
+                catalogFilter = 2;
+                dialog.dismiss();
+                showModelCatalog();
+                Toast.makeText(this, L10n.s("Sansürsüz bölümü açıldı."), Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, L10n.s("Bu bölüm yalnızca 18 yaş üstüne açık."), Toast.LENGTH_LONG).show();
+            }
+        }));
+        dialog.show();
         ageInput.requestFocus();
     }
 
@@ -1626,7 +1668,7 @@ public class MainActivity extends Activity {
                     if (!uiAlive()) return;
                     downloadBytes = downloadedBytes;
                     downloadTotal = totalBytes;
-                    if (!"models".equals(currentTab)) return;
+                    if (!"settings".equals(currentTab)) return;
                     if (downloadProgressView == null) {
                         // Download started from the catalog; rebuild once to mount the
                         // downloading card (label + cancel), then update in place.
@@ -1641,19 +1683,19 @@ public class MainActivity extends Activity {
                     downloadBytes = 0L;
                     downloadTotal = -1L;
                     Toast.makeText(MainActivity.this, model.name + " indirildi.", Toast.LENGTH_SHORT).show();
-                    if ("models".equals(currentTab)) showModelCatalog();
+                    if ("settings".equals(currentTab)) showModelCatalog();
                 }
                 @Override public void onError(String message) {
                     if (!uiAlive()) return;
                     downloadProgressView = null;
                     Toast.makeText(MainActivity.this, "İndirme hatası: " + message, Toast.LENGTH_SHORT).show();
-                    if ("models".equals(currentTab)) showModelCatalog();
+                    if ("settings".equals(currentTab)) showModelCatalog();
                 }
             }, model.bytes, model.sha256);
             if (!accepted) {
                 Toast.makeText(this, "Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene.", Toast.LENGTH_SHORT).show();
             } else {
-                if ("models".equals(currentTab)) {
+                if ("settings".equals(currentTab)) {
                     // Swap the card into its downloading state right away
                     // (progress label + cancel button) instead of waiting for %1.
                     showModelCatalog();
@@ -1674,12 +1716,12 @@ public class MainActivity extends Activity {
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading()) return;
         modelLoading = true;
         modelStatus = "Yükleme başlatılıyor…";
-        if ("models".equals(currentTab)) showModels();
+        if ("settings".equals(currentTab)) showModels();
         LocalAiRuntime.INSTANCE.loadStoredModel(this, file, new LocalAiRuntime.ModelListener() {
             @Override public void onStatus(String message) {
                 if (!uiAlive()) return;
                 modelStatus = message;
-                if ("models".equals(currentTab) && modelStatusView != null) modelStatusView.setText(message);
+                if ("settings".equals(currentTab) && modelStatusView != null) modelStatusView.setText(message);
             }
             @Override public void onLoaded(String fileName, long bytes) {
                 if (!uiAlive()) return;
@@ -1688,36 +1730,95 @@ public class MainActivity extends Activity {
                 contextChars.clear();
                 chatMetrics.clear();
                 modelStatus = "Hazır · " + humanSize(bytes) + " · çevrimdışı";
-                if ("models".equals(currentTab)) showModels();
+                if ("settings".equals(currentTab)) showModels();
                 Toast.makeText(MainActivity.this, fileName + " yüklendi.", Toast.LENGTH_SHORT).show();
             }
             @Override public void onError(String message) {
                 if (!uiAlive()) return;
                 modelLoading = false;
                 modelStatus = "Yüklenemedi: " + message;
-                if ("models".equals(currentTab)) showModels();
+                if ("settings".equals(currentTab)) showModels();
                 new AlertDialog.Builder(MainActivity.this).setTitle("Model yüklenemedi")
                         .setMessage(message).setPositiveButton("Tamam", null).show();
             }
         });
     }
 
+    /**
+     * Prompt language home (user request): pick between shipped Turkish / English
+     * defaults and a custom text for BOTH the general AI instruction and the engine
+     * system prompt. Selections reset the model context so changes take effect.
+     */
+    private void showPromptStyle() {
+        visibleChatId = null;
+        backAction = this::showSettings;
+        setPage("Prompt dilleri", "Genel talimat ve sistem promptu", "settings");
+        SharedPreferences prefs = prefs();
+        String generalMode = prefs.getString("general_prompt_source", "default");
+        String sysMode = prefs.getString("sys_prompt_source", "engine");
+
+        addSection("Genel AI talimatı", null, null);
+        addBody("Her promptun \"Genel AI talimatı\" satırını seçer: varsayılanlar dile göre belirlenir; özel seçtiğinde kendi metnin kullanılır.");
+        addSecondary("Varsayılan (Türkçe)" + ("default".equals(generalMode) && prefs().getString("app_language", "tr").equals("tr") ? "  ✓" : ""), v -> setGeneralPromptSource("default"));
+        addSecondary("Varsayılan (English)" + ("default".equals(generalMode) && prefs().getString("app_language", "tr").equals("en") ? "  ✓" : ""), v -> setGeneralPromptSource("default"));
+        addSecondary("Özel" + ("custom".equals(generalMode) ? "  ✓" : ""), v -> {
+            prefs.edit().putString("general_prompt_source", "custom").apply();
+            LocalAiRuntime.INSTANCE.resetConversation(null);
+            showPromptStyle();
+        });
+        if ("custom".equals(generalMode)) {
+            EditText instructions = field("AI'nin genel yanıt yönergesi", prefs.getString("ai_instructions", DEFAULT_AI_INSTRUCTIONS), 4);
+            addPrimary("Özel talimatı kaydet", v -> {
+                prefs.edit().putString("ai_instructions", instructions.getText().toString().trim()).apply();
+                Toast.makeText(this, "Özel talimat kaydedildi.", Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        addSection("Sistem promptu", null, null);
+        addBody("Motorun dünya görüşünü belirleyen çekirdek prompt; karakter tanımından önce gelir.");
+        addSecondary("Motor varsayılanı" + ("engine".equals(sysMode) ? "  ✓" : ""), v -> setSystemPromptSource("engine"));
+        addSecondary("Türkçe" + ("tr".equals(sysMode) ? "  ✓" : ""), v -> setSystemPromptSource("tr"));
+        addSecondary("English" + ("en".equals(sysMode) ? "  ✓" : ""), v -> setSystemPromptSource("en"));
+        addSecondary("Özel" + ("custom".equals(sysMode) ? "  ✓" : ""), v -> {
+            prefs.edit().putString("sys_prompt_source", "custom").apply();
+            applySystemPrompt();
+            LocalAiRuntime.INSTANCE.resetConversation(null);
+            showPromptStyle();
+        });
+        if ("custom".equals(sysMode)) {
+            EditText systemEditor = field("Motor kavrayışının çekirdeği",
+                    prefs.getString("custom_sys_prompt", LocalAiRuntime.INSTANCE.currentSystemPrompt()), 4);
+            addPrimary("Özel sistem promptunu kaydet", v -> {
+                prefs.edit().putString("custom_sys_prompt", systemEditor.getText().toString().trim()).apply();
+                applySystemPrompt();
+                LocalAiRuntime.INSTANCE.resetConversation(null);
+                Toast.makeText(this, "Sistem promptu kaydedildi; model bağlamı yeniden kurulacak.", Toast.LENGTH_SHORT).show();
+                showPromptStyle();
+            });
+        }
+        addBody("Değişiklikler model bağlamını sıfırlar; ilk yanıt biraz daha uzun sürebilir.");
+    }
+
+    private void setGeneralPromptSource(String mode) {
+        prefs().edit().putString("general_prompt_source", mode).apply();
+        LocalAiRuntime.INSTANCE.resetConversation(null);
+        Toast.makeText(this, "Genel talimat tercihleri güncellendi.", Toast.LENGTH_SHORT).show();
+        showPromptStyle();
+    }
+
+    private void setSystemPromptSource(String mode) {
+        prefs().edit().putString("sys_prompt_source", mode).apply();
+        applySystemPrompt();
+        LocalAiRuntime.INSTANCE.resetConversation(null);
+        Toast.makeText(this, "Sistem promptu tercihi güncellendi.", Toast.LENGTH_SHORT).show();
+        showPromptStyle();
+    }
+
     private void showAiAdvanced() {
         visibleChatId = null;
-        backAction = this::showModels;
-        setPage("Gelişmiş AI", "Sistem promptu, geçmiş ve zincir davranışı", "models");
+        backAction = this::showSettings;
+        setPage("Sahne hafızası ve zincir", "Geçmiş derinliği, bağlam ve kendiliğinden devam", "settings");
         SharedPreferences prefs = prefs();
-        addInfoCard("AI çekirdeği", "Motorun dünya görüşünü belirleyen sistem promptu; karakter tanımından önce gelir.", "Sistem");
-        addBody("Çekirdek sistem talimatı");
-        EditText systemEditor = field("Motor kavrayışının çekirdeği",
-                LocalAiRuntime.INSTANCE.currentSystemPrompt(), 4);
-        addPrimary("Sistem promptu kaydet", v -> {
-            prefs.edit().putString("custom_sys_prompt", systemEditor.getText().toString().trim()).apply();
-            LocalAiRuntime.INSTANCE.setCustomSystemPrompt(systemEditor.getText().toString().trim());
-            Toast.makeText(this, "Sistem promptu kaydedildi; model bağlamı yeniden kurulacak.", Toast.LENGTH_SHORT).show();
-            showAiAdvanced();
-        });
-
         addSection("Sahne hafızası", "Model bağlamının derinliği", null);
         int depth = prefs.getInt("history_depth", 8);
         addSlider("Geçmiş mesaj sayısı", depth, 2, 14, 1, value -> {
@@ -1738,7 +1839,7 @@ public class MainActivity extends Activity {
         }, value -> value == 0 ? "Kapalı" : value + " zincir");
         addBody("Zincir açıkken karakter, kendi yanıtından sonra sıradaki karakteri otomatik çağırır. Sahne palazlanır ama token tüketimi artar.");
         addBody("Değişiklikler bir sonraki yanıtta uygulanır.");
-        addPrimary("Vazgeç", v -> showModels());
+        addPrimary("Vazgeç", v -> showSettings());
     }
 
     private void addSlider(String caption, int current, int min, int max, int step,
@@ -1875,18 +1976,18 @@ public class MainActivity extends Activity {
             return;
         }
         modelStatus = "Motor testi çalışıyor…";
-        if ("models".equals(currentTab)) showModels();
+        if ("settings".equals(currentTab)) showModels();
         LocalAiRuntime.INSTANCE.benchmark(new LocalAiRuntime.BenchmarkListener() {
             @Override public void onStatus(String message) {
                 if (!uiAlive()) return;
                 modelStatus = message;
-                if ("models".equals(currentTab)) showModels();
+                if ("settings".equals(currentTab)) showModels();
                 refreshVisibleChat(false);
             }
             @Override public void onResult(String result) {
                 if (!uiAlive()) return;
                 modelStatus = "Motor testi tamamlandı.";
-                if ("models".equals(currentTab)) showModels();
+                if ("settings".equals(currentTab)) showModels();
                 refreshVisibleChat(false);
                 String text = result == null || result.trim().isEmpty()
                         ? "Motor sonuç döndürmedi." : result.trim();
@@ -1896,7 +1997,7 @@ public class MainActivity extends Activity {
             @Override public void onError(String message) {
                 if (!uiAlive()) return;
                 modelStatus = "Motor testi hatası: " + message;
-                if ("models".equals(currentTab)) showModels();
+                if ("settings".equals(currentTab)) showModels();
                 refreshVisibleChat(false);
                 new AlertDialog.Builder(MainActivity.this).setTitle("Motor testi tamamlanamadı")
                         .setMessage(message).setPositiveButton("Tamam", null).show();
@@ -2087,12 +2188,12 @@ public class MainActivity extends Activity {
         if (LocalAiRuntime.INSTANCE.isBenchmarking()) return;
         modelLoading = true;
         modelStatus = "Yükleme başlatılıyor…";
-        if ("models".equals(currentTab)) showModels();
+        if ("settings".equals(currentTab)) showModels();
         LocalAiRuntime.INSTANCE.loadModel(this, selectedModel, new LocalAiRuntime.ModelListener() {
             @Override public void onStatus(String message) {
                 if (!uiAlive()) return;
                 modelStatus = message;
-                if ("models".equals(currentTab) && modelStatusView != null) modelStatusView.setText(message);
+                if ("settings".equals(currentTab) && modelStatusView != null) modelStatusView.setText(message);
                 refreshVisibleChat(false);
             }
             @Override public void onLoaded(String fileName, long bytes) {
@@ -2102,7 +2203,7 @@ public class MainActivity extends Activity {
                 contextChars.clear();
                 chatMetrics.clear();
                 modelStatus = "Hazır · " + String.format(Locale.getDefault(), "%.2f GB", bytes / 1_000_000_000.0) + " · çevrimdışı";
-                if ("models".equals(currentTab)) showModels();
+                if ("settings".equals(currentTab)) showModels();
                 Toast.makeText(MainActivity.this, "Model hazır.", Toast.LENGTH_SHORT).show();
                 refreshVisibleChat(true);
             }
@@ -2110,7 +2211,7 @@ public class MainActivity extends Activity {
                 if (!uiAlive()) return;
                 modelLoading = false;
                 modelStatus = "Yüklenemedi: " + message;
-                if ("models".equals(currentTab)) showModels();
+                if ("settings".equals(currentTab)) showModels();
                 refreshVisibleChat(false);
                 new AlertDialog.Builder(MainActivity.this).setTitle("Model yüklenemedi")
                         .setMessage(message).setPositiveButton("Tamam", null).show();
@@ -2175,18 +2276,18 @@ public class MainActivity extends Activity {
         if (LocalAiRuntime.INSTANCE.isBenchmarking()) return;
         modelLoading = true;
         modelStatus = "Model bellekten kaldırılıyor…";
-        if ("models".equals(currentTab)) showModels();
+        if ("settings".equals(currentTab)) showModels();
         LocalAiRuntime.INSTANCE.unload(new LocalAiRuntime.ModelListener() {
             @Override public void onStatus(String message) {
                 if (!uiAlive()) return;
                 modelStatus = message;
-                if ("models".equals(currentTab) && modelStatusView != null) modelStatusView.setText(message);
+                if ("settings".equals(currentTab) && modelStatusView != null) modelStatusView.setText(message);
                 // Success is decided by runtime state, not by parsing the status text.
                 if (!LocalAiRuntime.INSTANCE.isModelReady() && LocalAiRuntime.INSTANCE.loadedModelPath() == null) {
                     modelLoading = false;
                     contextChars.clear();
                     chatMetrics.clear();
-                    if ("models".equals(currentTab)) showModels();
+                    if ("settings".equals(currentTab)) showModels();
                 }
                 refreshVisibleChat(false);
             }
@@ -2195,7 +2296,7 @@ public class MainActivity extends Activity {
                 if (!uiAlive()) return;
                 modelLoading = false;
                 modelStatus = "Hata: " + message;
-                if ("models".equals(currentTab)) showModels();
+                if ("settings".equals(currentTab)) showModels();
                 refreshVisibleChat(false);
             }
         });
@@ -2215,8 +2316,7 @@ public class MainActivity extends Activity {
         // Prompt assembly lives in the pure, unit-tested RoleplayPrompt; MainActivity only
         // resolves the Android-backed inputs (store lookups, prefs, engine context flag).
         boolean english = L10n.english;
-        String instructions = clip(prefs().getString("ai_instructions",
-                english ? DEFAULT_AI_INSTRUCTIONS_EN : DEFAULT_AI_INSTRUCTIONS), 600);
+        String instructions = resolveGeneralInstructions(english);
         String themeId = prefs().getString("ai_theme", DEFAULT_AI_THEME);
         String[] persona = store.persona();
         String[] personaText = persona != null ? new String[]{persona[0], persona[1]} : null;
@@ -2237,12 +2337,33 @@ public class MainActivity extends Activity {
                 english);
     }
 
+    /** General AI instruction: shipped default (chosen by language) or the user's custom text. */
+    private String resolveGeneralInstructions(boolean english) {
+        String mode = prefs().getString("general_prompt_source", "default");
+        if ("custom".equals(mode)) return clip(prefs().getString("ai_instructions", ""), 600);
+        return clip(english ? DEFAULT_AI_INSTRUCTIONS_EN : DEFAULT_AI_INSTRUCTIONS, 600);
+    }
+
+    /** System prompt: engine default / shipped TR / shipped EN / user's custom text. */
+    private void applySystemPrompt() {
+        String mode = prefs().getString("sys_prompt_source", "engine");
+        String text;
+        if ("tr".equals(mode)) text = SYS_PROMPT_TR;
+        else if ("en".equals(mode)) text = SYS_PROMPT_EN;
+        else if ("custom".equals(mode)) text = prefs().getString("custom_sys_prompt", null);
+        else text = null;
+        LocalAiRuntime.INSTANCE.setCustomSystemPrompt(text);
+    }
+
     private String aiThemeName(String id) {
+        if ("custom".equals(id)) return L10n.s(clip(prefs().getString("ai_theme_custom_name", ""), 60).isEmpty()
+                ? "Özel tema" : prefs().getString("ai_theme_custom_name", ""));
         for (String[] theme : AI_THEMES) if (theme[0].equals(id)) return L10n.s(theme[1]);
         return L10n.s(AI_THEMES[0][1]);
     }
 
     private String aiThemeInstruction(String id) {
+        if ("custom".equals(id)) return L10n.s(prefs().getString("ai_theme_custom_instruction", ""));
         for (String[] theme : AI_THEMES) if (theme[0].equals(id)) return L10n.s(theme[2]);
         return L10n.s(AI_THEMES[0][2]);
     }
@@ -2267,23 +2388,72 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Motor testi sürerken tema değiştirilemez.", Toast.LENGTH_SHORT).show();
             return;
         }
-        String[] labels = new String[AI_THEMES.length];
+        String[] labels = new String[AI_THEMES.length + 1];
         String current = prefs().getString("ai_theme", DEFAULT_AI_THEME);
         for (int i = 0; i < AI_THEMES.length; i++) {
-            labels[i] = AI_THEMES[i][1] + (AI_THEMES[i][0].equals(current) ? "  ✓" : "");
+            labels[i] = L10n.s(AI_THEMES[i][1]) + (AI_THEMES[i][0].equals(current) ? "  ✓" : "");
         }
-        new AlertDialog.Builder(this).setTitle("AI sahne teması")
+        labels[AI_THEMES.length] = L10n.s("Özel tema (kendin yaz)") + ("custom".equals(current) ? "  ✓" : "");
+        new AlertDialog.Builder(this).setTitle(L10n.s("AI sahne teması"))
                 .setItems(labels, (dialog, which) -> {
+                    if (which == AI_THEMES.length) {
+                        showCustomThemeEditor();
+                        return;
+                    }
                     String selectedId = AI_THEMES[which][0];
                     if (selectedId.equals(prefs().getString("ai_theme", DEFAULT_AI_THEME))) return;
                     prefs().edit().putString("ai_theme", selectedId).apply();
                     contextChars.clear();
                     chatMetrics.clear();
                     LocalAiRuntime.INSTANCE.resetConversation(null);
-                    Toast.makeText(this, AI_THEMES[which][1] + " teması seçildi.", Toast.LENGTH_SHORT).show();
-                    showModels();
+                    Toast.makeText(this, AI_THEMES[which][1] + L10n.s(" teması seçildi."), Toast.LENGTH_SHORT).show();
+                    showSettings();
                 })
-                .setNegativeButton("Vazgeç", null).show();
+                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+    }
+
+    /** Full editor for the user's own AI theme: a name plus a prompt instruction. */
+    private void showCustomThemeEditor() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(22), dp(18), dp(22), 0);
+        EditText name = new EditText(this);
+        name.setHint(L10n.s("Tema adı"));
+        name.setText(prefs().getString("ai_theme_custom_name", ""));
+        name.setSingleLine(true);
+        name.setTextColor(Design.text());
+        name.setHintTextColor(Design.muted());
+        box.addView(name);
+        EditText instruction = new EditText(this);
+        instruction.setHint(L10n.s("Sahne talimatı (prompta girer)"));
+        instruction.setText(prefs().getString("ai_theme_custom_instruction", ""));
+        instruction.setMinLines(3);
+        instruction.setGravity(Gravity.TOP);
+        instruction.setTextColor(Design.text());
+        instruction.setHintTextColor(Design.muted());
+        box.addView(instruction);
+        new AlertDialog.Builder(this)
+                .setTitle(L10n.s("Özel tema"))
+                .setView(box)
+                .setPositiveButton(L10n.s("Özel temayı kaydet ve uygula"), (d, w) -> {
+                    String themeName = name.getText().toString().trim();
+                    if (themeName.isEmpty()) {
+                        Toast.makeText(this, L10n.s("Bir tema adı gerekli."), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    prefs().edit()
+                            .putString("ai_theme_custom_name", themeName)
+                            .putString("ai_theme_custom_instruction", instruction.getText().toString().trim())
+                            .putString("ai_theme", "custom")
+                            .apply();
+                    contextChars.clear();
+                    chatMetrics.clear();
+                    LocalAiRuntime.INSTANCE.resetConversation(null);
+                    Toast.makeText(this, themeName + L10n.s(" teması uygulandı."), Toast.LENGTH_SHORT).show();
+                    showSettings();
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .show();
     }
 
     /** Draft text of an in-flight generation; guaranteed against process death (task G0/G11). */
@@ -2534,11 +2704,10 @@ public class MainActivity extends Activity {
             nav.setOrientation(LinearLayout.HORIZONTAL);
             nav.setPadding(dp(6), dp(7), dp(6), dp(7));
             nav.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 28));
-            addNavItem(nav, "⌂", "Ana sayfa", "home".equals(tab), this::showHome);
-            addNavItem(nav, "◉", "Karakter", "characters".equals(tab), this::showCharacters);
-            addNavItem(nav, "▤", "Sohbetler", "chats".equals(tab), this::showChats);
-            addNavItem(nav, "⚙", "AI", "models".equals(tab), () -> openModels(null));
-            addNavItem(nav, "◐", "Görünüm", "appearance".equals(tab), this::showAppearance);
+            addNavItem(nav, "⌂", L10n.s("Ana sayfa"), "home".equals(tab), this::showHome);
+            addNavItem(nav, "◉", L10n.s("Karakter"), "characters".equals(tab), this::showCharacters);
+            addNavItem(nav, "▤", L10n.s("Sohbetler"), "chats".equals(tab), this::showChats);
+            addNavItem(nav, "⚙", L10n.s("Ayarlar"), "settings".equals(tab), this::showSettings);
             navWrap.addView(nav, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             pageRoot.addView(navWrap, fullWidth());
@@ -3046,9 +3215,9 @@ public class MainActivity extends Activity {
     private void confirm(String message, Runnable action) { confirm(message, "Sil", action); }
 
     private void confirm(String message, String positive, Runnable action) {
-        new AlertDialog.Builder(this).setMessage(message)
-                .setNegativeButton("Vazgeç", null)
-                .setPositiveButton(positive, (d, w) -> action.run()).show();
+        new AlertDialog.Builder(this).setMessage(L10n.s(message))
+                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .setPositiveButton(L10n.s(positive), (d, w) -> action.run()).show();
     }
 
     private SharedPreferences prefs() {

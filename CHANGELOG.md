@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.16.0-alpha1 — 2026-11-04 (YENİ — tek Ayarlar ekranı · prompt dil seçenekleri · özel AI teması · sıkılaştırılmış 18+ kapısı)
+
+Kullanıcı bildirimleri doğrultusunda büyük paket:
+
+- **Tek Ayarlar ekranı**: alt gezinmede iki ayrı sekme (AI / Görünüm) yerine tek **"⚙ Ayarlar"** sekmesi. Ayarların beş bölümü altında toplanır: Dil / Language, Model (yükleme + katalog), Yanıt tarzı (prompt dilleri, AI teması, hafıza ve zincir), Görünüm (GUI teması) ve Veri yedeği. Her buton açık bir alt ekrana gider; aynı ayar artık birden fazla yerden girilmez.
+- **Prompt dilleri ekranı (yeni)**: genel AI talimatı ve sistem promptu ayrı ayrı seçilebilir: **Varsayılan (Türkçe) / Varsayılan (English) / Motor varsayılanı (yalnızca sistem promptu) / Özel**. Özel seçtiğinde yazdığın metin kullanılır; eski kullanıcının kayıtlı talimatları otomatik "Özel" kaynağa taşınır. Her değişim model bağlamını sıfırlar.
+- **AI temaları arttı** (+5 tema: Buhar punk, Sürreal rüya, Savaş ve entrika, Sıcak slice of life, Uzun yol macerası) ve **Özel tema**: "Özel tema (kendin yaz)" ile kendi tema adını ve prompt talimatını yazıp tüm RP sohbetlerinde kullan.
+- **Sıkılaştırılmış 18+ kapısı**: diyalog artık iki zorunlu onay ister: kutucuk **"Uyarıyı okudum; 18 yaş üstü olduğumu onaylıyorum"** + yaş girişi. Kutucuk onaysız ya da yaş 18 altı olduğunda diyalog kapanmaz ve uyarı toast'ı gösterilir — uyarı atlama imkânı yok.
+- **İngilizce kapsam genişlemesi**: Ayarlar ekranı, navigasyon, prompt-dilleri, tema seçici, model yönetimi sözlükte eklendi; katalog model açıklamaları ("why") Türkçe kalır (dokümante kısmi kapsam).
+- versionCode 24 / 0.16.0-alpha1.
+
 ## v0.15.0-alpha1 — 2026-11-03 (YENİ — Sansürsüz model bölümü, 18+ yaş kapısı)
 
 Kullanıcı isteği: **Model önerileri** ekranına üçüncü sekme **"Sansürsüz"** eklendi. Kilitli başlar; açmak için yaş girişi gerekir:
