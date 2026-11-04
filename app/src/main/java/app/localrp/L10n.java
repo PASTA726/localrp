@@ -45,7 +45,6 @@ public final class L10n {
         EN.put("Bir veya daha fazla", "One or more");
         EN.put("Çalışma durumu", "Status");
         EN.put("Model dosyası", "Model file");
-        EN.put("Model önerileri", "Model suggestions");
         EN.put("Katalog", "Catalog");
         EN.put("Gelişmiş AI", "Advanced AI");
         EN.put("AI teması", "AI theme");
@@ -130,7 +129,6 @@ public final class L10n {
         EN.put("Model boş yanıt döndürdü", "Model returned an empty reply");
         EN.put("Yanıt durduruldu.", "Reply stopped.");
         EN.put("yanıt yazıyor…", "is typing…");
-        EN.put("Karakter", "Character");
         EN.put("Sahneyi başlatmak için dokun", "Tap to start the scene");
         EN.put("RP ayarları", "RP settings");
         EN.put("Sohbet listesine dön", "Back to chat list");
@@ -258,6 +256,7 @@ public final class L10n {
         // ---- v0.16: single Settings hub + prompt sources + custom theme
         EN.put("Ana sayfa", "Home");
         EN.put("Karakter", "Characters");
+        EN.put("Bir karakter", "A character");
         EN.put("Sohbetler", "Chats");
         EN.put("Ayarlar", "Settings");
         EN.put("Dil · model · yanıt tarzı · görünüm · veri", "Language · model · reply style · look · data");
@@ -280,8 +279,6 @@ public final class L10n {
         EN.put("Öneri", "Suggestion");
         EN.put("CPU önerileri", "CPU picks");
         EN.put("GPU önerileri", "GPU picks");
-        EN.put("Katalog", "Catalog");
-        EN.put("Sahne atmosferi", "Scene tone");
 
         // prompt sources
         EN.put("Prompt dilleri", "Prompt languages");
@@ -326,7 +323,6 @@ public final class L10n {
         EN.put("Özel temayı kaydet ve uygula", "Save and apply custom tone");
         EN.put("Bir tema adı gerekli.", "A theme name is required.");
         EN.put(" teması seçildi.", " tone selected.");
-        EN.put(" teması uygulandı.", " tone applied.");
         EN.put("Yanıt üretilirken tema değiştirilemez.", "Cannot change the tone while a reply is streaming.");
         EN.put("Model yüklenirken tema değiştirilemez.", "Cannot change the tone while the model is loading.");
         EN.put("Motor testi sürerken tema değiştirilemez.", "Cannot change the tone during the engine benchmark.");
@@ -353,5 +349,194 @@ public final class L10n {
                 "Processing runs fully on this device, offline; you take responsibility. Enter your age and acknowledge the warning.");
         EN.put("Uyarıyı okudum; 18 yaş üstü olduğumu onaylıyorum.", "I have read the warning and confirm I am 18 or older.");
         EN.put("Önce uyarıyı onaylaman gerekli.", "You must acknowledge the warning first.");
+
+        // ---- v0.16.0-alpha2: full English coverage sweep
+        EN.put("Açıklama yok", "No description");
+        EN.put("AI ayarları", "AI settings");
+        EN.put("Anlaşıldı", "Understood");
+        EN.put("  ·  bağlam ", "  ·  context ");
+        EN.put("Bağlam bütçesi", "Context budget");
+        EN.put("Bağlam bütçesi modele göre hesaplanacak.", "The context budget is calculated from the model.");
+        EN.put("bazı kayıtlar", "some records");
+        EN.put("Bilgiler bu telefonda saklanır", "Data is stored on this phone");
+        EN.put("bir sohbetin geçmişi", "a chat's history");
+        EN.put(" bloğunda burada yazdığın bilgilerle davranır.", " block behaves on the information you write here.");
+        EN.put(" · boş: ", " · free: ");
+        EN.put("Boyut sınıfı: ", "Size class: ");
+        EN.put("BU CİHAZ İÇİN ÖNERİ", "RECOMMENDED FOR THIS DEVICE");
+        EN.put("Bu dosya geçerli bir LocalRP yedeği değil.", "This file is not a valid LocalRP backup.");
+        EN.put("Bu model şu anda yüklü.", "This model is currently loaded.");
+        EN.put("⚠ Bu motorda çalışmaz — paketli motor yalnızca CPU; Vulkan/MLC motoru gerekir.",
+                "⚠ Will not run on this engine — the bundled engine is CPU-only; a Vulkan/MLC engine is required.");
+        EN.put("Bu sohbetin tüm mesajları silinsin mi?", "Delete all messages in this chat?");
+        EN.put("Cihazda kayıtlı model kopyası yok.", "No model copy stored on this device.");
+        EN.put("CPU çekirdeği: ", "CPU cores: ");
+        EN.put("CPU ve GPU dengelerine göre GGUF seç ve indir", "Pick and download GGUFs balanced for CPU and GPU");
+        EN.put("Çevrimdışı", "Offline");
+        EN.put("Değişiklikler bir sonraki yanıtta uygulanır.", "Changes apply from the next reply on.");
+        EN.put(" · devam edince indirilmiş sayılır", " · counts as downloaded once resumed");
+        EN.put("Dil Türkçe olarak ayarlandı.", "Language set to Turkish.");
+        EN.put("Dosya açılamadı.", "Could not open the file.");
+        EN.put("Dosya beklenenden çok büyük.", "The file is larger than expected.");
+        EN.put("Dosya tamamen senin kontrolündedir: uygulama hiçbir veriyi otomatik göndermez.",
+                "The file is fully under your control: the app never sends any data automatically.");
+        EN.put("Eğitim bağlamı: ", "Training context: ");
+        EN.put("Fotoğraf açılamadı; başka bir dosya deneyin.", "Could not open the photo; try another file.");
+        EN.put("Fotoğraf gizli depoya küçük kopya olarak yazılır; seçtiğin kaynak dosya silinmez. Sohbetlerde karakterin avatarı bu foto olur ve Kaydet ile saklanır.",
+                "The photo is written to private storage as a small copy; your original file is kept. In chats it becomes the character's avatar and is saved when you press Save.");
+        EN.put("Geçmiş derinliği, bağlam ve kendiliğinden devam", "History depth, context and auto-continue");
+        EN.put("Geçmiş karakter bütçesi", "History character budget");
+        EN.put("Geçmişler yalnızca yedekteki kopya daha uzunsa değiştirilir. Devam edilsin mi?",
+                "Histories are replaced only if the backup copy is longer. Continue?");
+        EN.put("Geçmiş mesaj sayısı", "History message count");
+        EN.put("Geri yükleme yapılamadı: mevcut veriler okunamıyor.", "Restore failed: the current data cannot be read.");
+        EN.put("Geri yüklendi · ", "Restored · ");
+        EN.put(" karakter · ", " characters · ");
+        EN.put(" sohbet", " chats");
+        EN.put("GGUF başlığı okundu; ayrıntılı alan bulunamadı.", "GGUF header read; no detailed fields found.");
+        EN.put("GGUF  ·  Cihaz içi yapay zekâ", "GGUF  ·  On-device AI");
+        EN.put("Görünüm", "Appearance");
+        EN.put("GPU hızları * Vulkan/MLC tabanlı motorlar içindir; bu sürümün motoru llama.cpp CPU ile çalışır.",
+                "GPU speeds are for Vulkan/MLC-based engines; this build's engine runs llama.cpp on CPU.");
+        EN.put("Grubu düzenle", "Edit group");
+        EN.put("Hazır · ", "Ready · ");
+        EN.put(" hazır", " ready");
+        EN.put("Hikâyendeki kişileri yönet", "Manage the people of your story");
+        EN.put("Hikâyene katılacak karakterleri seç", "Pick the characters joining your story");
+        EN.put("Hikâyen\nburada başlıyor.", "Your story\nstarts here.");
+        EN.put("Sahne", "Scene");
+        EN.put("İlgili sohbeti temizleyerek o bölümü onarabilirsin.", "You can repair that section by clearing the related chat.");
+        EN.put("İndir", "Download");
+        EN.put("İndir  ·  ", "Download  ·  ");
+        EN.put("İndirildi", "Downloaded");
+        EN.put("İndirildi  ·  ", "Downloaded  ·  ");
+        EN.put("İndiriliyor: ", "Downloading: ");
+        EN.put("İndirme hatası: ", "Download error: ");
+        EN.put("). İndirme kaldığı yerden devam etsin mi?", "). Resume the download where it left off?");
+        EN.put("İndirme kapalı  ·  ", "Download off  ·  ");
+        EN.put("İndirmeler Hugging Face'den doğrudan olur ve uygulamanın özel alanına kaydedilir. Parola veya hesap gerekmez.",
+                "Downloads come straight from Hugging Face and are saved into the app's private storage. No password or account needed.");
+        EN.put("İndirmeyi durdur", "Stop download");
+        EN.put("Kaldığı yerden devam", "Resume where it left off");
+        EN.put("Karakteri düzenle", "Edit character");
+        EN.put("Karakterler, sohbetler ve geçmişler tek bir .json dosyasına yazılır. ",
+                "Characters, chats and histories are written into one .json file. ");
+        EN.put("＋  Karakter oluştur", "＋  Create character");
+        EN.put("Kaydedilen parça: ", "Saved partial file: ");
+        EN.put("KENDİ DÜNYANI KUR", "BUILD YOUR OWN WORLD");
+        EN.put(" konuşsun", " speaks next");
+        EN.put("Kopyayı sil", "Delete the copy");
+        EN.put("Koruma gereği bu bölümler okunana kadar yazmaya kapatıldı; hiçbir veri üzerine yazılmadı. ",
+                "As a safeguard, writing is blocked until those sections can be read; no data was overwritten. ");
+        EN.put("LocalRP mesajı", "LocalRP message");
+        EN.put("Mobil veri uyarısı", "Mobile data warning");
+        EN.put(") mobil veriyle indirilecek. Wi-Fi önerilir.", ") will download over mobile data. Wi-Fi is recommended.");
+        EN.put("Model bellekten kaldırılıyor…", "Unloading the model from memory…");
+        EN.put("Model dosyası silinemedi.", "Could not delete the model file.");
+        EN.put("modele göre otomatik", "automatic, based on the model");
+        EN.put("Model hazır.", "Model ready.");
+        EN.put("Model hazır · çevrimdışı", "Model ready · offline");
+        EN.put("Modelin eğitim bağlamı düşük; uzun sohbetlerde bağlam otomatik sıfırlanabilir.",
+                "The model's training context is small; the context may reset automatically in long chats.");
+        EN.put("Modeli yükle", "Load model");
+        EN.put("Modeli yükle  ›", "Load a model  ›");
+        EN.put("Model klasörü açılamadı.", "Could not open the model folder.");
+        EN.put("Model kopyaları", "Model copies");
+        EN.put("Model kopyası silindi.", "Model copy deleted.");
+        EN.put("Model yüklenemedi", "Model failed to load");
+        EN.put("Model yükleniyor; bitmesini bekle.", "A model is loading; wait for it to finish.");
+        EN.put("Motor bağlamı en fazla 8192 token; uygulama bütçesi ",
+                "The engine context is at most 8192 tokens; the app budget is ");
+        EN.put("Motor sonuç döndürmedi.", "The engine returned no result.");
+        EN.put("Motor testi çalışıyor…", "Benchmark running…");
+        EN.put("Motor testi hatası: ", "Benchmark error: ");
+        EN.put("Motor testi sürüyor; bitmesini bekle.", "A benchmark is running; wait for it to finish.");
+        EN.put("Motor testi tamamlanamadı", "Benchmark could not finish");
+        EN.put("Motor testi tamamlandı.", "Benchmark finished.");
+        EN.put("Otomatik (sırayla)", "Automatic (in turn)");
+        EN.put("Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene.",
+                "A previous download is still finishing; try again in a second.");
+        EN.put("Önce model gerekli", "A model is needed first");
+        EN.put("RP karakterini seç", "Pick the RP character");
+        EN.put("Saklı verilerde bozuk bölümler bulundu (", "Corrupted sections found in stored data (");
+        EN.put("Seçilen model dosyası", "Selected model file");
+        EN.put("Sen (kullanıcı profili)", "You (user persona)");
+        EN.put("▶  Sıradaki: ", "▶  Next: ");
+        EN.put("Sıradaki konuşmacı", "Next speaker");
+        EN.put("Silinemedi: karakter verisi okunamıyor.", "Delete failed: the character data cannot be read.");
+        EN.put("Tema kısıtlaması yok; karakterin doğal dünyası ve sahnenin tonu korunur.",
+                "No theme constraint; the character's natural world and the scene's own tone are preserved.");
+        EN.put("Uygulama arayüzü ile AI rol yapma dilini birlikte değiştirir. English mode: better RP with English-tuned models.",
+                "Switches the app UI and the AI roleplay language together.");
+        EN.put("Uygulamanın temasını seç", "Pick the app theme");
+        EN.put("Veri okunamadı", "Data could not be read");
+        EN.put("Yanıtlar için GGUF modeli seç  ›", "Pick a GGUF model for replies  ›");
+        EN.put(" yanıtlasın", " replies");
+        EN.put("Yanıt uzunluğu", "Reply length");
+        EN.put("Yanıt üretilirken motor testi başlatılamaz.", "Cannot start the benchmark while a reply is streaming.");
+        EN.put("Yanıt üretilirken sohbet temizlenemez. Önce yanıtı durdur.",
+                "Cannot clear the chat while a reply is streaming. Stop the reply first.");
+        EN.put("Yanıt üretmek için AI ayarlarından bir GGUF modeli seçip yükle. Mesajın kaydedildi; model hazır olunca yanıtlanacak.",
+                "Pick and load a GGUF model from AI settings to generate replies. Your message is saved; it will be answered once the model is ready.");
+        EN.put("Yapay zekâ sana bu kimlikle davranır", "The AI treats you with this persona");
+        EN.put("Yarı kalan bir indirme var (", "A partial download exists (");
+        EN.put("Yedek okunamadı: ", "Backup could not be read: ");
+        EN.put("Yedek oluşturulamadı (veri okunamıyor).", "Backup failed (the data cannot be read).");
+        EN.put("Yedek yazılamadı: ", "Backup could not be written: ");
+        EN.put("Yedek yazıldı · ", "Backup written · ");
+        EN.put("Yerel hikâyelerin, senin kontrolünde", "Your local stories, under your control");
+        EN.put("Yükleme başlatılıyor…", "Starting to load…");
+        EN.put(" yüklendi.", " loaded.");
+        EN.put(" indirildi.", " downloaded.");
+        EN.put("Yüklenemedi: ", "Failed to load: ");
+        EN.put("  ·  yüklü", "  ·  loaded");
+        EN.put("Zincir açıkken karakter, kendi yanıtından sonra sıradaki karakteri otomatik çağırır. Sahne palazlanır ama token tüketimi artar.",
+                "With chaining on, a character automatically calls the next one after its reply. The scene grows richer but token use rises.");
+
+        EN.put("); indirilmedi.", "); the download was not saved.");
+        EN.put("Dosya boyutu katalog bekleneniyle uyuşmuyor (", "File size does not match the catalog expectation (");
+        EN.put("Dosya tam inmedi (", "The file did not complete (");
+        EN.put("); tekrar deneyebilirsin.", "); you can try again.");
+        EN.put("Depolama yetersiz. Gerekli: ", "Not enough storage. Needed: ");
+        EN.put(" GB, boş: ", " GB, available: ");
+        EN.put("Sunucu ", "The server returned ");
+        EN.put(" döndürdü; indirme başlatılamadı.", "; the download could not start.");
+        EN.put("İndirme reddedildi: hedef dosya adı veya adres geçersiz.",
+                "Download refused: the target file name or URL is invalid.");
+        EN.put("Model klasörü yok.", "The model folder is missing.");
+        EN.put("Model klasörü oluşturulamadı.", "The model folder could not be created.");
+        EN.put("İndirme güvenli olmayan (https olmayan) bir adrese yönlendirildi; iptal edildi.",
+                "The download was redirected to an insecure (non-https) URL; cancelled.");
+        EN.put("SHA-256 doğrulaması başarısız; dosya silindi, indirme tekrar denenebilir.",
+                "SHA-256 verification failed; the file was deleted and the download can be retried.");
+        EN.put("İndirme tamamlanamadı.", "The download could not finish.");
+
+        // ---- model catalog "why" texts (CPU / GPU / uncensored cards)
+        EN.put("En hızlı acemi model. Uzun sahnelerde hız gerçekten hissedilir, Türkçe düzeyi orta.",
+                "The fastest starter model. Speed is genuinely felt in long scenes; Turkish is mid-level.");
+        EN.put("Denge önerisi: kalite/hız oranı metin RP için en iyi. Türkçesi kibar, konuşma düzeni başarılı.",
+                "Balanced pick: the best quality/speed ratio for text RP. Polite Turkish and solid conversational flow.");
+        EN.put("Çok dilli, talimata sadık ve tutarlı; hikâyede bireysel karakter sesleri idare eder.",
+                "Multilingual, instruction-faithful and consistent; distinct character voices are passable in stories.");
+        EN.put("Bu boyutta narratif kalitedeki en iyi seçim; atmosfer ve Türkçe doğallık yüksek, hız biraz daha düşük.",
+                "The best narrative quality at this size; strong atmosphere and natural Turkish, a bit slower.");
+        EN.put("Sağlam telefonlar için güçlü seçenek; uzun sahnelerde soğunun çöken bir model değil.",
+                "A strong option for capable phones; it does not turn sluggish and collapse in long scenes.");
+        EN.put("Yaşlı ve tek metin odaklı; etiketli konuşmada çok iyi ama bağlam penceresi 4K, çoğu sahne kısa kalır.",
+                "Small and text-focused; very good at labeled dialogue, but with a 4K context most scenes stay short.");
+        EN.put("Küçük model sayılır: GPU'da gerçek zamanlı akış en rahat hissedilen boyut.",
+                "Effectively tiny: on GPU, real-time streaming is most comfortable at this size.");
+        EN.put("Klasik küçük model; GPU senaryoları için çok hafif, uzun sahne bağlamı zayıf.",
+                "The classic small model; very light for GPU scenarios, weak at long-scene context.");
+        EN.put("GPU senaryosunda da dengeli; kalite düşmeden hız artırmak isteyenler için.",
+                "Balanced on GPU too, for those who want more speed without losing quality.");
+        EN.put("GPU'da Q5/Q6 quant kalitesini seçebilirsin; metin kalitesi en yüksek boyut.",
+                "On GPU you can pick Q5/Q6 quant quality; the best text quality at this tier.");
+        EN.put("Denge önerisi: RP'de daha zengin sahne ve daha güçlü karakter sesi; abliterated sürüm geliştirici filtre katmanını çıkarır.",
+                "Balanced pick: richer scenes and a stronger character voice in RP; the abliterated build removes the developer filter layer.");
+        EN.put("En hızlı giriş: bu listedeki en hızlı modeldir; küçük boyut nedeniyle uzun sahnelerde derinlik sınırlıdır.",
+                "Fastest entry: the quickest model on this list; limited depth in long scenes due to its small size.");
+        EN.put("En yüksek sahne kalitesi; ağır maliyeti vardır: 8B model CPU'da yavaştır, güçlü cihaz + sabır gerektirir.",
+                "The highest scene quality; it comes at a cost: an 8B model is slow on CPU and needs a capable device plus patience.");
     }
 }

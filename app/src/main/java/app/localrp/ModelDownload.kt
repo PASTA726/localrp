@@ -82,14 +82,14 @@ object ModelDownload {
                 val safeName = DownloadPolicy.sanitizeFileName(displayName)
                 if (safeName == null || !DownloadPolicy.isHttps(url)) {
                     withContext(NonCancellable + Dispatchers.Main) {
-                        listener.onError("İndirme reddedildi: hedef dosya adı veya adres geçersiz.")
+                        listener.onError(L10n.s("İndirme reddedildi: hedef dosya adı veya adres geçersiz."))
                     }
                     return@launch
                 }
                 val target = File(LocalAiRuntime.modelsDirectory(app), safeName)
                 withContext(Dispatchers.Main) { listener.onProgress(0, 0L, -1L) }
-                val directory = target.parentFile ?: error("Model klasörü yok.")
-                if (!directory.exists() && !directory.mkdirs()) error("Model klasörü oluşturulamadı.")
+                val directory = target.parentFile ?: error(L10n.s("Model klasörü yok."))
+                if (!directory.exists() && !directory.mkdirs()) error(L10n.s("Model klasörü oluşturulamadı."))
                 val temporary = File(directory, target.name + ".part")
                 var alreadyHave = if (temporary.isFile) temporary.length() else 0L
 
@@ -114,11 +114,11 @@ object ModelDownload {
                     }
                 }
                 if (code < 200 || code >= 300) {
-                    error("Sunucu $code döndürdü; indirme başlatılamadı.")
+                    error(L10n.s("Sunucu ") + code + L10n.s(" döndürdü; indirme başlatılamadı."))
                 }
                 val finalUrl = activeConnection.url
                 if (finalUrl.protocol != "https") {
-                    error("İndirme güvenli olmayan (https olmayan) bir adrese yönlendirildi; iptal edildi.")
+                    error(L10n.s("İndirme güvenli olmayan (https olmayan) bir adrese yönlendirildi; iptal edildi."))
                 }
 
                 val startOffset = if (code == HttpURLConnection.HTTP_PARTIAL) alreadyHave else 0L
@@ -127,7 +127,7 @@ object ModelDownload {
                 if (total != null && remaining <= 0) {
                     if (expectedBytes > 0 && temporary.length() != expectedBytes) {
                         temporary.delete()
-                        error("Dosya boyutu beklenenden farklı (${temporary.length()}/${expectedBytes}); indirilmedi.")
+                        error(L10n.s("Dosya boyutu beklenenden farklı (") + temporary.length() + "/" + expectedBytes + L10n.s("); indirilmedi."))
                     }
                     finalize(target, temporary)
                     withContext(Dispatchers.Main) { listener.onDone(target) }
@@ -136,7 +136,7 @@ object ModelDownload {
                 if (total != null) {
                     val available = android.os.StatFs(directory.absolutePath).availableBytes
                     if (remaining > available - 128L * 1024 * 1024) {
-                        error("Depolama yetersiz. Gerekli: ${(remaining / 1_000_000_000.0)} GB, boş: ${(available / 1_000_000_000.0)} GB.")
+                        error(L10n.s("Depolama yetersiz. Gerekli: ") + (remaining / 1_000_000_000.0) + L10n.s(" GB, boş: ") + (available / 1_000_000_000.0) + L10n.s(" GB."))
                     }
                 }
 
@@ -173,17 +173,17 @@ object ModelDownload {
                     }
                 }
                 if (total != null && temporary.length() != total) {
-                    error("Dosya tam inmedi (${temporary.length()}/${total}); tekrar deneyebilirsin.")
+                    error(L10n.s("Dosya tam inmedi (") + temporary.length() + "/" + total + L10n.s("); tekrar deneyebilirsin."))
                 }
                 if (expectedBytes > 0 && temporary.length() != expectedBytes) {
                     temporary.delete()
-                    error("Dosya boyutu katalog bekleneniyle uyuşmuyor (${temporary.length()}/${expectedBytes}); indirilmedi.")
+                    error(L10n.s("Dosya boyutu katalog bekleneniyle uyuşmuyor (") + temporary.length() + "/" + expectedBytes + L10n.s("); indirilmedi."))
                 }
                 if (expectedSha256 != null) {
                     val actual = DownloadPolicy.sha256Hex(temporary)
                     if (actual == null || !DownloadPolicy.shaMatches(expectedSha256, actual)) {
                         temporary.delete()
-                        error("SHA-256 doğrulaması başarısız; dosya silindi, indirme tekrar denenebilir.")
+                        error(L10n.s("SHA-256 doğrulaması başarısız; dosya silindi, indirme tekrar denenebilir."))
                     }
                 }
                 finalize(target, temporary)
@@ -193,7 +193,7 @@ object ModelDownload {
                 throw cancelled
             } catch (failure: Throwable) {
                 withContext(NonCancellable + Dispatchers.Main) {
-                    listener.onError(failure.message ?: "İndirme tamamlanamadı.")
+                    listener.onError(failure.message ?: L10n.s("İndirme tamamlanamadı."))
                 }
             } finally {
                 connection?.disconnect()
@@ -210,7 +210,7 @@ object ModelDownload {
         connection.instanceFollowRedirects = true
         connection.connectTimeout = 20_000
         connection.readTimeout = 30_000
-        connection.setRequestProperty("User-Agent", "LocalRP/0.16.0-alpha1 (+android)")
+        connection.setRequestProperty("User-Agent", "LocalRP/0.16.0-alpha2 (+android)")
         connection.setRequestProperty("Accept-Encoding", "identity")
         if (rangeStart > 0L) connection.setRequestProperty("Range", "bytes=$rangeStart-")
         return connection
