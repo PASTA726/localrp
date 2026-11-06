@@ -138,6 +138,15 @@ object ModelDownload {
                         temporary.delete()
                         error(L10n.s("Dosya boyutu beklenenden farklı (") + temporary.length() + "/" + expectedBytes + L10n.s("); indirilmedi."))
                     }
+                    // A resumed .part file counts as done only when its digest matches
+                    // the trusted catalog digest — size alone proves nothing.
+                    if (expectedSha256 != null) {
+                        val actual = DownloadPolicy.sha256Hex(temporary)
+                        if (actual == null || !DownloadPolicy.shaMatches(expectedSha256, actual)) {
+                            temporary.delete()
+                            error(L10n.s("SHA-256 doğrulaması başarısız; dosya silindi, indirme tekrar denenebilir."))
+                        }
+                    }
                     finalize(target, temporary)
                     withContext(Dispatchers.Main) { listener.onDone(target) }
                     return@launch
@@ -219,7 +228,7 @@ object ModelDownload {
         connection.instanceFollowRedirects = true
         connection.connectTimeout = 20_000
         connection.readTimeout = 30_000
-        connection.setRequestProperty("User-Agent", "LocalRP/0.18.0-alpha1 (+android)")
+        connection.setRequestProperty("User-Agent", "LocalRP/0.18.1-alpha1 (+android)")
         connection.setRequestProperty("Accept-Encoding", "identity")
         if (rangeStart > 0L) connection.setRequestProperty("Range", "bytes=$rangeStart-")
         return connection

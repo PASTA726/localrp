@@ -382,6 +382,11 @@ public final class L10n {
         EN.put("Çevrimdışı", "Offline");
         EN.put("Değişiklikler bir sonraki yanıtta uygulanır.", "Changes apply from the next reply on.");
         EN.put(" · devam edince indirilmiş sayılır", " · counts as downloaded once resumed");
+        EN.put(" · indiriliyor…", " · downloading…");
+        EN.put("[görsel]", "[image]");
+        EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
+                " delete from the device? Re-download to use it again.");
+        EN.put(" silindi.", " deleted.");
         EN.put("Dil Türkçe olarak ayarlandı.", "Language set to Turkish.");
         EN.put("Dosya açılamadı.", "Could not open the file.");
         EN.put("Dosya beklenenden çok büyük.", "The file is larger than expected.");

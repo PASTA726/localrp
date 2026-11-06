@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.18.1-alpha1 — 2026-11-06 (Hata düzeltme paketi — görsel motor + sohbet)
+
+Kapsamlı hata incelemesinin (3 kritik, 10 orta, 8 düşük bulgu) düzeltme paketi. Uygulamanın davranışı ve veri biçimi değişmedi; çökmeler, durum sızıntıları ve UI boşlukları kapatıldı.
+
+- **Kritik**: ✨ görsel üretim kutusunun kilitlenmesi (sayfa bileşenine eklenen alan girdileri) düzeltildi; kutu artık ayrık `dialogField` bileşeniyle kurulur, boş fikirde açık kalır ve "İstenmeyenler" yazısı kaybolmaz.
+- **Kritik**: görsel motoru geri aramaları ana iş parçacığına taşındı (`mainSafe`) — arka plan iş parçacığından doğrudan arayüz erişimi (beyaz ekran/donma riski) engellendi.
+- **Kritik**: yükleme durumu bayrağı (`loadingFile`) her çıkışta temizlenir; boşa kilitlenen motor "iş sürüyor" durumuna asla takılmaz.
+- **Orta**: parça (.part) tamamlanınca boyut kontrolü yetmez — SHA-256 doğrulaması zorunlu; foto ekli ama metin boş gönderim artık model istemez; 📷 çipi gönderimden sonra kaybolur ve yazıyla **hedef sohbette** bağlanır (`pendingComposerImageChatId`); görsel üretim sırasında Devam/Tekrar dene ve otomatik üretim kilitlenir; aktivite kapanınca görsel üretim + sayaç durur; yazı, çip kapatma/rebuild akarında taslak olarak korunur; sohbet temizleme ve grup silme mesaj görsellerini dosya olarak da siler; yedek geri yüklemede bu cihazda bulunmayan görsel/avatar yolları zarif biçimde boşaltılır (çapraz cihaz bozulması önlenir); profil/karakter avatarı Kaydet başarılana kadar silinmez (geri çekilme dosya kaybetmez); görsel motor Loaded iken `unload`, yükleme/üretim sürerken `deleteStoredModel` reddeder.
+- **Düşük**: " · indiriliyor…" İngilizce çevirisi eklendi; konuşmacı seçimi görsel-only mesajları atlar; prompt geçmişi ve sohbet önizlemesi boş metinli görsel kayıtlarda "Karakter: " yerine "[görsel]" yer tutucu yazar; katalogda yüklü modelin "yükle" düğmesi pasifleşmez artık ve depolanan görsel modele "Sil" düğmesi eklendi; sohbet görselleri (yol+boyut) anahtarlı bitmap cache ile yeniden çizim başına tekrar çözülmez, sayfadan çıkışta geri dönüştürülür.
+- versionCode 28 / 0.18.1-alpha1.
+
 ## v0.18.0-alpha1 — 2026-11-06 (YENİ — Görsel motor + sohbette görsel + 18+ görsel model bölümü)
 
 - **Yerel görsel motoru**: uygulama paketi artık `stable-diffusion.cpp` tabanlı `libstable-diffusion.so` + `libsd-jni.so` JNI köprüsünü (arm64-v8a) taşır. İlerleme geri araması, iptal (`sd_cancel_generation`) ve PNG çıktısı JNI katmanında. Metin motorundan tamamen bağımsızdır; her şey cihaz içinde çalışır.

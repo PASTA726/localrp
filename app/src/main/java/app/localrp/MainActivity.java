@@ -144,7 +144,11 @@ public class MainActivity extends Activity {
     private String imageLoadStatus;
     private ViewGroup pendingComposerImageChip;
     private File pendingComposerImage;
+    private String pendingComposerImageChatId;
     private Group imageAttachGroup;
+    /** Chat image balloons decode once per (path,size) and re-scan-free on re-render. */
+    private final java.util.concurrent.ConcurrentHashMap<String, Bitmap> imageDecodeCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
     private Runnable imageGeneratingTick;
     private android.os.Handler imageGeneratingTickTickHandler;
 
@@ -323,11 +327,18 @@ public class MainActivity extends Activity {
             String savedDescription = descriptionField.getText().toString().trim();
             String savedAvatar = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
                     ? personaAvatarDraft : storedAvatar;
+            // A fresh draft replaces the persisted file; delete the old one only once
+            // the save succeeded, so backing out can never orphan the kept avatar.
+            String replacedAvatar = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
+                    && storedAvatar != null && !storedAvatar.isEmpty()
+                    && !storedAvatar.equals(personaAvatarDraft)
+                    ? storedAvatar : null;
             personaAvatarDraft = null;
             if (!store.savePersona(savedName, savedDescription, savedAvatar)) {
                 Toast.makeText(this, L10n.s("Profil kayda geçemedi."), Toast.LENGTH_SHORT).show();
                 return;
             }
+            if (replacedAvatar != null) deleteAvatarFile(replacedAvatar);
             Toast.makeText(this, L10n.s("Kullanıcı profili kaydedildi."), Toast.LENGTH_SHORT).show();
             showCharacters();
         });
@@ -449,12 +460,20 @@ public class MainActivity extends Activity {
             character.personality = personality.getText().toString().trim();
             character.instructions = instructions.getText().toString().trim();
             character.examples = examples.getText().toString().trim();
+            // Delete a replaced persisted avatar only after the save succeeded.
+            String replacedAvatar = editing
+                    && pickedAvatarPath != null && !pickedAvatarPath.isEmpty()
+                    && existing.avatarPath != null && !existing.avatarPath.isEmpty()
+                    && !existing.avatarPath.equals(pickedAvatarPath)
+                    ? existing.avatarPath : null;
             character.avatarPath = pickedAvatarPath;
             editorCharacter = null;
             pickedAvatarPath = "";
             if (!store.saveCharacter(character)) {
                 Toast.makeText(this, L10n.s("Değişiklik kaydedilemedi: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                return;
             }
+            if (replacedAvatar != null) deleteAvatarFile(replacedAvatar);
             if (afterSave != null) afterSave.run(); else showCharacters();
         });
         if (editing && !BUILTIN_ROLEPLAY_ID.equals(existing.id)) {
@@ -515,6 +534,7 @@ public class MainActivity extends Activity {
             addDangerButton("Sohbet geçmişini temizle", v -> clearChat(existing));
             addDangerButton("Grubu sil", v -> confirm(existing.name + " ve sohbeti silinsin mi?", "Sil", () -> {
                 LocalAiRuntime.INSTANCE.stopGeneration();
+                deleteMessageImages(existing.id);
                 store.deleteGroup(existing.id);
                 showHome();
             }));
@@ -592,7 +612,9 @@ public class MainActivity extends Activity {
         List<Message> history = store.messages(group.id);
         for (int i = history.size() - 1; i >= 0; i--) {
             Message previous = history.get(i);
-            if (previous.user) continue;
+            // Image-only messages carry no turn content; they cannot continue the
+            // speaker rotation, so scan past them too.
+            if (previous.user || (previous.hasImage() && previous.text.isEmpty())) continue;
             for (int j = 0; j < available.size(); j++) {
                 if (available.get(j).name.equals(previous.speaker)) return available.get((j + 1) % available.size());
             }
@@ -827,7 +849,8 @@ public class MainActivity extends Activity {
         composerRow.addView(action, actionParams);
         chatComposer.addView(composerRow, fullWidth());
 
-        if (pendingComposerImage != null && pendingComposerImage.isFile()) {
+        if (pendingComposerImage != null && pendingComposerImage.isFile()
+                && group.id.equals(pendingComposerImageChatId)) {
             LinearLayout chip = new LinearLayout(this);
             chip.setGravity(Gravity.CENTER_VERTICAL);
             chip.setPadding(dp(12), 0, dp(12), 0);
@@ -837,6 +860,7 @@ public class MainActivity extends Activity {
             TextView chipRemove = label("✕", 15, Design.muted());
             chipRemove.setPadding(dp(10), 0, 0, 0);
             chipRemove.setOnClickListener(v -> {
+                saveComposerDraftTo(chatInputChatId);
                 clearPendingComposerImage();
                 buildChatComposer(group);
             });
@@ -854,6 +878,15 @@ public class MainActivity extends Activity {
     private void clearPendingComposerImage() {
         pendingComposerImage = null;
         pendingComposerImageChip = null;
+        pendingComposerImageChatId = null;
+    }
+
+    /** Persists the composer text so a rebuild (photo chip, send) cannot eat a draft. */
+    private void saveComposerDraftTo(String chatId) {
+        if (chatInput == null || chatId == null) return;
+        String draft = chatInput.getText().toString();
+        if (draft.trim().isEmpty()) chatDrafts.remove(chatId);
+        else chatDrafts.put(chatId, draft);
     }
 
     /**
@@ -879,26 +912,49 @@ public class MainActivity extends Activity {
         form.setPadding(dp(22), dp(16), dp(22), 0);
         TextView note = label(L10n.s("Bu cihazda tek bir 512×512 görsel üretilir; CPU ile 1–3 dakika sürebilir. İptal etmek için duraklat düğmesine bas."), 12, Design.muted());
         form.addView(note);
-        EditText promptInput = field(L10n.s("Görsel fikri"), "", 3);
+        // Dialog-scoped inputs: they must never enter the page's `content` tree, so
+        // they are built with a detached helper instead of the page-bound field().
+        EditText promptInput = dialogField(L10n.s("Görsel fikri"));
         promptInput.setHint(L10n.s("Örn: fırtınada duran deniz feneri"));
         form.addView(promptInput);
-        EditText negativeInput = field(L10n.s("İstenmeyenler (boş kalabilir)"), "", 2);
+        EditText negativeInput = dialogField(L10n.s("İstenmeyenler (boş kalabilir)"));
         negativeInput.setHint(L10n.s("Örn: bulanık, düşük kalite"));
         form.addView(negativeInput);
 
-        new AlertDialog.Builder(this)
-                .setTitle(L10n.s("Görsel üret (" + LocalImageEngine.INSTANCE.loadedModelName() + ")"))
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(L10n.s("Görsel üret (") + LocalImageEngine.INSTANCE.loadedModelName() + ")")
                 .setView(form)
-                .setPositiveButton(L10n.s("Üret"), (d, w) -> {
-                    String prompt = promptInput.getText().toString().trim();
-                    if (prompt.isEmpty()) {
-                        Toast.makeText(this, L10n.s("Bir fikir yaz."), Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    startChatImageGeneration(group, prompt, negativeInput.getText().toString().trim());
-                })
+                .setPositiveButton(L10n.s("Üret"), null)
                 .setNegativeButton(L10n.s("Vazgeç"), null)
-                .show();
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String prompt = promptInput.getText().toString().trim();
+            if (prompt.isEmpty()) {
+                // Keep the dialog open; a typed "avoid" list must not be lost.
+                Toast.makeText(this, L10n.s("Bir fikir yaz."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            dialog.dismiss();
+            startChatImageGeneration(group, prompt, negativeInput.getText().toString().trim());
+        }));
+        dialog.show();
+    }
+
+    /** Dialog-safe EditText twin of field(...); detached from the page content tree. */
+    private EditText dialogField(String hint) {
+        EditText input = new EditText(this);
+        input.setHint(hint);
+        input.setTextSize(15);
+        input.setMinLines(1);
+        input.setGravity(Gravity.TOP);
+        input.setPadding(dp(14), dp(11), dp(14), dp(11));
+        input.setTextColor(Design.text());
+        input.setHintTextColor(Design.muted());
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(Design.cardBg());
+        background.setCornerRadius(dp(16));
+        input.setBackground(background);
+        return input;
     }
 
     /** Runs the on-device generation and routes its events into the open chat. */
@@ -995,8 +1051,8 @@ public class MainActivity extends Activity {
 
     private void sendMessage(Group group, EditText input) {
         String text = input.getText().toString().trim();
-        boolean withImage = pendingComposerImage != null;
-        if ((text.isEmpty() && !withImage) || generatingChatId != null) return;
+        boolean attachedHere = pendingComposerImage != null && group.id.equals(pendingComposerImageChatId);
+        if ((text.isEmpty() && !attachedHere) || generatingChatId != null) return;
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading()) {
             Toast.makeText(this, L10n.s("Model yükleniyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
             return;
@@ -1010,8 +1066,12 @@ public class MainActivity extends Activity {
             return;
         }
         forgetAutoAttempts(group.id);
-        File photo = pendingComposerImage;
-        clearPendingComposerImage();
+        File photo = null;
+        if (pendingComposerImage != null && group.id.equals(pendingComposerImageChatId)) {
+            photo = pendingComposerImage;
+        }
+        boolean withImage = photo != null;
+        if (withImage) clearPendingComposerImage();
         Message sent = new Message("Sen", text, true);
         if (withImage && photo != null) sent.image = photo.getPath();
         store.addMessage(group.id, sent);
@@ -1028,9 +1088,14 @@ public class MainActivity extends Activity {
         input.setText("");
         chatDrafts.remove(group.id);
         scrollChatToBottom(true);
-        updateChatControls(group);
+        // Rebuild so the 📷 chip is gone; the just-sent photo cannot attach twice.
+        buildChatComposer(group);
 
-        if (!modelCanRespond() || text.isEmpty()) {
+        if (text.isEmpty()) {
+            // Photo-only message: the engine cannot see images, so no AI turn follows.
+            return;
+        }
+        if (!modelCanRespond()) {
             new AlertDialog.Builder(this)
                     .setTitle(L10n.s("Önce model gerekli"))
                     .setMessage(L10n.s("Yanıt üretmek için AI ayarlarından bir GGUF modeli seçip yükle. Mesajın kaydedildi; model hazır olunca yanıtlanacak."))
@@ -1044,6 +1109,10 @@ public class MainActivity extends Activity {
 
     private void continueOrRetry(Group group) {
         if (generatingChatId != null) return;
+        if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) {
+            Toast.makeText(this, L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading()) {
             Toast.makeText(this, L10n.s("Model yükleniyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
             return;
@@ -1066,6 +1135,7 @@ public class MainActivity extends Activity {
     private void maybeAutoGenerate(Group group) {
         if (!LocalAiRuntime.INSTANCE.isModelReady() || generatingChatId != null) return;
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading() || LocalAiRuntime.INSTANCE.isBenchmarking()) return;
+        if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) return;
         List<Message> history = store.messages(group.id);
         if (history.isEmpty() || !history.get(history.size() - 1).user) return;
         String key = group.id + ":" + history.size();
@@ -1323,6 +1393,7 @@ public class MainActivity extends Activity {
             return;
         }
         confirm(L10n.s("Bu sohbetin tüm mesajları silinsin mi?"), L10n.s("Temizle"), () -> {
+            deleteMessageImages(group.id);
             store.clearMessages(group.id);
             forgetAutoAttempts(group.id);
             chatMetrics.remove(group.id);
@@ -1330,6 +1401,33 @@ public class MainActivity extends Activity {
             LocalAiRuntime.INSTANCE.resetConversation(group.id);
             showChat(group);
         });
+    }
+
+    /** Deletes the image files that a group's messages reference, before its transcript is wiped. */
+    private void deleteMessageImages(String groupId) {
+        for (Message message : store.messages(groupId)) {
+            if (message.hasImage()) deleteMessageImageFile(message.image);
+        }
+    }
+
+    /**
+     * Only deletes paths inside this app's private storage (models/images or files/);
+     * restored backups may reference foreign-quality-device paths and must be left alone.
+     */
+    private void deleteMessageImageFile(String path) {
+        if (path == null || path.isEmpty()) return;
+        try {
+            File file = new File(path);
+            if (!file.isFile()) return;
+            String canonical = file.getCanonicalPath();
+            if (canonical.startsWith(LocalImageEngine.INSTANCE.imagesDirectory(this)
+                    .getParentFile().getCanonicalPath())
+                    || canonical.startsWith(getFilesDir().getCanonicalPath())) {
+                file.delete();
+            }
+        } catch (java.io.IOException unreadable) {
+            // unreadable path: never delete something we cannot verify is ours
+        }
     }
 
     private String chatStatusText(Group group) {
@@ -2059,14 +2157,16 @@ public class MainActivity extends Activity {
             load.setBackground(rounded(Design.accent(), Design.accent(), 14));
             boolean active = LocalImageEngine.INSTANCE.isModelLoading()
                     || LocalImageEngine.INSTANCE.isGenerating();
-            if (active) {
+            // Already loaded: the load button must not silently re-load the same file.
+            boolean loadedThis = LocalImageEngine.INSTANCE.loadedModelName() != null
+                    && model.fileHint.equals(LocalImageEngine.INSTANCE.loadedModelName());
+            if (active || loadedThis) {
                 load.setEnabled(false);
                 load.setAlpha(.55f);
             } else {
                 load.setOnClickListener(v -> startImageModelLoad(model, stored));
             }
-            if (LocalImageEngine.INSTANCE.loadedModelName() != null
-                    && model.fileHint.equals(LocalImageEngine.INSTANCE.loadedModelName())) {
+            if (loadedThis) {
                 TextView loaded = label(L10n.s("Yüklü  ·  sohbette ✨ ile üret"), 12, Design.accent());
                 loaded.setPadding(0, dp(6), 0, 0);
                 card.addView(loaded);
@@ -2075,6 +2175,30 @@ public class MainActivity extends Activity {
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             loadParams.setMargins(0, dp(10), 0, 0);
             card.addView(load, loadParams);
+            Button delete = button(L10n.s("Sil"));
+            delete.setTextColor(Design.danger());
+            delete.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 12));
+            if (active || loadedThis) {
+                // Unload first (or wait for generation) before deleting a stored model.
+                delete.setEnabled(false);
+                delete.setAlpha(.55f);
+            } else {
+                delete.setOnClickListener(v -> confirm(
+                        model.name + L10n.s(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir."),
+                        L10n.s("Sil"), () -> {
+                            if (LocalImageEngine.INSTANCE.deleteStoredModel(this, stored)) {
+                                Toast.makeText(this, model.name + L10n.s(" silindi."), Toast.LENGTH_SHORT).show();
+                                if (imageLoadStatus != null) imageLoadStatus = null;
+                                showModelCatalog();
+                            } else {
+                                Toast.makeText(this, L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+                            }
+                        }));
+            }
+            LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            deleteParams.setMargins(0, dp(8), 0, 0);
+            card.addView(delete, deleteParams);
         } else {
             Button download = button(L10n.s("İndir  ·  ") + humanSize(model.bytes));
             download.setTextColor(Design.onAccent());
@@ -2563,11 +2687,9 @@ public class MainActivity extends Activity {
                 return;
             }
             if (avatarPickPersona) {
-                String[] currentPersona = store.persona();
-                String previous = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
-                        ? personaAvatarDraft
-                        : (currentPersona != null ? currentPersona[2] : "");
-                if (!previous.isEmpty()) deleteAvatarFile(previous);
+                // Only discard a previous DRAFT file; the persisted persona avatar may
+                // still be referenced if the user backs out without saving.
+                if (personaAvatarDraft != null && !personaAvatarDraft.isEmpty()) deleteAvatarFile(personaAvatarDraft);
                 personaAvatarDraft = saved.getPath();
                 if (personaPreviewPane != null) {
                     String labelName = personaNameField != null && !personaNameField.getText().toString().trim().isEmpty()
@@ -2592,7 +2714,12 @@ public class MainActivity extends Activity {
             }
             pendingComposerImage = saved;
             Group attachGroup = imageAttachGroup != null ? store.group(imageAttachGroup.id) : null;
-            if (attachGroup != null && attachGroup.id.equals(visibleChatId)) buildChatComposer(attachGroup);
+            if (attachGroup != null) {
+                pendingComposerImageChatId = attachGroup.id;
+                // The composer is about to be rebuilt for the chip; keep typed text.
+                saveComposerDraftTo(attachGroup.id);
+                if (attachGroup.id.equals(visibleChatId)) buildChatComposer(attachGroup);
+            }
         }
     }
 
@@ -2657,6 +2784,26 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> Toast.makeText(this, L10n.s("Bu dosya geçerli bir LocalRP yedeği değil."), Toast.LENGTH_LONG).show());
                 return;
             }
+            // Backups carry paths, not image bytes. A path that does not exist on THIS
+            // device (cross-device restore) degrades gracefully instead of shipping
+            // references to files that can never appear later.
+            try {
+                String filesRoot = getFilesDir().getCanonicalPath();
+                for (CharacterProfile c : bundle.characters) {
+                    if (c.avatarPath != null && !c.avatarPath.isEmpty()
+                            && !new File(c.avatarPath).getCanonicalPath().startsWith(filesRoot)) {
+                        c.avatarPath = "";
+                    }
+                }
+                for (List<Message> transcript : bundle.chats.values()) {
+                    for (Message m : transcript) {
+                        if (m.hasImage()
+                                && !new File(m.image).getCanonicalPath().startsWith(filesRoot)) {
+                            m.image = "";
+                        }
+                    }
+                }
+            } catch (java.io.IOException ignored) { }
             final boolean restored = store.restoreBundle(bundle.characters, bundle.groups, bundle.chats);
             runOnUiThread(() -> {
                 if (!restored) {
@@ -3024,6 +3171,10 @@ public class MainActivity extends Activity {
     @Override protected void onDestroy() {
         if (isFinishing()) {
             visibleChatId = null;
+            stopImageGeneratingTick();
+            if (LocalImageEngine.INSTANCE.isGenerating()) {
+                LocalImageEngine.INSTANCE.stopGeneration();
+            }
             LocalAiRuntime.INSTANCE.stopGeneration();
             LocalAiRuntime.INSTANCE.resetConversation(null);
         }
@@ -3053,6 +3204,7 @@ public class MainActivity extends Activity {
         chatInput = null;
         chatInputChatId = null;
         if (!chat) visibleChatId = null;
+        if (!chat) recycleChatImageCache();
         pageRoot = new LinearLayout(this);
         pageRoot.setOrientation(LinearLayout.VERTICAL);
         pageRoot.setBackgroundColor(Design.pageBg());
@@ -3302,7 +3454,10 @@ public class MainActivity extends Activity {
         } else if (last == null) {
             preview = "Sahneyi başlatmak için dokun";
         } else {
-            preview = (last.user ? L10n.speaker("Sen") : last.speaker) + ": " + oneLine(last.text, 90);
+            // Image-only last message would render as "Speaker: "; show a placeholder.
+            String body = (last.text == null || last.text.isEmpty()) && last.hasImage()
+                    ? L10n.s("[görsel]") : oneLine(last.text, 90);
+            preview = (last.user ? L10n.speaker("Sen") : last.speaker) + ": " + body;
             when = clock.format(new Date(last.at));
         }
         CharacterProfile face = group.characterIds.isEmpty() ? null : store.character(group.characterIds.get(0));
@@ -3629,6 +3784,14 @@ public class MainActivity extends Activity {
         return parent instanceof LinearLayout ? (LinearLayout) parent : null;
     }
 
+    /** Frees cached chat images when no chat page is on screen. */
+    private void recycleChatImageCache() {
+        for (Bitmap bitmap : imageDecodeCache.values()) {
+            if (!bitmap.isRecycled()) bitmap.recycle();
+        }
+        imageDecodeCache.clear();
+    }
+
     /**
      * Image message balloon: the picture first (decoded off the UI thread), a text
      * caption beneath it when one exists, then the standard time stamping.
@@ -3650,14 +3813,33 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         String imagePath = message.image;
         final int maxSide = dp(240);
-        Thread decode = new Thread(() -> {
-            Bitmap bitmap = LocalImageEngine.INSTANCE.decode(imagePath, maxSide);
-            if (bitmap == null) return;
-            runOnUiThread(() -> image.setImageBitmap(bitmap));
-        }, "localrp-chat-image");
+        // Same (path,size) rendered repeatedly while scrolling: reuse the decoded
+        // bitmap instead of spawning a fresh decode thread per re-render.
+        String cacheKey = imagePath + "@" + maxSide;
+        Bitmap cached = imageDecodeCache.get(cacheKey);
+        if (cached != null && !cached.isRecycled()) {
+            image.setImageBitmap(cached);
+        } else {
+            if (cached != null) imageDecodeCache.remove(cacheKey, cached);
+            Thread decode = new Thread(() -> {
+                Bitmap bitmap = LocalImageEngine.INSTANCE.decode(imagePath, maxSide);
+                if (bitmap == null) return;
+                runOnUiThread(() -> {
+                    if (!image.isAttachedToWindow()) return;
+                    Bitmap known = imageDecodeCache.get(cacheKey);
+                    if (known != null && !known.isRecycled()) {
+                        bitmap.recycle();
+                        image.setImageBitmap(known);
+                        return;
+                    }
+                    if (visibleChatId != null) imageDecodeCache.put(cacheKey, bitmap);
+                    image.setImageBitmap(bitmap);
+                });
+            }, "localrp-chat-image");
+            decode.start();
+        }
         imageParams.setMargins(0, 0, 0, message.text == null || message.text.isEmpty() ? 0 : dp(8));
         wrap.addView(image, imageParams);
-        decode.start();
 
         TextView caption = null;
         TextView fallback = null;
