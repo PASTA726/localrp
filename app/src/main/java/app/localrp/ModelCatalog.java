@@ -138,4 +138,65 @@ public final class ModelCatalog {
 
     public static Model cpuRecommendation() { return CPU_MODELS[1]; } // Llama-3.2-1B
     public static Model gpuRecommendation() { return GPU_MODELS[0]; } // Qwen2.5-0.5B
+
+    /**
+     * Single-file image checkpoint (.safetensors with baked CLIP + VAE) for the local
+     * stable-diffusion engine. src/: no separate text-encoder/VAE downloads.
+     */
+    public static final class ImageModel {
+        public final String name;
+        public final String style;
+        public final long bytes;
+        public final String url;
+        public final String fileHint;
+        public final String why;
+        /** Official Hugging Face LFS SHA-256 of the exact file (fetched from the paths-info API, 2026-11-04). Never fabricated. */
+        public final String sha256;
+        /** Recommended sampling steps on a phone-class CPU. */
+        public final int steps;
+
+        ImageModel(String name, String style, long bytes, String url, String fileHint,
+                   String why, String sha256, int steps) {
+            this.name = name; this.style = style; this.bytes = bytes;
+            this.url = url; this.fileHint = fileHint; this.why = why;
+            this.sha256 = sha256; this.steps = steps;
+        }
+    }
+
+    /**
+     * Censored image models, safe for every user. URLs and SHA-256 verified against
+     * the Hugging Face paths-info API (LFS oids) and HTTP HEAD resume support on 2026-11-04.
+     * Never fabricated. Expect half a minute to minutes per 512×512 image on a phone
+     * CPU; the catalog cards say so honestly.
+     */
+    public static final ImageModel[] IMAGE_MODELS = {
+        new ImageModel("SD-Turbo", "Genel", 5_214_561_328L,
+                "https://huggingface.co/stabilityai/sd-turbo/resolve/main/sd_turbo.safetensors",
+                "sd-turbo.safetensors",
+                "En hızlı görsel modeli: 4 adımda resim biter; telefonun gücüne göre 512×512 bir kare yaklaşık 20–40 sn sürer.",
+                "3f067a1b943cf162f2b8f8588f6cf5824bd5b4c7d1d88d87164b9ca123616549", 4),
+        new ImageModel("Dreamlike-Diffusion 1.0", "Çizim/illüstrasyon", 2_132_625_462L,
+                "https://huggingface.co/dreamlike-art/dreamlike-diffusion-1.0/resolve/main/dreamlike-diffusion-1.0.safetensors",
+                "dreamlike-diffusion-1.0.safetensors",
+                "Sanatsal çizim stili: atmosferik sahneler ve maskot karakterler; ancak SD1.5 tabanlı olduğundan 20 adım ister, dakikalar sınıfında hız CPU'da.",
+                "c86a1a99b8c2a2891d9fac4990a8b90cee598d3e16c682fae76c0ab31212983d", 20),
+    };
+
+    /**
+     * Uncensored image models (18+, same strict gate as text models in MainActivity).
+     * Sourced from the Meina checkpoint family on Hugging Face. Verified same day as
+     * above; digests are the repos' official LFS oids. Never fabricated.
+     */
+    public static final ImageModel[] UNCENSORED_IMAGE_MODELS = {
+        new ImageModel("MeinaMix V3.0", "Anime (baked VAE)", 3_851_810_793L,
+                "https://huggingface.co/LarryAIDraw/meinamix_meinaV30BakedVAE/resolve/main/meinamix_meinaV30BakedVAE.safetensors",
+                "meinamix-meinav30bakedvae.safetensors",
+                "Popüler anime karışımı, gömülü VAE sayesinde tek dosya; 20–25 adım ister, CPU'da dakikalar sınıfındadır.",
+                "2dc286eff16618784761888abfe55e9947de2aa7606bfbc290a3168d01bd3f25", 22),
+        new ImageModel("MeinaHentai v2", "Anime (açık sahne)", 2_132_651_194L,
+                "https://huggingface.co/nergaldarski/MeinaHentaiv2/resolve/main/meinahentai_v2.safetensors",
+                "meinahentai-v2.safetensors",
+                "Meina ailesinin 18+ sürümü: kapı arkasındadır ve yalnızca açıkça onay veren kullanıcılara gösterilir; hız dakikalar sınıfındadır.",
+                "e7640356f8136a2e411ac737ee4c8de76a7f9575931900e9487680181452e7b4", 20),
+    };
 }

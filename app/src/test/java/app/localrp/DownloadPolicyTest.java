@@ -34,6 +34,8 @@ public class DownloadPolicyTest {
     public void sanitize_acceptsPlainModelName() {
         assertEquals("llama32-1b-q4-km.gguf", DownloadPolicy.INSTANCE.sanitizeFileName("llama32-1b-q4-km.gguf"));
         assertEquals("model .gguf", DownloadPolicy.INSTANCE.sanitizeFileName("  model .gguf  "));
+        // Image checkpoints (stable-diffusion) share the catalog flow.
+        assertEquals("sd-turbo.safetensors", DownloadPolicy.INSTANCE.sanitizeFileName("sd-turbo.safetensors"));
     }
 
     @Test

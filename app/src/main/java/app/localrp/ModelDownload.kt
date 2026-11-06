@@ -35,6 +35,10 @@ object ModelDownload {
 
     private const val REPORT_CHUNK = 4L * 1024 * 1024 // bytes between progress events without Content-Length
 
+    /** Only the fixed "images" catalog subfolder is ever appended to the models root. */
+    private fun sanitizedSubdirectory(base: File, subdirectory: String?): File =
+        if (subdirectory == null) base else File(base, subdirectory)
+
     @Volatile private var job: Job? = null
 
     /**
@@ -60,6 +64,8 @@ object ModelDownload {
      * @param expectedBytes trusted catalog byte count; when > 0 the finished file must match.
      * @param expectedSha256 trusted catalog digest; only values shipping inside the app may be
      *   passed (a hash delivered over the same network proves nothing and must never be used).
+     * @param subdirectory fixed in-app subfolder of the models directory (e.g. "images");
+     *   catalog constants only, never user input. Null keeps the models directory itself.
      * @return false when refused (another download in flight or still unwinding).
      */
     fun start(
@@ -69,6 +75,7 @@ object ModelDownload {
         listener: Listener,
         expectedBytes: Long = -1L,
         expectedSha256: String? = null,
+        subdirectory: String? = null,
     ): Boolean {
         synchronized(gate) {
             if (!running.compareAndSet(false, true)) return false
@@ -80,13 +87,15 @@ object ModelDownload {
             try {
                 if (currentUrl != url) return@launch // cancel() raced between start() and job assignment
                 val safeName = DownloadPolicy.sanitizeFileName(displayName)
-                if (safeName == null || !DownloadPolicy.isHttps(url)) {
+                // subdirectory is a fixed catalog constant ("images"), never user input.
+                val knownDirectory = subdirectory == null || subdirectory == "images"
+                if (safeName == null || !knownDirectory || !DownloadPolicy.isHttps(url)) {
                     withContext(NonCancellable + Dispatchers.Main) {
                         listener.onError(L10n.s("İndirme reddedildi: hedef dosya adı veya adres geçersiz."))
                     }
                     return@launch
                 }
-                val target = File(LocalAiRuntime.modelsDirectory(app), safeName)
+                val target = File(sanitizedSubdirectory(LocalAiRuntime.modelsDirectory(app), subdirectory), safeName)
                 withContext(Dispatchers.Main) { listener.onProgress(0, 0L, -1L) }
                 val directory = target.parentFile ?: error(L10n.s("Model klasörü yok."))
                 if (!directory.exists() && !directory.mkdirs()) error(L10n.s("Model klasörü oluşturulamadı."))
@@ -210,7 +219,7 @@ object ModelDownload {
         connection.instanceFollowRedirects = true
         connection.connectTimeout = 20_000
         connection.readTimeout = 30_000
-        connection.setRequestProperty("User-Agent", "LocalRP/0.17.0-alpha1 (+android)")
+        connection.setRequestProperty("User-Agent", "LocalRP/0.18.0-alpha1 (+android)")
         connection.setRequestProperty("Accept-Encoding", "identity")
         if (rangeStart > 0L) connection.setRequestProperty("Range", "bytes=$rangeStart-")
         return connection

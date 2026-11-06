@@ -545,5 +545,46 @@ public final class L10n {
                 "Fastest entry: the quickest model on this list; limited depth in long scenes due to its small size.");
         EN.put("En yüksek sahne kalitesi; ağır maliyeti vardır: 8B model CPU'da yavaştır, güçlü cihaz + sabır gerektirir.",
                 "The highest scene quality; it comes at a cost: an 8B model is slow on CPU and needs a capable device plus patience.");
+
+        // ---- image engine (Görsel tab + chat image generation)
+        EN.put("Görsel", "Images");
+        EN.put("Görsel modeli yükleniyor…", "Loading image model…");
+        EN.put("Görsel motoruyla bir işlem sürüyor; bitmesini bekle.", "The image engine is busy; wait for it to finish.");
+        EN.put("Görsel motoru bu cihazda bulunamadı.", "The image engine is missing on this device.");
+        EN.put("Görsel modeli yüklenemedi: ", "Could not load image model: ");
+        EN.put("Görsel üretmeden önce bir görsel modeli yükle.", "Load an image model before generating.");
+        EN.put("Görsel üretiliyor…", "Generating image…");
+        EN.put("Görsel üretilemedi.", "Image generation failed.");
+        EN.put("Görsel modeller bu cihazda çalışır: model yüklendikten sonra sohbette ✨ düğmesiyle resim üretebilirsin. Her şey çevrimdışı işler.",
+                "Image models run on this device: once a model is loaded, press ✨ in a chat to paint. Everything works offline.");
+        EN.put("Görsel modeller (18+)", "Image models (18+)");
+        EN.put("Görsel modelini yükle", "Load image model");
+        EN.put("Yüklü  ·  sohbette ✨ ile üret", "Loaded  ·  press ✨ in a chat to paint");
+        EN.put("Yükleniyor… ilk üretimden önce birkaç dakika sürebilir.", "Loading… it may take a few minutes before the first generation.");
+        EN.put(" yüklendi; sohbette ✨ düğmesiyle görsel üretebilirsin.", " loaded; press ✨ in a chat to paint images.");
+        EN.put("Görsel modeli yüklü değil", "No image model loaded");
+        EN.put("Önce Ayarlar → Model önerileri → Görsel bölümünden bir görsel modeli indir ve yükle.",
+                "First download and load an image model under Settings → Model picks → Images.");
+        EN.put("Model önerilerini aç", "Open model picks");
+        EN.put("Görsel üret (", "Generate image (");
+        EN.put("Üret", "Generate");
+        EN.put("Görsel fikri", "Image idea");
+        EN.put("Örn: fırtınada duran deniz feneri", "e.g. a lighthouse standing in a storm");
+        EN.put("İstenmeyenler (boş kalabilir)", "Avoid (may stay empty)");
+        EN.put("Örn: bulanık, düşük kalite", "e.g. blurry, low quality");
+        EN.put("Bir fikir yaz.", "Write an idea first.");
+        EN.put("Bu cihazda tek bir 512×512 görsel üretilir; CPU ile 1–3 dakika sürebilir. İptal etmek için duraklat düğmesine bas.",
+                "One 512×512 image is produced on this device; CPU may take 1–3 minutes. Use the stop button to cancel.");
+        EN.put(" · görsel üretiliyor…", " · generating image…");
+        EN.put("Önce yürüyen yanıtı bekleyin.", "Wait for the running response to finish first.");
+        EN.put("Görsel üretiliyor · model bu cihazda çalışıyor", "Generating image · the model runs on this device");
+        EN.put("Fotoğraf eklendi", "Photo attached");
+        EN.put("Görsel üretildi", "Image generated");
+        EN.put("Motor fotoğrafları göremez; görsel yalnızca sohbet kaydında saklanır.",
+                "The engine cannot see photos; images are only kept in the chat transcript.");
+        EN.put("📷 Fotoğraf eklendi · gönder ile birlikte gider", "📷 Photo attached · goes with your next send");
+        EN.put("Bu cihazda fotoğraf seçici yok.", "No photo picker on this device.");
+        EN.put("Anlatıcı", "Narrator");
+        EN.put("Yüklendi", "Loaded");
     }
 }

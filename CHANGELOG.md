@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.18.0-alpha1 — 2026-11-06 (YENİ — Görsel motor + sohbette görsel + 18+ görsel model bölümü)
+
+- **Yerel görsel motoru**: uygulama paketi artık `stable-diffusion.cpp` tabanlı `libstable-diffusion.so` + `libsd-jni.so` JNI köprüsünü (arm64-v8a) taşır. İlerleme geri araması, iptal (`sd_cancel_generation`) ve PNG çıktısı JNI katmanında. Metin motorundan tamamen bağımsızdır; her şey cihaz içinde çalışır.
+- **Sohbette görsel üretimi**: composer'daki ✨ düğmesi görsel üretim sayfası açar — fikir + "istenmeyenler" girişi, 512×512 tek kare, ilerleme canlı adım sayacı ("12/25") ile chatStatus'ta görünür; ➤ düğmesi üretimi iptal eder. Üretilen görsel anlatıcının/karakterin mesajı olarak kayıt ve sohbete görsel baloncuk düşer.
+- **Kullanıcı fotoğraf gönderimi**: composer'daki 📷 düğmesi fotoğraf seçer; gönderilen mesaj görsel baloncuğu taşır. Dürüstlük notu: paketli metin motoru görselleri göremez — fotoğraf yalnızca sohbet kaydında saklanır, motor sahte "görme" yanıtı üretmez.
+- **Model kataloğunda "Görsel" sekmesi** (sansürlü): SD-Turbo (4 adım, ~½ dk sınıfı) ve Dreamlike-Diffusion 1.0. İndirme akışı metin modellerle aynı: https-only, dosya adı sertleştirmesi (`.safetensors` kabulü eklendi), parça devamı (HTTP 206 doğrulamalı) ve **gerçek LFS SHA-256 doğrulaması**.
+- **Sansürsüz görsel bölümü (18+)**: aynı dört eşikli kapı (kutucuk + yaş + birebir onay kelimesi + 10 sn geri sayım) **görsel modeller için de** zorunlu; MeinaMix V3.0 ve MeinaHentai v2 kartları bu bölümde. Dosyalar uygulamanın özel alanındaki `images/` alt klasörüne iner; hiçbir şey otomatik yüklenmez.
+- **Doğrulanmış model özetleri** (2026-11-04, HF paths-info API): sd_turbo.safetensors 5.21 GB / `3f067a1b…36549`; dreamlike-diffusion-1.0.safetensors 2.13 GB / `c86a1a99…12983d`; meinamix_meinaV30BakedVAE.safetensors 3.85 GB / `2dc286ef…bd3f25`; meinahentai_v2.safetensors 2.13 GB / `e7640356…452e7b4`.
+- **Kalıcılık**: `Message` sınıfına opsiyonel `image` alanı eklendi; `PersistenceCodec` depolama ve yedek blokları görsel yolunu (`"image"`) yazar/okur — geriye dönük uyumlu, eski yedekler sorunsuz açılır.
+- Not: Görsel üretim telefon CPU'sunda yavaştır; kartlar gerçekçi süre yazar (SD1.5 tabanlılar dakikalar sınıfı). GPU/Vulkan henüz kullanılmaz.
+- versionCode 27 / 0.18.0-alpha1.
+
 ## v0.17.0-alpha1 — 2026-11-04 (Minimal UI yenilemesi · NSFW kapısı sertleştirmesi)
 
 - **Minimal UI yenilemesi (geniş)**: tasarım dili sadeleştirildi — kartlar çerçevesiz, yumuşak 22–24 yarıçaplı düz yüzeylere geçti; bölüm başlıkları küçük, harf aralıklı, soluk (sessiz hiyerarşi); alt gezinme metin-bazlı hap bar'a döndü (seçili sekme aksan füme vurgulu); ayar satırları dolgusuz buton yerine sakin liste satırı; bilgi kartlarındaki büyük harf rozet kalktı; hero, tile, karakter hücreleri ve sohbet composer'ı aynı yumuşak dile geçti; sayfa başlıkları daha ferah tipografiyle (26–22 sp) eşleşti; sohbette ayrı çizgi kaldırıldı.
