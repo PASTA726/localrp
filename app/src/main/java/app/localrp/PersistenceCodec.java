@@ -187,6 +187,7 @@ final class PersistenceCodec {
                 o.put("text", m.text);
                 o.put("user", m.user);
                 o.put("at", m.at);
+                if (m.hasImage()) o.put("image", m.image);
                 data.put(o);
             }
             return data.toString();
@@ -202,7 +203,7 @@ final class PersistenceCodec {
             for (int i = 0; i < data.length(); i++) {
                 try {
                     JSONObject o = data.getJSONObject(i);
-                    result.items.add(new Message(o.getString("speaker"), o.getString("text"), o.getBoolean("user"), o.optLong("at", 0L)));
+                    result.items.add(new Message(o.getString("speaker"), o.getString("text"), o.getBoolean("user"), o.optLong("at", 0L), o.optString("image")));
                 } catch (JSONException badRecord) {
                     result.droppedRecords++;
                 }
@@ -218,7 +219,7 @@ final class PersistenceCodec {
     private static Message messageFromLoose(Object value) throws JSONException {
         if (!(value instanceof JSONObject)) throw new JSONException("not an object");
         JSONObject o = (JSONObject) value;
-        return new Message(o.getString("speaker"), o.getString("text"), o.getBoolean("user"), o.optLong("at", 0L));
+        return new Message(o.getString("speaker"), o.getString("text"), o.getBoolean("user"), o.optLong("at", 0L), o.optString("image"));
     }
 
     /**
@@ -340,6 +341,7 @@ final class PersistenceCodec {
                     o.put("text", m.text);
                     o.put("user", m.user);
                     o.put("at", m.at);
+                    if (m.hasImage()) o.put("image", m.image);
                     messages.put(o);
                 }
                 chats.put(entry.getKey(), messages);
@@ -401,7 +403,7 @@ final class PersistenceCodec {
                         try {
                             JSONObject o = messages.getJSONObject(i);
                             list.add(new Message(o.getString("speaker"), o.getString("text"),
-                                    o.getBoolean("user"), o.optLong("at", 0L)));
+                                    o.getBoolean("user"), o.optLong("at", 0L), o.optString("image")));
                         } catch (JSONException badMessage) { }
                     }
                     bundle.chats.put(groupId, list);

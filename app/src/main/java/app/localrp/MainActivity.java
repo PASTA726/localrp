@@ -27,6 +27,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -55,6 +56,7 @@ public class MainActivity extends Activity {
     private static final int BACKUP_EXPORT = 75;
     private static final int BACKUP_IMPORT = 76;
     private static final int AVATAR_PICK = 77;
+    private static final int CHAT_PHOTO_PICK = 78;
     private static final String PREFS = "localrp";
     private static final String DEFAULT_AI_INSTRUCTIONS = "Her zaman sahnenin içinde kal. Seçili karakter olarak konuş ve kullanıcının rolünü üstlenme.";
     private static final String DEFAULT_AI_INSTRUCTIONS_EN = "Stay inside the scene at all times. Speak as the selected character and never take over the user's role.";
@@ -136,6 +138,15 @@ public class MainActivity extends Activity {
     private final Set<String> autoAttempted = new HashSet<>();
     private final java.util.Map<String, Long> contextChars = new java.util.HashMap<>();
     private final java.util.Map<String, String> chatMetrics = new java.util.HashMap<>();
+    // Image engine UI state: the "Görsel" catalog tab shows image models, the composer
+    // can attach a photo or start an on-device generation.
+    private int pendingCatalogFilter = -1;
+    private String imageLoadStatus;
+    private ViewGroup pendingComposerImageChip;
+    private File pendingComposerImage;
+    private Group imageAttachGroup;
+    private Runnable imageGeneratingTick;
+    private android.os.Handler imageGeneratingTickTickHandler;
 
     // v0.14.0 feature set: user persona + profile photos + preset characters.
     private boolean avatarPickPersona;          // target of AVATAR_PICK: true = user persona, false = character
@@ -617,8 +628,7 @@ public class MainActivity extends Activity {
         } else {
             addOlderMessagesButton();
             for (int i = chatRenderStart; i < chatHistory.size(); i++) {
-                Message message = chatHistory.get(i);
-                addMessage(content, message.speaker, message.text, message.user, message.at);
+                addStoredMessage(content, chatHistory.get(i));
             }
         }
         buildChatComposer(group);
@@ -661,10 +671,10 @@ public class MainActivity extends Activity {
         int insertAt = content.indexOfChild(chatOlderButton);
         for (int i = next; i < chatRenderStart; i++) {
             Message message = chatHistory.get(i);
-            TextView balloon = addMessage(content, message.speaker, message.text, message.user, message.at);
+            TextView balloon = addStoredMessage(content, message);
             // addMessage appends the balloon inside its avatar row at the end of the list;
             // move the whole ROW up (the balloon itself is not a direct child of content).
-            LinearLayout wrapper = (LinearLayout) balloon.getParent();
+            LinearLayout wrapper = (LinearLayout) messageRowOf(balloon);
             content.removeView(wrapper);
             content.addView(wrapper, Math.min(insertAt++, content.getChildCount()));
         }
@@ -766,6 +776,39 @@ public class MainActivity extends Activity {
         inputParams.setMargins(0, dp(8), 0, 0);
         composerRow.addView(input, inputParams);
 
+        Button photo = button("📷");
+        photo.setTextSize(15);
+        photo.setPadding(0, 0, 0, 0);
+        photo.setMinWidth(dp(44));
+        photo.setMinHeight(dp(44));
+        photo.setTextColor(Design.text());
+        photo.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
+        photo.setOnClickListener(v -> {
+            imageAttachGroup = group;
+            Intent pick = new Intent(Intent.ACTION_GET_CONTENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("image/*");
+            try {
+                startActivityForResult(
+                        Intent.createChooser(pick, L10n.s("Fotoğraf seç")), CHAT_PHOTO_PICK);
+            } catch (android.content.ActivityNotFoundException noPicker) {
+                Toast.makeText(this, L10n.s("Bu cihazda fotoğraf seçici yok."), Toast.LENGTH_SHORT).show();
+            }
+        });
+        composerRow.addView(photo, new LinearLayout.LayoutParams(dp(44), dp(44)));
+
+        Button paint = button("✨");
+        paint.setTextSize(15);
+        paint.setPadding(0, 0, 0, 0);
+        paint.setMinWidth(dp(44));
+        paint.setMinHeight(dp(44));
+        paint.setTextColor(Design.onAccent());
+        paint.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 30));
+        paint.setOnClickListener(v -> showImageGenerateDialog(group));
+        LinearLayout.LayoutParams paintParams = new LinearLayout.LayoutParams(dp(44), dp(44));
+        paintParams.setMargins(dp(8), 0, 0, 0);
+        composerRow.addView(paint, paintParams);
+
         Button action = button("➤");
         chatActionButton = action;
         action.setTextSize(17);
@@ -776,6 +819,7 @@ public class MainActivity extends Activity {
         action.setBackground(rounded(Design.accent(), Design.accent(), 30));
         action.setOnClickListener(v -> {
             if (generatingChatId != null) LocalAiRuntime.INSTANCE.stopGeneration();
+            else if (LocalImageEngine.INSTANCE.isGenerating()) LocalImageEngine.INSTANCE.stopGeneration();
             else sendMessage(group, input);
         });
         LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(dp(46), dp(46));
@@ -783,12 +827,176 @@ public class MainActivity extends Activity {
         composerRow.addView(action, actionParams);
         chatComposer.addView(composerRow, fullWidth());
 
+        if (pendingComposerImage != null && pendingComposerImage.isFile()) {
+            LinearLayout chip = new LinearLayout(this);
+            chip.setGravity(Gravity.CENTER_VERTICAL);
+            chip.setPadding(dp(12), 0, dp(12), 0);
+            chip.setMinimumHeight(dp(38));
+            chip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 20));
+            TextView chipLabel = label(L10n.s("📷 Fotoğraf eklendi · gönder ile birlikte gider"), 13, Design.text());
+            TextView chipRemove = label("✕", 15, Design.muted());
+            chipRemove.setPadding(dp(10), 0, 0, 0);
+            chipRemove.setOnClickListener(v -> {
+                clearPendingComposerImage();
+                buildChatComposer(group);
+            });
+            chip.addView(chipLabel, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            chip.addView(chipRemove);
+            LinearLayout.LayoutParams chipParams = fullWidth();
+            chipParams.setMargins(0, dp(6), 0, 0);
+            pendingComposerImageChip = chip;
+            chatComposer.addView(chip, chipParams);
+        }
+
         updateChatControls(group);
+    }
+
+    private void clearPendingComposerImage() {
+        pendingComposerImage = null;
+        pendingComposerImageChip = null;
+    }
+
+    /**
+     * Prompt sheet for the ✨ composer button. One 512×512 frame is requested; the
+     * checkpoint decides style quality. Everything runs on-device.
+     */
+    private void showImageGenerateDialog(Group group) {
+        if (!LocalImageEngine.INSTANCE.isModelReady()) {
+            new AlertDialog.Builder(this)
+                    .setTitle(L10n.s("Görsel modeli yüklü değil"))
+                    .setMessage(L10n.s("Önce Ayarlar → Model önerileri → Görsel bölümünden bir görsel modeli indir ve yükle."))
+                    .setPositiveButton(L10n.s("Model önerilerini aç"), (d, w) -> openModels(null))
+                    .setNegativeButton(L10n.s("Vazgeç"), null)
+                    .show();
+            return;
+        }
+        if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) {
+            Toast.makeText(this, L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(22), dp(16), dp(22), 0);
+        TextView note = label(L10n.s("Bu cihazda tek bir 512×512 görsel üretilir; CPU ile 1–3 dakika sürebilir. İptal etmek için duraklat düğmesine bas."), 12, Design.muted());
+        form.addView(note);
+        EditText promptInput = field(L10n.s("Görsel fikri"), "", 3);
+        promptInput.setHint(L10n.s("Örn: fırtınada duran deniz feneri"));
+        form.addView(promptInput);
+        EditText negativeInput = field(L10n.s("İstenmeyenler (boş kalabilir)"), "", 2);
+        negativeInput.setHint(L10n.s("Örn: bulanık, düşük kalite"));
+        form.addView(negativeInput);
+
+        new AlertDialog.Builder(this)
+                .setTitle(L10n.s("Görsel üret (" + LocalImageEngine.INSTANCE.loadedModelName() + ")"))
+                .setView(form)
+                .setPositiveButton(L10n.s("Üret"), (d, w) -> {
+                    String prompt = promptInput.getText().toString().trim();
+                    if (prompt.isEmpty()) {
+                        Toast.makeText(this, L10n.s("Bir fikir yaz."), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    startChatImageGeneration(group, prompt, negativeInput.getText().toString().trim());
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .show();
+    }
+
+    /** Runs the on-device generation and routes its events into the open chat. */
+    private void startChatImageGeneration(Group group, String prompt, String negative) {
+        if (generatingChatId != null) {
+            Toast.makeText(this, L10n.s("Önce yürüyen yanıtı bekleyin."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (chatStatusView != null) {
+            chatStatusView.setText(LocalImageEngine.INSTANCE.loadedModelName() + L10n.s(" · görsel üretiliyor…"));
+        }
+
+        final java.util.Random random = new java.util.Random();
+        boolean accepted = LocalImageEngine.INSTANCE.generate(
+                this, prompt, negative, 512, 512, LocalImageEngine.INSTANCE.preparedStepCount(), 5f,
+                random.nextLong(), new LocalImageEngine.ImageListener() {
+            @Override public void onStatus(String message) {
+                if (!uiAlive()) return;
+                if (group.id.equals(visibleChatId) && chatStatusView != null) {
+                    chatStatusView.setText(message);
+                }
+            }
+            @Override public void onReady(File file) {
+                if (!uiAlive()) return;
+                stopImageGeneratingTick();
+                Group live = store.group(group.id);
+                if (live == null) return;
+                addGeneratedImage(group, file.getPath());
+            }
+            @Override public void onError(String message) {
+                if (!uiAlive()) return;
+                stopImageGeneratingTick();
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                if (group.id.equals(visibleChatId) && chatStatusView != null) {
+                    Group live = store.group(group.id);
+                    if (live != null) chatStatusView.setText(chatStatusText(live));
+                }
+            }
+        });
+        if (!accepted) {
+            stopImageGeneratingTick();
+        } else {
+            startImageGeneratingTick(group);
+        }
+    }
+
+    /** Persists and renders the finished generation in the current chat transcript. */
+    private void addGeneratedImage(Group group, String path) {
+        CharacterProfile speakerProfile = chooseSpeaker(group, "");
+        String speaker = speakerProfile != null
+                ? speakerProfile.name
+                : L10n.s("Anlatıcı");
+        Message message = new Message(speaker, "", false, System.currentTimeMillis());
+        message.image = path;
+        store.addMessage(group.id, message);
+        if (group.id.equals(visibleChatId)) {
+            if (chatEmptyState != null && chatEmptyState.getParent() == content) {
+                content.removeView(chatEmptyState);
+                chatEmptyState = null;
+            }
+            addStoredMessage(content, message);
+            scrollChatToBottom(true);
+            if (chatStatusView != null) chatStatusView.setText(chatStatusText(group));
+        }
+    }
+
+    /** Live step counter ("12/25") while the image engine works, without chat rebuilds. */
+    private void startImageGeneratingTick(Group group) {
+        stopImageGeneratingTick();
+        final android.os.Handler handler = new android.os.Handler();
+        Runnable tick = new Runnable() {
+            @Override public void run() {
+                if (!LocalImageEngine.INSTANCE.isGenerating()) return;
+                if (group.id.equals(visibleChatId) && chatStatusView != null) {
+                    String step = LocalImageEngine.INSTANCE.statusText();
+                    String progress = step == null ? "" : "  " + step;
+                    chatStatusView.setText(L10n.s("Görsel üretiliyor · model bu cihazda çalışıyor") + progress);
+                }
+                handler.postDelayed(this, 400);
+            }
+        };
+        imageGeneratingTick = tick;
+        handler.postDelayed(tick, 400);
+        imageGeneratingTickTickHandler = handler;
+    }
+
+    private void stopImageGeneratingTick() {
+        if (imageGeneratingTickTickHandler != null) {
+            imageGeneratingTickTickHandler.removeCallbacksAndMessages(null);
+            imageGeneratingTick = null;
+            imageGeneratingTickTickHandler = null;
+        }
     }
 
     private void sendMessage(Group group, EditText input) {
         String text = input.getText().toString().trim();
-        if (text.isEmpty() || generatingChatId != null) return;
+        boolean withImage = pendingComposerImage != null;
+        if ((text.isEmpty() && !withImage) || generatingChatId != null) return;
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading()) {
             Toast.makeText(this, L10n.s("Model yükleniyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
             return;
@@ -797,19 +1005,32 @@ public class MainActivity extends Activity {
             Toast.makeText(this, L10n.s("Motor testi sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
             return;
         }
+        if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) {
+            Toast.makeText(this, L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            return;
+        }
         forgetAutoAttempts(group.id);
-        store.addMessage(group.id, new Message("Sen", text, true));
+        File photo = pendingComposerImage;
+        clearPendingComposerImage();
+        Message sent = new Message("Sen", text, true);
+        if (withImage && photo != null) sent.image = photo.getPath();
+        store.addMessage(group.id, sent);
         if (chatEmptyState != null && chatEmptyState.getParent() == content) {
             content.removeView(chatEmptyState);
             chatEmptyState = null;
         }
-        addMessage(content, "Sen", text, true, System.currentTimeMillis());
+        addStoredMessage(content, sent);
+        if (withImage) {
+            // Honesty guard: the bundled text engine cannot see images. Say so once
+            // instead of letting the user expect a visual description later.
+            Toast.makeText(this, L10n.s("Motor fotoğrafları göremez; görsel yalnızca sohbet kaydında saklanır."), Toast.LENGTH_LONG).show();
+        }
         input.setText("");
         chatDrafts.remove(group.id);
         scrollChatToBottom(true);
         updateChatControls(group);
 
-        if (!modelCanRespond()) {
+        if (!modelCanRespond() || text.isEmpty()) {
             new AlertDialog.Builder(this)
                     .setTitle(L10n.s("Önce model gerekli"))
                     .setMessage(L10n.s("Yanıt üretmek için AI ayarlarından bir GGUF modeli seçip yükle. Mesajın kaydedildi; model hazır olunca yanıtlanacak."))
@@ -1369,6 +1590,11 @@ public class MainActivity extends Activity {
             ModelCatalog.Model pick = ModelCatalog.gpuRecommendation();
             addCatalogCard(pick, true);
             for (ModelCatalog.Model model : ModelCatalog.GPU_MODELS) if (model != pick) addCatalogCard(model, false);
+        } else if (catalogFilter == 2) {
+            addBody(L10n.s("Görsel modeller bu cihazda çalışır: model yüklendikten sonra sohbette ✨ düğmesiyle resim üretebilirsin. Her şey çevrimdışı işler."));
+            ModelCatalog.ImageModel pick = ModelCatalog.IMAGE_MODELS[0];
+            addImageCatalogCard(pick, true, false);
+            for (ModelCatalog.ImageModel model : ModelCatalog.IMAGE_MODELS) if (model != pick) addImageCatalogCard(model, false, false);
         } else {
             TextView warning = label(L10n.s("Sansürsüz modeller abliterated (filtre katmanı çıkarılmış) eğitimlidir; 18 yaş üstü içindir."), 13, Design.danger());
             warning.setPadding(0, dp(4), 0, dp(8));
@@ -1377,6 +1603,13 @@ public class MainActivity extends Activity {
             ModelCatalog.Model pick = ModelCatalog.UNCENSORED_MODELS[0];
             addCatalogCard(pick, true);
             for (ModelCatalog.Model model : ModelCatalog.UNCENSORED_MODELS) if (model != pick) addCatalogCard(model, false);
+            TextView imageHeader = label(L10n.s("Görsel modeller (18+)"), 13, Design.text());
+            imageHeader.setPadding(0, dp(14), 0, dp(8));
+            imageHeader.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+            content.addView(imageHeader);
+            ModelCatalog.ImageModel imagePick = ModelCatalog.UNCENSORED_IMAGE_MODELS[0];
+            addImageCatalogCard(imagePick, true, true);
+            for (ModelCatalog.ImageModel model : ModelCatalog.UNCENSORED_IMAGE_MODELS) if (model != imagePick) addImageCatalogCard(model, false, true);
         }
         addBody("İndirmeler Hugging Face'den doğrudan olur ve uygulamanın özel alanına kaydedilir. Parola veya hesap gerekmez.");
         addBody("GPU hızları * Vulkan/MLC tabanlı motorlar içindir; bu sürümün motoru llama.cpp CPU ile çalışır.");
@@ -1399,6 +1632,7 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setPadding(0, dp(2), 0, dp(8));
         String[] labels = {"CPU önerileri", "GPU önerileri",
+                L10n.s("Görsel"),
                 L10n.s("Sansürsüz") + (uncensoredUnlocked() ? "" : "  🔒")};
         for (int i = 0; i < labels.length; i++) {
             final int index = i;
@@ -1409,7 +1643,8 @@ public class MainActivity extends Activity {
             else chip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 14));
             chip.setOnClickListener(v -> {
                 if (catalogFilter != index) {
-                    if (index == 2 && !uncensoredUnlocked()) {
+                    if (index == 3 && !uncensoredUnlocked()) {
+                        pendingCatalogFilter = index;
                         showUncensoredGate();
                         return;
                     }
@@ -1515,7 +1750,8 @@ public class MainActivity extends Activity {
                     return;
                 }
                 uncensoredSessionUnlock = true;
-                catalogFilter = 2;
+                catalogFilter = pendingCatalogFilter >= 0 ? pendingCatalogFilter : 2;
+                pendingCatalogFilter = -1;
                 dialog.dismiss();
                 showModelCatalog();
                 Toast.makeText(this, L10n.s("Sansürsüz bölümü bu oturum için açıldı."), Toast.LENGTH_SHORT).show();
@@ -1733,7 +1969,7 @@ public class MainActivity extends Activity {
                     Toast.makeText(MainActivity.this, L10n.s("İndirme hatası: ") + message, Toast.LENGTH_SHORT).show();
                     if ("settings".equals(currentTab)) showModelCatalog();
                 }
-            }, model.bytes, model.sha256);
+            }, model.bytes, model.sha256, null);
             if (!accepted) {
                 Toast.makeText(this, L10n.s("Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene."), Toast.LENGTH_SHORT).show();
             } else {
@@ -1752,6 +1988,207 @@ public class MainActivity extends Activity {
         } else {
             start.run();
         }
+    }
+
+    // ---- image model catalog (Görsel tab) ----
+
+    private File imageCatalogFile(ModelCatalog.ImageModel model) {
+        File directory = LocalImageEngine.INSTANCE.imagesDirectory(this);
+        File file = new File(directory, model.fileHint);
+        if (!file.isFile()) return null;
+        if (model.bytes > 0 && file.length() != model.bytes) return null;
+        return file;
+    }
+
+    private boolean isImageCatalogDownloading(ModelCatalog.ImageModel model) {
+        return ModelDownload.INSTANCE.isActive() && model.url.equals(ModelDownload.INSTANCE.getCurrentUrl());
+    }
+
+    /** Download-target subdirectory for image checkpoints ("images", catalog-fixed). */
+    private static final String IMAGE_SUBDIRECTORY = "images";
+
+    private void addImageCatalogCard(ModelCatalog.ImageModel model, boolean highlight, boolean uncensored) {
+        LinearLayout card = makeCard();
+        card.setBackground(rounded(Design.cardBg(), highlight ? Design.accent() : Design.cardStroke(), 18));
+        if (uncensored) {
+            TextView badge = label(L10n.s("SANSÜRSÜZ  ·  18+"), 10, Design.danger());
+            badge.setLetterSpacing(.09f);
+            card.addView(badge);
+        }
+        if (highlight) {
+            TextView badge = label(L10n.s("BU CİHAZ İÇİN ÖNERİ"), 10, Design.accent());
+            badge.setLetterSpacing(.09f);
+            card.addView(badge);
+        }
+        TextView name = label(model.name, 17, Design.text());
+        name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        name.setPadding(0, highlight || uncensored ? dp(5) : dp(2), 0, 0);
+        card.addView(name);
+        TextView meta = label(model.style + "  ·  " + humanSize(model.bytes)
+                + "  ·  ~" + model.steps + " adım", 12, Design.muted());
+        meta.setPadding(0, dp(3), 0, 0);
+        card.addView(meta);
+        TextView why = label(model.why, 13, Design.muted());
+        why.setPadding(0, dp(7), 0, dp(2));
+        card.addView(why);
+
+        boolean downloading = isImageCatalogDownloading(model);
+        File stored = imageCatalogFile(model);
+        File partial = new File(LocalImageEngine.INSTANCE.imagesDirectory(this), model.fileHint + ".part");
+        final File partialFile = partial.isFile() ? partial : null;
+        if (downloading) {
+            downloadProgressView = addBodyWithin(card, imageDownloadProgressText(model));
+            Button cancel = button(L10n.s("İndirmeyi durdur"));
+            cancel.setTextColor(Design.danger());
+            cancel.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 12));
+            cancel.setOnClickListener(v -> {
+                ModelDownload.INSTANCE.cancel();
+                downloadProgressView = null;
+                showModelCatalog();
+            });
+            LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            cancelParams.setMargins(0, dp(8), 0, 0);
+            card.addView(cancel, cancelParams);
+        } else if (stored != null) {
+            TextView ready = label(L10n.s("İndirildi  ·  ") + humanSize(stored.length()) + L10n.s(" hazır"), 12, Design.accent());
+            ready.setPadding(0, dp(7), 0, dp(2));
+            card.addView(ready);
+            Button load = button(L10n.s("Görsel modelini yükle"));
+            load.setTextColor(Design.onAccent());
+            load.setBackground(rounded(Design.accent(), Design.accent(), 14));
+            boolean active = LocalImageEngine.INSTANCE.isModelLoading()
+                    || LocalImageEngine.INSTANCE.isGenerating();
+            if (active) {
+                load.setEnabled(false);
+                load.setAlpha(.55f);
+            } else {
+                load.setOnClickListener(v -> startImageModelLoad(model, stored));
+            }
+            if (LocalImageEngine.INSTANCE.loadedModelName() != null
+                    && model.fileHint.equals(LocalImageEngine.INSTANCE.loadedModelName())) {
+                TextView loaded = label(L10n.s("Yüklü  ·  sohbette ✨ ile üret"), 12, Design.accent());
+                loaded.setPadding(0, dp(6), 0, 0);
+                card.addView(loaded);
+            }
+            LinearLayout.LayoutParams loadParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            loadParams.setMargins(0, dp(10), 0, 0);
+            card.addView(load, loadParams);
+        } else {
+            Button download = button(L10n.s("İndir  ·  ") + humanSize(model.bytes));
+            download.setTextColor(Design.onAccent());
+            download.setBackground(rounded(Design.accent(), Design.accent(), 14));
+            download.setOnClickListener(v -> {
+                if (partialFile != null) {
+                    confirm(L10n.s("Yarı kalan bir indirme var (") + humanSize(partialFile.length())
+                            + L10n.s("). İndirme kaldığı yerden devam etsin mi?"), L10n.s("Kaldığı yerden devam"),
+                            () -> startCatalogImageDownload(model));
+                } else {
+                    startCatalogImageDownload(model);
+                }
+            });
+            LinearLayout.LayoutParams downloadParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            downloadParams.setMargins(0, dp(10), 0, 0);
+            card.addView(download, downloadParams);
+        }
+        if (imageLoadStatus != null && (stored != null || LocalImageEngine.INSTANCE.isModelLoading())) {
+            addBodyWithin(card, imageLoadStatus);
+        }
+        if (partialFile != null && !downloading) {
+            addBodyWithin(card, L10n.s("Kaydedilen parça: ") + humanSize(partialFile.length()) + L10n.s(" · devam edince indirilmiş sayılır"));
+        }
+        addCardToPage(card);
+    }
+
+    private String imageDownloadProgressText(ModelCatalog.ImageModel model) {
+        StringBuilder text = new StringBuilder(model.name).append(L10n.s(" · indiriliyor…"));
+        if (downloadTotal > 0) {
+            text.append("  %").append(Math.round(downloadBytes * 100.0 / downloadTotal))
+                    .append("  (").append(humanSize(downloadBytes)).append(" / ").append(humanSize(downloadTotal)).append(")");
+        } else if (downloadBytes > 0) {
+            text.append("  ").append(humanSize(downloadBytes));
+        }
+        return text.toString();
+    }
+
+    private void startCatalogImageDownload(ModelCatalog.ImageModel model) {
+        boolean metered = false;
+        try {
+            android.net.ConnectivityManager manager = (android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (manager != null) metered = manager.isActiveNetworkMetered();
+        } catch (Exception ignored) {}
+        Runnable start = () -> {
+            LocalImageEngine.INSTANCE.imagesDirectory(this);
+            modelStatus = L10n.s("İndiriliyor: ") + model.name;
+            boolean accepted = ModelDownload.INSTANCE.start(this, model.url, model.fileHint, new ModelDownload.Listener() {
+                @Override public void onProgress(int percent, long downloadedBytes, long totalBytes) {
+                    if (!uiAlive()) return;
+                    downloadBytes = downloadedBytes;
+                    downloadTotal = totalBytes;
+                    if (!"settings".equals(currentTab)) return;
+                    if (downloadProgressView == null) {
+                        showModelCatalog();
+                        return;
+                    }
+                    downloadProgressView.setText(imageDownloadProgressText(model));
+                }
+                @Override public void onDone(File file) {
+                    if (!uiAlive()) return;
+                    downloadProgressView = null;
+                    downloadBytes = 0L;
+                    downloadTotal = -1L;
+                    Toast.makeText(MainActivity.this, model.name + L10n.s(" indirildi."), Toast.LENGTH_SHORT).show();
+                    if ("settings".equals(currentTab)) showModelCatalog();
+                }
+                @Override public void onError(String message) {
+                    if (!uiAlive()) return;
+                    downloadProgressView = null;
+                    Toast.makeText(MainActivity.this, L10n.s("İndirme hatası: ") + message, Toast.LENGTH_SHORT).show();
+                    if ("settings".equals(currentTab)) showModelCatalog();
+                }
+            }, model.bytes, model.sha256, IMAGE_SUBDIRECTORY);
+            if (!accepted) {
+                Toast.makeText(this, L10n.s("Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene."), Toast.LENGTH_SHORT).show();
+            } else if ("settings".equals(currentTab)) {
+                showModelCatalog();
+            }
+        };
+        if (metered) {
+            new AlertDialog.Builder(this).setTitle(L10n.s("Mobil veri uyarısı"))
+                    .setMessage(model.name + L10n.s(" (") + humanSize(model.bytes) + L10n.s(") mobil veriyle indirilecek. Wi-Fi önerilir."))
+                    .setPositiveButton(L10n.s("İndir"), (d, w) -> start.run())
+                    .setNegativeButton(L10n.s("Vazgeç"), null).show();
+        } else {
+            start.run();
+        }
+    }
+
+    private void startImageModelLoad(ModelCatalog.ImageModel model, File stored) {
+        if (LocalImageEngine.INSTANCE.isModelLoading() || LocalImageEngine.INSTANCE.isGenerating()) {
+            Toast.makeText(this, L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        imageLoadStatus = L10n.s("Yükleniyor… ilk üretimden önce birkaç dakika sürebilir.");
+        if ("settings".equals(currentTab)) showModelCatalog();
+        LocalImageEngine.INSTANCE.loadStoredModel(this, stored, new LocalImageEngine.ImageListener() {
+            @Override public void onStatus(String message) { }
+            @Override public void onReady(File file) {
+                if (!uiAlive()) return;
+                imageLoadStatus = null;
+                LocalImageEngine.INSTANCE.setPreparedStepCount(model.steps);
+                Toast.makeText(MainActivity.this,
+                        model.name + L10n.s(" yüklendi; sohbette ✨ düğmesiyle görsel üretebilirsin."), Toast.LENGTH_LONG).show();
+                if ("settings".equals(currentTab)) showModelCatalog();
+            }
+            @Override public void onError(String message) {
+                if (!uiAlive()) return;
+                imageLoadStatus = null;
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                if ("settings".equals(currentTab)) showModelCatalog();
+            }
+        });
     }
 
     private void loadStoredModelFile(File file) {
@@ -2146,6 +2583,16 @@ public class MainActivity extends Activity {
                 }
             }
             return;
+        }
+        if (requestCode == CHAT_PHOTO_PICK && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            File saved = saveAvatarCopy(data.getData());
+            if (saved == null) {
+                Toast.makeText(this, L10n.s("Fotoğraf açılamadı; başka bir dosya deneyin."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            pendingComposerImage = saved;
+            Group attachGroup = imageAttachGroup != null ? store.group(imageAttachGroup.id) : null;
+            if (attachGroup != null && attachGroup.id.equals(visibleChatId)) buildChatComposer(attachGroup);
         }
     }
 
@@ -3162,6 +3609,96 @@ public class MainActivity extends Activity {
         if (balloon == null || content == null) return false;
         ViewParent row = balloon.getParent();
         return row instanceof View && ((View) row).getParent() == content;
+    }
+
+    /**
+     * Renders a persisted message; messages that carry an image get the image balloon
+     * layout, everything else keeps the classic text path.
+     */
+    private TextView addStoredMessage(LinearLayout parent, Message message) {
+        if (message.hasImage()) return addImageMessage(parent, message);
+        return addMessage(parent, message.speaker, message.text, message.user, message.at);
+    }
+
+    /** Text balloon TextViews sit inside their avatar row; image balloons wrap one level deeper. */
+    private ViewGroup messageRowOf(View balloon) {
+        ViewParent parent = balloon.getParent();
+        while (parent instanceof View && ((View) parent).getParent() != content) {
+            parent = ((View) parent).getParent();
+        }
+        return parent instanceof LinearLayout ? (LinearLayout) parent : null;
+    }
+
+    /**
+     * Image message balloon: the picture first (decoded off the UI thread), a text
+     * caption beneath it when one exists, then the standard time stamping.
+     */
+    private TextView addImageMessage(LinearLayout parent, Message message) {
+        boolean user = message.user;
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        wrap.setPadding(dp(10), dp(10), dp(10), dp(10));
+        wrap.setBackground(user
+                ? rounded(Design.bubbleUser(), Design.bubbleUserStroke(), 20)
+                : rounded(Design.cardBg(), Design.cardBg(), 20));
+
+        ImageView image = new ImageView(this);
+        image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        image.setAdjustViewBounds(true);
+        image.setMaxHeight(dp(260));
+        LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        String imagePath = message.image;
+        final int maxSide = dp(240);
+        Thread decode = new Thread(() -> {
+            Bitmap bitmap = LocalImageEngine.INSTANCE.decode(imagePath, maxSide);
+            if (bitmap == null) return;
+            runOnUiThread(() -> image.setImageBitmap(bitmap));
+        }, "localrp-chat-image");
+        imageParams.setMargins(0, 0, 0, message.text == null || message.text.isEmpty() ? 0 : dp(8));
+        wrap.addView(image, imageParams);
+        decode.start();
+
+        TextView caption = null;
+        TextView fallback = null;
+        if (message.text != null && !message.text.isEmpty()) {
+            caption = label(message.text, 15, Design.text());
+            caption.setLineSpacing(dp(2), 1f);
+            caption.setPadding(0, 0, 0, 0);
+            wrap.addView(caption, fullWidth());
+        } else {
+            fallback = label(user ? L10n.s("Fotoğraf eklendi") : L10n.s("Görsel üretildi"), 12, Design.muted());
+            wrap.addView(fallback, fullWidth());
+        }
+        final TextView captionFinal = caption != null ? caption : fallback;
+        wrap.setOnLongClickListener(v -> {
+            if (captionFinal == null || captionFinal.getText().toString().trim().isEmpty()) return false;
+            showMessageActions(message.speaker, captionFinal.getText().toString());
+            return true;
+        });
+
+        // Same container metrics as text balloons; image messages run wider.
+        LinearLayout.LayoutParams wrapParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                user ? 0.62f : 0.72f);
+        wrapParams.setMargins(user ? dp(10) : 0, 0, user ? 0 : dp(10), dp(10));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(user ? Gravity.BOTTOM : Gravity.TOP);
+        if (!user) {
+            String speakerAvatar = speechAvatarPath(message.speaker);
+            View companion = Avatar.forIdentity(this, message.speaker, speakerAvatar, 30);
+            companion.setPadding(0, 0, 0, 0);
+            LinearLayout.LayoutParams companionParams = new LinearLayout.LayoutParams(dp(30), dp(30));
+            companionParams.setMargins(0, dp(3), 0, 0);
+            row.addView(companion, companionParams);
+        }
+        row.addView(wrap, wrapParams);
+        TextView companionTime = label(clock.format(new Date(message.at)), 10, Design.muted());
+        companionTime.setPadding(dp(3), 0, dp(3), dp(3));
+        row.addView(companionTime, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        parent.addView(row, fullWidth());
+        return caption != null ? caption : fallback;
     }
 
     private TextView addMessage(LinearLayout parent, String speaker, String text, boolean user, long at) {

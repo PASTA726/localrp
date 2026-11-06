@@ -28,7 +28,8 @@ object DownloadPolicy {
 
     /**
      * The downloader only ever writes model files into its own directory, so the target
-     * name must be a plain ".gguf" file name (no separators, no traversal, no dotfiles).
+     * name must be a plain ".gguf" / ".safetensors" file name (no separators, no
+     * traversal, no dotfiles).
      * @return the usable name, or null when the name is unsafe (download refused).
      */
     fun sanitizeFileName(raw: String): String? {
@@ -39,7 +40,8 @@ object DownloadPolicy {
         if (trimmed.startsWith('.')) return null
         if (trimmed.any { it.code < 32 }) return null
         if (trimmed.length > 96) return null
-        return if (trimmed.endsWith(".gguf")) trimmed else null
+        val lower = trimmed.lowercase()
+        return if (lower.endsWith(".gguf") || lower.endsWith(".safetensors")) trimmed else null
     }
 
     /**

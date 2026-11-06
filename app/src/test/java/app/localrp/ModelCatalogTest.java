@@ -103,4 +103,41 @@ public class ModelCatalogTest {
             assertTrue("digest: " + model.name, model.sha256.matches("[a-f0-9]{64}"));
         }
     }
+
+    // ---- image model catalog (stable-diffusion checkpoints) ----
+
+    private static ModelCatalog.ImageModel[] allImageModels() {
+        return new ModelCatalog.ImageModel[]{
+                ModelCatalog.IMAGE_MODELS[0], ModelCatalog.IMAGE_MODELS[1],
+                ModelCatalog.UNCENSORED_IMAGE_MODELS[0], ModelCatalog.UNCENSORED_IMAGE_MODELS[1]};
+    }
+
+    @Test
+    public void imageCatalogs_areNotEmpty() {
+        assertTrue(ModelCatalog.IMAGE_MODELS.length >= 2);
+        assertTrue(ModelCatalog.UNCENSORED_IMAGE_MODELS.length >= 2);
+    }
+
+    @Test
+    public void everyImageModel_hasHttpsLfsUrlTrustedDigestAndSteps() {
+        for (ModelCatalog.ImageModel model : allImageModels()) {
+            assertTrue("https URL required: " + model.name, model.url.startsWith("https://huggingface.co/"));
+            assertTrue("positive byte size: " + model.name, model.bytes > 0);
+            assertTrue("digest required: " + model.name, model.sha256.matches("[a-f0-9]{64}"));
+            assertTrue("sane step count: " + model.name, model.steps >= 4 && model.steps <= 60);
+            assertFalse("why text required: " + model.name, model.why.trim().isEmpty());
+        }
+    }
+
+    @Test
+    public void imageFileNames_areDownloaderSafe() {
+        for (ModelCatalog.ImageModel model : allImageModels()) {
+            assertEquals("image fileHint must pass downloader hardening (" + model.name + "): " + model.fileHint,
+                    model.fileHint, DownloadPolicy.INSTANCE.sanitizeFileName(model.fileHint));
+        }
+        java.util.HashSet<String> names = new java.util.HashSet<>();
+        for (ModelCatalog.ImageModel model : allImageModels()) {
+            assertTrue("duplicate image filehint: " + model.fileHint, names.add(model.fileHint));
+        }
+    }
 }
