@@ -53,6 +53,21 @@ object LocalImageEngine {
     fun setPreparedStepCount(value: Int) { preparedSteps = value }
     fun statusText(): String? = imageStatus
 
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /** listener calls arrive on the main thread, whichever engine thread fired them. */
+    private fun mainSafe(listener: ImageListener) = object : ImageListener {
+        override fun onStatus(message: String) {
+            mainHandler.post { listener.onStatus(message) }
+        }
+        override fun onReady(file: File) {
+            mainHandler.post { listener.onReady(file) }
+        }
+        override fun onError(message: String) {
+            mainHandler.post { listener.onError(message) }
+        }
+    }
+
     fun isModelLoading(): Boolean = loadingFile != null
     fun isModelReady(): Boolean = ctx != 0L && loadedFile != null
     fun loadedModelName(): String? = loadedFile?.substringAfterLast('/')
@@ -87,17 +102,21 @@ object LocalImageEngine {
     fun deleteStoredModel(context: Context, file: File): Boolean {
         if (file.absolutePath == loadedFile) return false
         if (ImageStorePolicy.isGenerated(file.name)) return false
+        if (busy.get() || busyGenerating) return false // in-flight work holds the context
         val directory = imagesDirectory(context)
         if (file.parentFile?.absolutePath != directory.absolutePath) return false
         return file.delete()
     }
 
-    fun loadStoredModel(context: Context, file: File, listener: ImageListener) {
+    fun loadStoredModel(context: Context, file: File, listenerRaw: ImageListener) {
         // refuse when another load/generation is in flight
         if (!busy.compareAndSet(false, true)) {
-            listener.onError(L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."))
+            listenerRaw.onError(L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."))
             return
         }
+        // All listener calls must run on the main thread, mirroring LocalAiRuntime —
+        // the engine's threads must never touch views directly.
+        val listener = mainSafe(listenerRaw)
         loadingFile = file
         Thread({
             try {
@@ -117,16 +136,17 @@ object LocalImageEngine {
                 loadingFile = null
                 listener.onReady(file)
             } catch (failure: Throwable) {
-                loadingFile = null
                 listener.onError(
                     failure.message ?: (L10n.s("Görsel modeli yüklenemedi: ") + file.name))
             } finally {
+                loadingFile = null
                 busy.set(false)
             }
         }, "localrp-image-load").start()
     }
 
     fun unload() {
+        if (busy.get()) return // a load or generation is in flight; never free the live context
         closeLocked()
     }
 
@@ -149,7 +169,8 @@ object LocalImageEngine {
      */
     fun generate(context: Context, prompt: String, negativePrompt: String,
                  width: Int, height: Int, steps: Int, cfgScale: Float, seed: Long,
-                 listener: ImageListener): Boolean {
+                 listenerRaw: ImageListener): Boolean {
+        val listener = mainSafe(listenerRaw)
         if (!isModelReady()) {
             listener.onError(L10n.s("Görsel üretmeden önce bir görsel modeli yükle."))
             return false

@@ -177,7 +177,11 @@ final class RoleplayPrompt {
             // disambiguate the user from any character, so the prompt label is explicit
             // ("Kullanıcı" in Turkish mode, "User" in English mode).
             String who = message.user ? (english ? "User" : "Kullanıcı") : message.speaker;
-            String line = who + ": " + message.text;
+            // Image-only records carry no words; a placeholder keeps the transcript
+            // from reading as "Speaker: " with nothing after it.
+            String body = (message.text == null || message.text.isEmpty()) && message.hasImage()
+                    ? (english ? "[image]" : "[görsel]") : (message.text == null ? "" : message.text);
+            String line = who + ": " + body;
             if (line.length() > budget) {
                 if (budget > 40) lines.add(0, line.substring(0, budget - 1) + "…");
                 break;
