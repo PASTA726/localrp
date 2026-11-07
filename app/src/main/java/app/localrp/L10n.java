@@ -420,6 +420,8 @@ public final class L10n {
         // ---- character card extras
         EN.put("Kopya oluştur", "Duplicate");
         EN.put("JSON dışa aktar", "Export JSON");
+        EN.put("Geri", "Back");
+        EN.put("Sohbet menüsü", "Chat menu");
         EN.put(" (kopya)", " (copy)");
         EN.put("Kopya oluşturuldu.", "Copy created.");
         EN.put("Kopya oluşturulamadı: karakter verisi okunamıyor.",

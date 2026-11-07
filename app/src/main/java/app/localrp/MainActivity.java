@@ -131,6 +131,8 @@ public class MainActivity extends Activity {
     private int chatRenderStart;
     private View chatOlderButton;
     private ScrollView chatScroll;
+    /** Where a freshly opened chat should return to (one-shot; null = chat list). */
+    private Runnable chatBackOrigin;
     private LinearLayout chatComposer;
     private View chatEmptyState;
     private boolean autoScroll = true;
@@ -236,7 +238,7 @@ public class MainActivity extends Activity {
         if (groups.isEmpty()) addEmpty("Henüz bir RP yok", "Bir karakter seçerek bire bir hikâye başlat veya grup kur.", null, null);
         else {
             addSection("Son sohbetler", "Tümünü gör", this::showChats);
-            for (Group group : groups) addGroupCard(group);
+            for (Group group : recentChats(groups, 4)) addGroupCard(group, this::showHome);
         }
         addSection("Karakterlerin", "Yönet", this::showCharacters);
         List<CharacterProfile> characters = store.characters();
@@ -626,9 +628,19 @@ public class MainActivity extends Activity {
         return available.get(0);
     }
 
+    /**
+     * Back action follows the origin (GUI review item 1): a chat opened from the home
+     * card returns home, one opened from the list returns to the list.
+     */
+    private void showChat(Group group, Runnable openedFrom) {
+        chatBackOrigin = openedFrom != null ? openedFrom : this::showChats;
+        showChat(group);
+    }
+
     private void showChat(Group group) {
         visibleChatId = group.id;
-        backAction = this::showChats;
+        backAction = chatBackOrigin != null ? chatBackOrigin : this::showChats;
+        chatBackOrigin = null;
         autoScroll = true;
         String subtitle = chatSubtitle(group);
         setPage(group.name, subtitle, "chat", true);
@@ -680,7 +692,7 @@ public class MainActivity extends Activity {
         view.setTextSize(13);
         view.setTextColor(Design.accent());
         view.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 12));
-        view.setMinHeight(dp(38));
+        view.setMinHeight(dp(48));
         view.setPadding(dp(14), 0, dp(14), 0);
         updateOlderLabel(view);
         view.setOnClickListener(v -> renderOlderChunk());
@@ -751,8 +763,9 @@ public class MainActivity extends Activity {
         menu.setTextSize(18);
         menu.setTextColor(Design.text());
         menu.setMinWidth(dp(44));
-        menu.setMinHeight(dp(38));
+        menu.setMinHeight(dp(48));
         menu.setPadding(dp(12), 0, dp(12), 0);
+        menu.setContentDescription(L10n.s("Sohbet menüsü"));
         menu.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
         menu.setOnClickListener(v -> showChatMenu(group));
         LinearLayout.LayoutParams menuParams = new LinearLayout.LayoutParams(
@@ -1565,7 +1578,23 @@ public class MainActivity extends Activity {
         addHomeActions();
         List<Group> groups = store.groups();
         if (groups.isEmpty()) addEmpty("Burada henüz RP yok", "Bire bir hikâye başlat veya grup kur.", null, null);
-        for (Group group : groups) addGroupCard(group);
+        for (Group group : recentChats(groups, Integer.MAX_VALUE)) addGroupCard(group, this::showChats);
+    }
+
+    /**
+     * "Son sohbetler" reflects actual activity: groups sorted by their last message
+     * time (newest first), falling back to creation order when a chat is empty.
+     */
+    private List<Group> recentChats(List<Group> groups, int limit) {
+        List<Group> sorted = new ArrayList<>(groups);
+        sorted.sort((a, b) -> Long.compare(lastChatActivity(b), lastChatActivity(a)));
+        if (limit < sorted.size()) return new ArrayList<>(sorted.subList(0, limit));
+        return sorted;
+    }
+
+    private long lastChatActivity(Group group) {
+        Message last = store.lastMessage(group.id);
+        return last != null ? last.at : 0L;
     }
 
     private void openModels(Runnable back) {
@@ -1587,7 +1616,7 @@ public class MainActivity extends Activity {
 
         addSection("Model", null, null);
         addInfoCard(selectedModelName, modelStatus, "GGUF");
-        addSecondary("Modeli yükle ve yönet", v -> showModels());
+        addSecondary("Modeli yükle ve yönet", v -> openModels(this::showSettings));
         addSecondary("Model önerilerini gör ve indir", v -> showModelCatalog());
 
         addSection("Yanıt tarzı", null, null);
@@ -3362,7 +3391,8 @@ public class MainActivity extends Activity {
                 back.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
                 back.setGravity(Gravity.CENTER);
                 back.setOnClickListener(v -> backAction.run());
-                header.addView(back, new LinearLayout.LayoutParams(dp(40), dp(40)));
+                back.setContentDescription(L10n.s("Geri"));
+                header.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
             }
             // cAI-style leading avatar on the chat header; ids stay legible next to it.
             View selfAvatar = Avatar.forIdentity(this, title, chatHeaderAvatarPath, 38);
@@ -3394,7 +3424,8 @@ public class MainActivity extends Activity {
                 back.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
                 back.setGravity(Gravity.CENTER);
                 back.setOnClickListener(v -> backAction.run());
-                header.addView(back, new LinearLayout.LayoutParams(dp(40), dp(40)));
+                back.setContentDescription(L10n.s("Geri"));
+                header.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
                 LinearLayout headerTexts = new LinearLayout(this);
                 headerTexts.setOrientation(LinearLayout.VERTICAL);
                 headerTexts.setPadding(dp(14), 0, dp(4), 0);
@@ -3581,7 +3612,7 @@ public class MainActivity extends Activity {
         return box;
     }
 
-    private void addGroupCard(Group group) {
+    private void addGroupCard(Group group, Runnable openBack) {
         Message last = store.lastMessage(group.id);
         String preview;
         String when = "";
@@ -3624,7 +3655,7 @@ public class MainActivity extends Activity {
         texts.addView(cast);
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         card.addView(row);
-        card.setOnClickListener(v -> showChat(group));
+        card.setOnClickListener(v -> showChat(group, openBack));
         addCardToPage(card);
     }
 
@@ -4072,14 +4103,16 @@ public class MainActivity extends Activity {
             return true;
         });
 
-        // Same container metrics as text balloons; image messages run wider.
+        // Same wrap sizing as text balloons; the image itself gets the maxWidth.
+        int imageMax = (int) (getResources().getDisplayMetrics().widthPixels * (user ? 0.64f : 0.76f));
+        image.setMaxWidth(Math.max(dp(140), imageMax));
+
         LinearLayout.LayoutParams wrapParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                user ? 0.62f : 0.72f);
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         wrapParams.setMargins(user ? dp(10) : 0, 0, user ? 0 : dp(10), dp(10));
 
         LinearLayout row = new LinearLayout(this);
-        row.setGravity(user ? Gravity.BOTTOM : Gravity.TOP);
+        row.setGravity(user ? Gravity.END | Gravity.BOTTOM : Gravity.START | Gravity.TOP);
         if (!user) {
             String speakerAvatar = speechAvatarPath(message.speaker);
             View companion = Avatar.forIdentity(this, message.speaker, speakerAvatar, 30);
@@ -4122,13 +4155,13 @@ public class MainActivity extends Activity {
             showMessageActions(speaker, value);
             return true;
         });
-        LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                user ? 0.15f : 0.62f);
-        bubbleParams.setMargins(user ? dp(10) : 0, 0, user ? 0 : dp(10), dp(10));
+        // WRAP_CONTENT + maxWidth gives real balloon sizing; weight on a lone weighted
+        // child distributed the whole row, so every bubble ran near-full width.
+        int maxWidth = (int) (getResources().getDisplayMetrics().widthPixels * (user ? 0.62f : 0.74f));
+        view.setMaxWidth(Math.max(dp(140), maxWidth));
 
         LinearLayout row = new LinearLayout(this);
-        row.setGravity(user ? Gravity.BOTTOM : Gravity.TOP);
+        row.setGravity(user ? Gravity.END | Gravity.BOTTOM : Gravity.START | Gravity.TOP);
         if (!user) {
             String speakerAvatar = speechAvatarPath(speaker);
             View companion = Avatar.forIdentity(this, speaker, speakerAvatar, 30);
@@ -4137,10 +4170,12 @@ public class MainActivity extends Activity {
             companionParams.setMargins(0, dp(3), 0, 0);
             row.addView(companion, companionParams);
         }
+        LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        bubbleParams.setMargins(user ? dp(10) : 0, 0, user ? 0 : dp(10), dp(10));
         row.addView(view, bubbleParams);
-        TextView companionTime = label(clock.format(new Date(at)), 10, Design.muted());
-        companionTime.setPadding(dp(3), 0, dp(3), dp(3));
-        row.addView(companionTime, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        // Timestamp stays only in the balloon header for text messages; the duplicate
+        // row-side clock squeezed narrow bubbles.
         parent.addView(row, fullWidth());
         return view;
     }
