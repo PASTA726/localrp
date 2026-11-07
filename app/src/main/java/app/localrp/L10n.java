@@ -429,6 +429,15 @@ public final class L10n {
         EN.put("Karakter dışa aktarıldı.", "Character exported.");
         EN.put("Dışa aktaramadı: karakter bulunamadı.", "Export failed: character not found.");
         EN.put("Dışa aktarılamadı: dosyaya yazılamadı.", "Export failed: could not write the file.");
+
+        // ---- chat starter chips (empty chat)
+        EN.put("İlk sahneyi kur", "Start the scene");
+        EN.put("Kısa bir selam", "Simple greeting");
+        EN.put("Arka planı sor", "Ask about the backstory");
+        EN.put("*Kapıda durur, yorgun bir gülümseme.* Selam… buraya tam zamanında geldin.",
+                "*Stands at the door, a tired smile.* Hi… you're right on time.");
+        EN.put("Selam! Burada seni tekrar görmek güzel.", "Hey! Good to see you here again.");
+        EN.put("Bu sahneyi nasıl kurdun? Baştan anlat.", "How did you set this scene up? Tell me from the start.");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
         EN.put(" silindi.", " deleted.");
