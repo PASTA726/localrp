@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.2-alpha1 — 2026-11-07 (Big Pickle GUI incelemesi — 2. tur: klavye, odak, diyaloglar)
+
+Big Pickle raporunun 2. turundaki beş madde uygulandı (3, 4, 7, 11, 14). Tasarım dili aynen korunur.
+
+- **Klavye inset'i Android 10+**: içerik padding'i yalnızca sistem çubuklarını değil, açılan klavyenin (IME) yüksekliğini de sayar; sohbet yazma çubuğu Android 10–15'te klavyenin üstünde kalır (önceden yalnızca Android 15+ için uygulanmıştı).
+- **Yazma alanında odak ve klavye korunur**: mesaj gönderince composer yeniden kurulmaz; fotoğraf çipi yerinde kaldırılır, klavye/odak açık kalır ve yazım sürer. Çipteki ✕ da aynı davranır; rebuild yalnızca fotoğraf seçme yolunda bırakıldı.
+- **Diyaloglar artık paletli**: onay, sohbet menüsü, konuşmacı seçici, mesaj eylemleri, sohbet araması, görsel üretim, üretim hatası ve 18+ kapısı diyaloğu temanın arka planı/renkleriyle boyanır (tintDialog); sistem lavantası karanlık paletlerde kalmaz.
+- **İngilizce sızıntıları kapandı**: karakter adı, sohbet adı ve karakter seçimi hata balonları (setError) artık dil sözlüğünden geçer; pano etiketi de çevrilir.
+- **Boş sohbet başlangıç çipleri**: boş bir RP sahnesinde üç hazır giriş çipi ("İlk sahneyi kur", "Kısa bir selam", "Arka planı sor") composer'ı doldurur; kullanıcı düzenleyip kendisi gönderir, uygulama asla kendi kendine göndermez.
+- versionCode 31 / 0.19.2-alpha1.
+
 ## v0.19.1-alpha1 — 2026-11-07 (Big Pickle GUI incelemesi — 1. tur: navigasyon + okunabilirlik)
 
 Big Pickle raporunun "1. tur" (gezinme doğruluğu + balon düzeni + erişilebilirlik hızlı kazançları) uygulandı. Tasarım dili aynen korunur.

@@ -458,7 +458,7 @@ public class MainActivity extends Activity {
         }
 
         addPrimary("Kaydet", v -> {
-            if (name.getText().toString().trim().isEmpty()) { name.setError("Bir ad gerekli"); return; }
+            if (name.getText().toString().trim().isEmpty()) { name.setError(L10n.s("Bir ad gerekli")); return; }
             CharacterProfile character = editing ? existing : new CharacterProfile();
             character.name = name.getText().toString().trim();
             character.description = description.getText().toString().trim();
@@ -521,12 +521,12 @@ public class MainActivity extends Activity {
                     v -> showCharacterEditor(null, returnToEditor, returnToEditor));
         }
         addPrimary(editing ? "Değişiklikleri kaydet" : "Sohbeti başlat", v -> {
-            if (name.getText().toString().trim().isEmpty()) { name.setError("Sohbet adı gerekli"); return; }
+            if (name.getText().toString().trim().isEmpty()) { name.setError(L10n.s("Sohbet adı gerekli")); return; }
             Group group = editing ? existing : new Group();
             group.name = name.getText().toString().trim();
             group.characterIds.clear();
             for (int i = 0; i < choices.size(); i++) if (choices.get(i).isChecked()) group.characterIds.add(characters.get(i).id);
-            if (group.characterIds.isEmpty()) { name.setError("En az bir karakter seç"); return; }
+            if (group.characterIds.isEmpty()) { name.setError(L10n.s("En az bir karakter seç")); return; }
             group.roleplay = true;
             if (!store.saveGroup(group)) {
                 Toast.makeText(this, L10n.s("Değişiklik kaydedilemedi: sohbet verisi okunamıyor."), Toast.LENGTH_LONG).show();
@@ -672,11 +672,49 @@ public class MainActivity extends Activity {
         chatEmptyState = null;
         if (chatHistory.isEmpty()) {
             chatEmptyState = addEmpty("RP sahnesi burada başlıyor", "Mesajını yaz; seçili karakter otomatik yanıtlasın.", null, null);
+            addStarterChips(group);
         } else {
             addOlderMessagesButton();
             for (int i = chatRenderStart; i < chatHistory.size(); i++) {
                 addStoredMessage(content, chatHistory.get(i));
             }
+        }
+    }
+
+    /**
+     * Starter chips (GUI review item 14) on the empty chat: tap fills the composer
+     * so the line can be edited before sending — the app never sends by itself.
+     */
+    private void addStarterChips(Group group) {
+        String[][] starters = {
+                {L10n.s("İlk sahneyi kur"), L10n.s("*Kapıda durur, yorgun bir gülümseme.* Selam… buraya tam zamanında geldin.")},
+                {L10n.s("Kısa bir selam"), L10n.s("Selam! Burada seni tekrar görmek güzel.")},
+                {L10n.s("Arka planı sor"), L10n.s("Bu sahneyi nasıl kurdun? Baştan anlat.")},
+        };
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+        for (String[] starter : starters) {
+            TextView chip = label(starter[0], 13, Design.accent());
+            chip.setPadding(dp(14), dp(8), dp(14), dp(8));
+            chip.setMinimumHeight(dp(40));
+            chip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 20));
+            chip.setOnClickListener(v -> {
+                if (chatInput == null || !group.id.equals(chatInputChatId)) return;
+                chatInput.setText(starter[1]);
+                chatInput.setSelection(starter[1].length());
+                chatDrafts.put(group.id, starter[1]);
+                reopenKeyboard(chatInput);
+            });
+            LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (row.getChildCount() > 0) chipParams.setMarginStart(dp(8));
+            row.addView(chip, chipParams);
+        }
+        // Insert the chip row right under the empty-state card and above the composer.
+        if (chatEmptyState.getParent() == content) {
+            content.addView(row, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         }
     }
 
@@ -884,8 +922,8 @@ public class MainActivity extends Activity {
             chipRemove.setPadding(dp(10), 0, 0, 0);
             chipRemove.setOnClickListener(v -> {
                 saveComposerDraftTo(chatInputChatId);
-                clearPendingComposerImage();
-                buildChatComposer(group);
+                removePendingComposerChip();
+                if (chatInput != null) reopenKeyboard(chatInput);
             });
             chip.addView(chipLabel, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
             chip.addView(chipRemove);
@@ -902,6 +940,28 @@ public class MainActivity extends Activity {
         pendingComposerImage = null;
         pendingComposerImageChip = null;
         pendingComposerImageChatId = null;
+    }
+
+    /** Removes the photo chip view in place; a send flow must not rebuild the composer. */
+    private void removePendingComposerChip() {
+        if (pendingComposerImageChip != null) {
+            ViewGroup chipContent = (ViewGroup) pendingComposerImageChip.getParent();
+            if (chipContent != null) chipContent.removeView(pendingComposerImageChip);
+        }
+        clearPendingComposerImage();
+    }
+
+    /** Keeps the keyboard open after in-place composer changes (send / chip removal). */
+    private void reopenKeyboard(EditText input) {
+        if (input == null) return;
+        input.requestFocus();
+        input.setSelection(input.getText().length());
+        input.post(() -> {
+            if (!uiAlive() || input.getWindowToken() == null) return;
+            android.view.inputmethod.InputMethodManager imm =
+                    (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(input, 0);
+        });
     }
 
     /** Persists the composer text so a rebuild (photo chip, send) cannot eat a draft. */
@@ -960,6 +1020,7 @@ public class MainActivity extends Activity {
             dialog.dismiss();
             startChatImageGeneration(group, prompt, negativeInput.getText().toString().trim());
         }));
+        tintDialog(dialog);
         dialog.show();
     }
 
@@ -1094,7 +1155,7 @@ public class MainActivity extends Activity {
             photo = pendingComposerImage;
         }
         boolean withImage = photo != null;
-        if (withImage) clearPendingComposerImage();
+        if (withImage) removePendingComposerChip();
         Message sent = new Message("Sen", text, true);
         if (withImage && photo != null) sent.image = photo.getPath();
         store.addMessage(group.id, sent);
@@ -1110,9 +1171,11 @@ public class MainActivity extends Activity {
         }
         input.setText("");
         chatDrafts.remove(group.id);
+        // Focus-first composer (GUI review item 4): no full rebuild after send — the
+        // photo chip leaves in place and the keyboard/focus survives.
+        removePendingComposerChip();
+        reopenKeyboard(input);
         scrollChatToBottom(true);
-        // Rebuild so the 📷 chip is gone; the just-sent photo cannot attach twice.
-        buildChatComposer(group);
 
         if (text.isEmpty()) {
             // Photo-only message: the engine cannot see images, so no AI turn follows.
@@ -1280,7 +1343,9 @@ public class MainActivity extends Activity {
                         dialog.setPositiveButton(L10n.s("AI ayarları"), (d, w) -> openModels(() -> openChat(group.id)))
                                 .setNegativeButton(L10n.s("Kapat"), null);
                     }
-                    dialog.show();
+                    AlertDialog errorDialog = dialog.create();
+                    tintDialog(errorDialog);
+                    errorDialog.show();
                 }
                 if (!stopped && error == null && !finalText.isEmpty()) {
                     maybeBeginChain(group);
@@ -1390,25 +1455,29 @@ public class MainActivity extends Activity {
         String[] labels = new String[characters.size() + 1];
         labels[0] = L10n.s("Otomatik (sırayla)");
         for (int i = 0; i < characters.size(); i++) labels[i + 1] = characters.get(i).name;
-        new AlertDialog.Builder(this).setTitle(L10n.s("Sıradaki konuşmacı"))
-                .setItems(labels, (dialog, which) -> {
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(L10n.s("Sıradaki konuşmacı"))
+                .setItems(labels, (d, which) -> {
                     if (which == 0) clearManualSpeaker(group.id);
                     else setManualSpeaker(group.id, characters.get(which - 1).id);
                     updateChatControls(group);
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+        tintDialog(dialog);
+        dialog.show();
     }
 
     private void showChatMenu(Group group) {
         String[] items = {L10n.s("RP ayarları"), L10n.s("AI ayarları"), L10n.s("Sohbette ara"),
                 L10n.s("Sohbet geçmişini temizle"), L10n.s("Sohbet listesine dön")};
-        new AlertDialog.Builder(this).setItems(items, (dialog, which) -> {
+        AlertDialog dialog = new AlertDialog.Builder(this).setItems(items, (d, which) -> {
             if (which == 0) showGroupEditor(group, () -> openChat(group.id));
             else if (which == 1) openModels(() -> openChat(group.id));
             else if (which == 2) showChatSearch(group);
             else if (which == 3) clearChat(group);
             else showChats();
-        }).show();
+        }).create();
+        tintDialog(dialog);
+        dialog.show();
     }
 
     /**
@@ -1475,6 +1544,7 @@ public class MainActivity extends Activity {
             @Override public void afterTextChanged(android.text.Editable s) { refreshHolder[0].run(); }
         });
         refreshHolder[0].run();
+        tintDialog(dialog);
         dialog.show();
     }
 
@@ -1988,6 +2058,7 @@ public class MainActivity extends Activity {
             });
         });
         dialog.setOnDismissListener(d -> countdown.removeCallbacksAndMessages(null));
+        tintDialog(dialog);
         dialog.show();
         ageInput.requestFocus();
     }
@@ -3373,11 +3444,15 @@ public class MainActivity extends Activity {
         pageRoot = new LinearLayout(this);
         pageRoot.setOrientation(LinearLayout.VERTICAL);
         pageRoot.setBackgroundColor(Design.pageBg());
-        if (android.os.Build.VERSION.SDK_INT >= 35) {
-            // Android 15+ enforces edge-to-edge; pad content under the system bars (page tint still shows through).
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            // Edge-to-edge insets (GUI review item 3): the keyboard's IME inset must
+            // count too — adjustResize alone no longer lifts the composer above the
+            // keyboard on Android 15, so pad to max(systemBars, ime).
             pageRoot.setOnApplyWindowInsetsListener((view, insets) -> {
-                int top = insets.getSystemWindowInsetTop();
-                int bottom = insets.getSystemWindowInsetBottom();
+                android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                android.graphics.Insets ime = insets.getInsets(android.view.WindowInsets.Type.ime());
+                int top = bars.top;
+                int bottom = Math.max(bars.bottom, ime.bottom);
                 if (top > 0 || bottom > 0) view.setPadding(0, top, 0, bottom);
                 return insets;
             });
@@ -4200,10 +4275,12 @@ public class MainActivity extends Activity {
 
     /** Copy-only menu for balloons that are not stored messages (streaming drafts). */
     private void showMessageActions(String speaker, String text) {
-        new AlertDialog.Builder(this).setTitle(speaker + L10n.s(" · mesaj"))
-                .setItems(new String[]{L10n.s("Metni kopyala")}, (dialog, which) ->
-                        copyTextToClipboard("LocalRP mesajı", text))
-                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(speaker + L10n.s(" · mesaj"))
+                .setItems(new String[]{L10n.s("Metni kopyala")}, (d, which) ->
+                        copyTextToClipboard(L10n.s("LocalRP mesajı"), text))
+                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+        tintDialog(dialog);
+        dialog.show();
     }
 
     /**
@@ -4229,7 +4306,7 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, L10n.s("Bu mesajın metni yok; görsel kayıtta saklanır."), Toast.LENGTH_SHORT).show();
                 return;
             }
-            copyTextToClipboard("LocalRP mesajı", body);
+            copyTextToClipboard(L10n.s("LocalRP mesajı"), body);
         });
         labels.add(L10n.s("Düzenle"));
         actions.add(() -> editMessage(index));
@@ -4240,11 +4317,13 @@ public class MainActivity extends Activity {
             actions.add(() -> regenerateLastAction(index));
         }
         String[] items = labels.toArray(new String[0]);
-        new AlertDialog.Builder(this).setTitle(message.speaker + L10n.s(" · mesaj"))
-                .setItems(items, (dialog, which) -> {
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(message.speaker + L10n.s(" · mesaj"))
+                .setItems(items, (d, which) -> {
                     if (which >= 0 && which < actions.size()) actions.get(which).run();
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+        tintDialog(dialog);
+        dialog.show();
     }
 
     /** A generation is either running anywhere or targeting the visible chat. */
@@ -4421,9 +4500,43 @@ public class MainActivity extends Activity {
     private void confirm(String message, Runnable action) { confirm(message, "Sil", action); }
 
     private void confirm(String message, String positive, Runnable action) {
-        new AlertDialog.Builder(this).setMessage(L10n.s(message))
+        tintDialog(new AlertDialog.Builder(this).setMessage(L10n.s(message))
                 .setNegativeButton(L10n.s("Vazgeç"), null)
-                .setPositiveButton(L10n.s(positive), (d, w) -> action.run()).show();
+                .setPositiveButton(L10n.s(positive), (d, w) -> action.run()).show());
+    }
+
+    /**
+     * Dialog theming (GUI review item 7, pragmatic pass): palette-aware dialog window
+     * and text/button colors for the dialogs that route through this helper — the
+     * fixed lavender framework theme is gone on dark palettes.
+     */
+    private void tintDialog(AlertDialog dialog) {
+        try {
+            android.view.Window window = dialog.getWindow();
+            if (window == null) return;
+            window.setBackgroundDrawable(rounded(Design.cardBg(), Design.cardStroke(), 24));
+            window.getDecorView().post(() -> {
+                if (!uiAlive()) return;
+                window.getDecorView().setBackgroundColor(Design.cardBg());
+                for (int id : new int[]{android.R.id.button1, android.R.id.button2, android.R.id.button3}) {
+                    View buttonView = window.findViewById(id);
+                    if (buttonView instanceof TextView) {
+                        ((TextView) buttonView).setTextColor(Design.accent());
+                        ((TextView) buttonView).setAllCaps(false);
+                    }
+                }
+                View title = window.findViewById(android.R.id.title);
+                if (title instanceof TextView) ((TextView) title).setTextColor(Design.text());
+                View message = window.findViewById(android.R.id.message);
+                if (message instanceof TextView) ((TextView) message).setTextColor(Design.text());
+                View list = window.findViewById(android.R.id.list);
+                if (list instanceof android.widget.ListView) {
+                    ((android.widget.ListView) list).setDivider(null);
+                }
+            });
+        } catch (Exception tintFailure) {
+            // system styling attempt must never break the dialog itself
+        }
     }
 
     private SharedPreferences prefs() {
