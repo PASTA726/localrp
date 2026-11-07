@@ -384,6 +384,49 @@ public final class L10n {
         EN.put(" · devam edince indirilmiş sayılır", " · counts as downloaded once resumed");
         EN.put(" · indiriliyor…", " · downloading…");
         EN.put("[görsel]", "[image]");
+
+        // ---- message actions / search / markdown (v0.19.0)
+        EN.put(" · mesaj", " · message");
+        EN.put("Düzenle", "Edit");
+        EN.put("Yeniden üret", "Regenerate");
+        EN.put("Bu mesajın metni yok; görsel kayıtta saklanır.",
+                "This message has no text; the image is kept in the transcript.");
+        EN.put("Yanıt üretilirken mesaj değiştirilemez. Önce yanıtı durdur.",
+                "Messages cannot change while a reply is generating. Stop it first.");
+        EN.put("Mesajı düzenle", "Edit message");
+        EN.put("Düzenle: ", "Edit: ");
+        EN.put("Metin boş kalamaz; silmek için Sil'i kullan.",
+                "Text cannot be empty; use Delete to remove the message.");
+        EN.put("Mesaj güncellendi.", "Message updated.");
+        EN.put("Bu mesaj ve görseli silinsin mi?", "Delete this message and its image?");
+        EN.put("Bu mesaj silinsin mi?", "Delete this message?");
+        EN.put("Mesaj silindi.", "Message deleted.");
+        EN.put("Yanıt üretilirken mesaj silinemez. Önce yanıtı durdur.",
+                "Messages cannot be deleted while a reply is generating. Stop it first.");
+        EN.put("Silinemedi: sohbet verisi okunamıyor.", "Delete failed: the chat data is unreadable.");
+        EN.put("Yeniden üretilemedi: sohbet verisi okunamıyor.",
+                "Regeneration failed: the chat data is unreadable.");
+        EN.put("Sohbette ara", "Search in chat");
+        EN.put("Sohbette ara…", "Search in chat…");
+        EN.put("En az iki harf yaz; tüm sohbet geçmişinde aranır.",
+                "Type at least two letters; the whole chat history is searched.");
+        EN.put("Eşleşme yok.", "No matches.");
+        EN.put("Açık", "On");
+        EN.put("Kapalı", "Off");
+        EN.put("Markdown biçimlendirme", "Markdown formatting");
+        EN.put("*italik* ve **kalın** baloncuklarda uygulanır",
+                "*italic* and **bold** are applied inside balloons");
+
+        // ---- character card extras
+        EN.put("Kopya oluştur", "Duplicate");
+        EN.put("JSON dışa aktar", "Export JSON");
+        EN.put(" (kopya)", " (copy)");
+        EN.put("Kopya oluşturuldu.", "Copy created.");
+        EN.put("Kopya oluşturulamadı: karakter verisi okunamıyor.",
+                "Could not create the copy: the character data is unreadable.");
+        EN.put("Karakter dışa aktarıldı.", "Character exported.");
+        EN.put("Dışa aktaramadı: karakter bulunamadı.", "Export failed: character not found.");
+        EN.put("Dışa aktarılamadı: dosyaya yazılamadı.", "Export failed: could not write the file.");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
         EN.put(" silindi.", " deleted.");
