@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
     private static final int BACKUP_IMPORT = 76;
     private static final int AVATAR_PICK = 77;
     private static final int CHAT_PHOTO_PICK = 78;
+    private static final int CHAR_EXPORT = 79;
     private static final String PREFS = "localrp";
     private static final String DEFAULT_AI_INSTRUCTIONS = "Her zaman sahnenin içinde kal. Seçili karakter olarak konuş ve kullanıcının rolünü üstlenme.";
     private static final String DEFAULT_AI_INSTRUCTIONS_EN = "Stay inside the scene at all times. Speak as the selected character and never take over the user's role.";
@@ -146,6 +147,8 @@ public class MainActivity extends Activity {
     private File pendingComposerImage;
     private String pendingComposerImageChatId;
     private Group imageAttachGroup;
+    /** Character id chosen for a pending single-character JSON export. */
+    private String charExportTarget;
     /** Chat image balloons decode once per (path,size) and re-scan-free on re-render. */
     private final java.util.concurrent.ConcurrentHashMap<String, Bitmap> imageDecodeCache =
             new java.util.concurrent.ConcurrentHashMap<>();
@@ -644,6 +647,16 @@ public class MainActivity extends Activity {
         chatOlderButton = null;
         chatHistory = new ArrayList<>(store.messages(group.id));
         chatRenderStart = ChatWindow.initialStart(chatHistory.size(), MAX_INITIAL_RENDER);
+        rebuildChatRender(group);
+        buildChatComposer(group);
+        scrollChatToBottom(true);
+        maybeAutoGenerate(group);
+    }
+
+    /** Renders the message window (older-marker + balloons) from chatHistory into content. */
+    private void rebuildChatRender(Group group) {
+        content.removeAllViews();
+        chatOlderButton = null;
         chatEmptyState = null;
         if (chatHistory.isEmpty()) {
             chatEmptyState = addEmpty("RP sahnesi burada başlıyor", "Mesajını yaz; seçili karakter otomatik yanıtlasın.", null, null);
@@ -653,9 +666,6 @@ public class MainActivity extends Activity {
                 addStoredMessage(content, chatHistory.get(i));
             }
         }
-        buildChatComposer(group);
-        scrollChatToBottom(true);
-        maybeAutoGenerate(group);
     }
 
     /** Load-on-demand marker above the rendered message window (Task 08). */
@@ -1377,13 +1387,106 @@ public class MainActivity extends Activity {
     }
 
     private void showChatMenu(Group group) {
-        String[] items = {L10n.s("RP ayarları"), L10n.s("AI ayarları"), L10n.s("Sohbet geçmişini temizle"), L10n.s("Sohbet listesine dön")};
+        String[] items = {L10n.s("RP ayarları"), L10n.s("AI ayarları"), L10n.s("Sohbette ara"),
+                L10n.s("Sohbet geçmişini temizle"), L10n.s("Sohbet listesine dön")};
         new AlertDialog.Builder(this).setItems(items, (dialog, which) -> {
             if (which == 0) showGroupEditor(group, () -> openChat(group.id));
             else if (which == 1) openModels(() -> openChat(group.id));
-            else if (which == 2) clearChat(group);
+            else if (which == 2) showChatSearch(group);
+            else if (which == 3) clearChat(group);
             else showChats();
         }).show();
+    }
+
+    /**
+     * In-chat search (DeepSeek review item): a query folds through the transcript and
+     * results list jumps the chat window to the selected message.
+     */
+    private void showChatSearch(Group group) {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(22), 0, dp(22), 0);
+        EditText query = dialogField(L10n.s("Sohbette ara…"));
+        query.setSingleLine(true);
+        form.addView(query);
+        LinearLayout results = new LinearLayout(this);
+        results.setOrientation(LinearLayout.VERTICAL);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(results);
+        form.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(340)));
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(group.name)
+                .setView(form)
+                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .create();
+
+        Runnable[] refreshHolder = new Runnable[1];
+        refreshHolder[0] = () -> {
+            results.removeAllViews();
+            String term = query.getText().toString().trim();
+            if (term.length() < 2) {
+                results.addView(label(L10n.s("En az iki harf yaz; tüm sohbet geçmişinde aranır."), 13, Design.muted()));
+                return;
+            }
+            String haystack = searchText(term);
+            int found = 0;
+            List<Message> history = store.messages(group.id);
+            for (int i = 0; i < history.size() && found < 40; i++) {
+                Message message = history.get(i);
+                String body = (message.text == null || message.text.isEmpty()) && message.hasImage()
+                        ? L10n.s("[görsel]") : message.text;
+                String rendered = searchText(body + " " + (message.user ? "sen" : message.speaker));
+                if (!rendered.contains(haystack)) continue;
+                found++;
+                String who = message.user ? L10n.speaker("Sen") : message.speaker;
+                int match = rendered.indexOf(haystack);
+                String snippet = message.text == null || message.text.isEmpty() ? body
+                        : oneLine(match > 40 ? body.substring(Math.max(0, Math.min(match - 20, body.length()))) : body, 120);
+                final int index = i;
+                TextView row = label(who + L10n.s("  ·  ") + clock.format(new Date(message.at)) + "\n" + snippet, 14, Design.text());
+                row.setPadding(0, dp(10), 0, dp(10));
+                row.setOnClickListener(v -> {
+                    dialog.dismiss();
+                    jumpToMessage(group, index);
+                });
+                results.addView(row, fullWidth());
+            }
+            if (found == 0) {
+                results.addView(label(L10n.s("Eşleşme yok."), 13, Design.muted()));
+            }
+        };
+        query.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void afterTextChanged(android.text.Editable s) { refreshHolder[0].run(); }
+        });
+        refreshHolder[0].run();
+        dialog.show();
+    }
+
+    /** Centers the rendered window on a message index and scrolls it into view. */
+    private void jumpToMessage(Group group, int index) {
+        if (chatScroll == null || group == null || !group.id.equals(visibleChatId)
+                || index < 0 || index >= chatHistory.size()) return;
+        autoScroll = false;
+        if (index < chatRenderStart) {
+            chatRenderStart = Math.max(0, index - 4);
+            rebuildChatRender(group);
+        }
+        content.post(() -> scrollChatByIndex(index));
+    }
+
+    private void scrollChatByIndex(int index) {
+        if (chatScroll == null) return;
+        for (int c = 0; c < content.getChildCount(); c++) {
+            View child = content.getChildAt(c);
+            if (Integer.valueOf(index).equals(child.getTag())) {
+                chatScroll.smoothScrollTo(0, Math.max(0, child.getTop() - dp(90)));
+                return;
+            }
+        }
+        chatScroll.smoothScrollTo(0, 0);
     }
 
     private void clearChat(Group group) {
@@ -2441,8 +2544,37 @@ public class MainActivity extends Activity {
             prefs.edit().putInt("auto_chain", value).apply();
         }, value -> value == 0 ? "Kapalı" : value + " zincir");
         addBody("Zincir açıkken karakter, kendi yanıtından sonra sıradaki karakteri otomatik çağırır. Sahne palazlanır ama token tüketimi artar.");
+
+        addSection("Metin görüntüsü", null, null);
+        addToggleRow("Markdown biçimlendirme", "*italik* ve **kalın** baloncuklarda uygulanır",
+                "markdown_lite", true);
         addBody("Değişiklikler bir sonraki yanıtta uygulanır.");
         addPrimary("Vazgeç", v -> showSettings());
+    }
+
+    /** Simple on/off preference row bound to a boolean pref; returns the current state. */
+    private void addToggleRow(String title, String subtitle, String key, boolean defaultValue) {
+        Button row = new Button(this);
+        row.setAllCaps(false);
+        row.setBackground(null);
+        row.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        row.setTextSize(15);
+        row.setTextColor(Design.text());
+        row.setPadding(dp(4), dp(14), dp(4), dp(14));
+        java.util.function.BooleanSupplier render = () -> prefs().getBoolean(key, defaultValue);
+        Runnable refresh = () -> {
+            boolean on = render.getAsBoolean();
+            row.setText(title + L10n.s("  ·  ") + (on ? L10n.s("Açık") : L10n.s("Kapalı"))
+                    + (subtitle.isEmpty() ? "" : "\n" + subtitle));
+        };
+        refresh.run();
+        row.setOnClickListener(v -> {
+            boolean now = !render.getAsBoolean();
+            prefs().edit().putBoolean(key, now).apply();
+            refresh.run();
+        });
+        LinearLayout.LayoutParams params = fullWidth();
+        content.addView(row, params);
     }
 
     private void addSlider(String caption, int current, int min, int max, int step,
@@ -2658,6 +2790,10 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == BACKUP_EXPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
             exportBackup(data.getData());
+            return;
+        }
+        if (requestCode == CHAR_EXPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            exportCharacter(data.getData());
             return;
         }
         if (requestCode == BACKUP_IMPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
@@ -3563,7 +3699,78 @@ public class MainActivity extends Activity {
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         card.addView(row);
         card.setOnClickListener(v -> showCharacterEditor(character));
+        card.setOnLongClickListener(v -> {
+            showCharacterActions(character);
+            return true;
+        });
         addCardToPage(card);
+    }
+
+    /**
+     * Character card extras (DeepSeek review item): quick variant copies and a single
+     * character JSON export — the full backup stays the standard path.
+     */
+    private void showCharacterActions(CharacterProfile character) {
+        String[] items = {L10n.s("Kopya oluştur"), L10n.s("JSON dışa aktar")};
+        new AlertDialog.Builder(this).setTitle(character.name)
+                .setItems(items, (dialog, which) -> {
+                    if (which == 0) duplicateCharacter(character);
+                    else exportCharacterPicker(character);
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+    }
+
+    private void duplicateCharacter(CharacterProfile original) {
+        CharacterProfile copy = new CharacterProfile();
+        copy.name = original.name + L10n.s(" (kopya)");
+        copy.description = original.description;
+        copy.personality = original.personality;
+        copy.instructions = original.instructions;
+        copy.examples = original.examples;
+        copy.avatarPath = original.avatarPath; // the file keeps existing; both cards may show it
+        if (!store.saveCharacter(copy)) {
+            Toast.makeText(this, L10n.s("Kopya oluşturulamadı: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+            return;
+        }
+        Toast.makeText(this, L10n.s("Kopya oluşturuldu."), Toast.LENGTH_SHORT).show();
+        showCharacters();
+    }
+
+    private void exportCharacterPicker(CharacterProfile character) {
+        charExportTarget = character.id;
+        String safe = character.name.replaceAll("[^\\p{L}\\p{N} _-]+", "").trim();
+        if (safe.isEmpty()) safe = "karakter";
+        String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        intent.putExtra(Intent.EXTRA_TITLE, "localrp-karakter-" + safe + "-" + stamp + ".json");
+        startActivityForResult(intent, CHAR_EXPORT);
+    }
+
+    /** Writes one character card as a PersistenceCodec characters JSON document. */
+    private void exportCharacter(Uri uri) {
+        CharacterProfile character = charExportTarget == null ? null : store.character(charExportTarget);
+        charExportTarget = null;
+        if (character == null) {
+            Toast.makeText(this, L10n.s("Dışa aktaramadı: karakter bulunamadı."), Toast.LENGTH_LONG).show();
+            return;
+        }
+        List<CharacterProfile> single = new ArrayList<>();
+        single.add(character);
+        String encoded = PersistenceCodec.encodeCharacters(single);
+        if (encoded.isEmpty()) {
+            Toast.makeText(this, L10n.s("Dışa aktaramadı: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+            return;
+        }
+        try (java.io.OutputStream output = getContentResolver().openOutputStream(uri)) {
+            if (output == null) throw new java.io.IOException();
+            output.write(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            output.flush();
+            Toast.makeText(this, L10n.s("Karakter dışa aktarıldı."), Toast.LENGTH_SHORT).show();
+        } catch (java.io.IOException writeFailed) {
+            Toast.makeText(this, L10n.s("Dışa aktarılamadı: dosyaya yazılamadı."), Toast.LENGTH_LONG).show();
+        }
     }
 
     private void addModelCard() {
@@ -3771,8 +3978,15 @@ public class MainActivity extends Activity {
      * layout, everything else keeps the classic text path.
      */
     private TextView addStoredMessage(LinearLayout parent, Message message) {
-        if (message.hasImage()) return addImageMessage(parent, message);
-        return addMessage(parent, message.speaker, message.text, message.user, message.at);
+        int index = chatHistory.indexOf(message);
+        TextView balloon;
+        if (message.hasImage()) balloon = addImageMessage(parent, message);
+        else balloon = addMessage(parent, message.speaker, message.text, message.user, message.at, message);
+        if (index >= 0) {
+            ViewGroup row = messageRowOf(balloon);
+            if (row != null) row.setTag(index); // search/jump anchor
+        }
+        return balloon;
     }
 
     /** Text balloon TextViews sit inside their avatar row; image balloons wrap one level deeper. */
@@ -3854,8 +4068,7 @@ public class MainActivity extends Activity {
         }
         final TextView captionFinal = caption != null ? caption : fallback;
         wrap.setOnLongClickListener(v -> {
-            if (captionFinal == null || captionFinal.getText().toString().trim().isEmpty()) return false;
-            showMessageActions(message.speaker, captionFinal.getText().toString());
+            showMessageActions(message);
             return true;
         });
 
@@ -3884,6 +4097,11 @@ public class MainActivity extends Activity {
     }
 
     private TextView addMessage(LinearLayout parent, String speaker, String text, boolean user, long at) {
+        return addMessage(parent, speaker, text, user, at, null);
+    }
+
+    /** {@code stored} routes long-press to the full transcript actions; drafts copy only. */
+    private TextView addMessage(LinearLayout parent, String speaker, String text, boolean user, long at, Message stored) {
         // C.AI-modern rebuild: characters speak from a soft, flat card with a leading
         // 30dp avatar and an accent-colored name; the user's own lines stay compact,
         // right-weighted bubbles in a softened accent — metrics wider than the rest.
@@ -3895,6 +4113,10 @@ public class MainActivity extends Activity {
                 : rounded(Design.cardBg(), Design.cardBg(), 20));
         renderMessage(view, speaker, text, at);
         view.setOnLongClickListener(v -> {
+            if (stored != null) {
+                showMessageActions(stored);
+                return true;
+            }
             String value = view.getTag() instanceof String ? (String) view.getTag() : view.getText().toString();
             if (value.trim().isEmpty()) return false;
             showMessageActions(speaker, value);
@@ -3932,15 +4154,177 @@ public class MainActivity extends Activity {
         return "";
     }
 
+    /** Clipboard helper shared by copy-only and full message actions. */
+    private void copyTextToClipboard(String label, String text) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(ClipData.newPlainText(label, text));
+            Toast.makeText(this, L10n.s("Mesaj kopyalandı."), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Copy-only menu for balloons that are not stored messages (streaming drafts). */
     private void showMessageActions(String speaker, String text) {
         new AlertDialog.Builder(this).setTitle(speaker + L10n.s(" · mesaj"))
-                .setItems(new String[]{L10n.s("Metni kopyala")}, (dialog, which) -> {
-                    ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                    if (clipboard != null) {
-                        clipboard.setPrimaryClip(ClipData.newPlainText("LocalRP mesajı", text));
-                        Toast.makeText(this, L10n.s("Mesaj kopyalandı."), Toast.LENGTH_SHORT).show();
+                .setItems(new String[]{L10n.s("Metni kopyala")}, (dialog, which) ->
+                        copyTextToClipboard("LocalRP mesajı", text))
+                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+    }
+
+    /**
+     * Full actions for stored messages: copy, edit, delete — and regenerate when the
+     * message is the transcript's last AI turn. Draft balloons (no transcript index)
+     * keep the copy-only menu.
+     */
+    private void showMessageActions(Message message) {
+        int index = chatHistory.indexOf(message);
+        if (index < 0) {
+            String body = (message.text == null || message.text.isEmpty()) && message.hasImage()
+                    ? L10n.s("[görsel]") : message.text;
+            showMessageActions(message.speaker, body);
+            return;
+        }
+        List<String> labels = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        labels.add(L10n.s("Metni kopyala"));
+        actions.add(() -> {
+            String body = (message.text == null || message.text.isEmpty()) && message.hasImage()
+                    ? "" : message.text;
+            if (body.isEmpty() && message.hasImage()) {
+                Toast.makeText(this, L10n.s("Bu mesajın metni yok; görsel kayıtta saklanır."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            copyTextToClipboard("LocalRP mesajı", body);
+        });
+        labels.add(L10n.s("Düzenle"));
+        actions.add(() -> editMessage(index));
+        labels.add(L10n.s("Sil"));
+        actions.add(() -> confirmDeleteMessage(index));
+        if (!message.user && index == chatHistory.size() - 1 && !isGeneratingHere()) {
+            labels.add(L10n.s("Yeniden üret"));
+            actions.add(() -> regenerateLastAction(index));
+        }
+        String[] items = labels.toArray(new String[0]);
+        new AlertDialog.Builder(this).setTitle(message.speaker + L10n.s(" · mesaj"))
+                .setItems(items, (dialog, which) -> {
+                    if (which >= 0 && which < actions.size()) actions.get(which).run();
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+    }
+
+    /** A generation is either running anywhere or targeting the visible chat. */
+    private boolean isGeneratingHere() {
+        return generatingChatId != null;
+    }
+
+    private void editMessage(int index) {
+        if (index < 0 || index >= chatHistory.size()) return;
+        Group group = store.group(visibleChatId);
+        if (group == null) return;
+        if (group.id.equals(generatingChatId)) {
+            Toast.makeText(this, L10n.s("Yanıt üretilirken mesaj değiştirilemez. Önce yanıtı durdur."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Message message = chatHistory.get(index);
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(22), dp(16), dp(22), 0);
+        EditText input = dialogField(L10n.s("Düzenle: ") + message.speaker);
+        input.setText(message.text == null ? "" : message.text);
+        input.setMinLines(3);
+        input.setGravity(Gravity.TOP);
+        form.addView(input);
+        new AlertDialog.Builder(this)
+                .setTitle(L10n.s("Mesajı düzenle"))
+                .setView(form)
+                .setPositiveButton(L10n.s("Kaydet"), (dialog, which) -> {
+                    String newText = input.getText().toString().trim();
+                    if (newText.isEmpty() && !message.hasImage()) {
+                        Toast.makeText(this, L10n.s("Metin boş kalamaz; silmek için Sil'i kullan."), Toast.LENGTH_SHORT).show();
+                        return;
                     }
-                }).setNegativeButton(L10n.s("Vazgeç"), null).show();
+                    if (!store.updateMessage(group.id, index, newText)) {
+                        Toast.makeText(this, L10n.s("Değişiklik kaydedilemedi: sohbet verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    chatHistory.set(index, new Message(message.speaker, newText, message.user, message.at, message.image));
+                    // The engine context no longer matches the transcript; a fresh
+                    // generation must rebuild it from the edited history.
+                    LocalAiRuntime.INSTANCE.resetConversation(group.id);
+                    contextChars.remove(group.id);
+                    chatMetrics.remove(group.id);
+                    chainCounts.remove(group.id);
+                    Toast.makeText(this, L10n.s("Mesaj güncellendi."), Toast.LENGTH_SHORT).show();
+                    jumpToMessage(group, index);
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+    }
+
+    private void confirmDeleteMessage(int index) {
+        if (index < 0 || index >= chatHistory.size()) return;
+        Group group = store.group(visibleChatId);
+        if (group == null) return;
+        if (group.id.equals(generatingChatId)) {
+            Toast.makeText(this, L10n.s("Yanıt üretilirken mesaj silinemez. Önce yanıtı durdur."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Message message = chatHistory.get(index);
+        confirm((message.hasImage()
+                ? L10n.s("Bu mesaj ve görseli silinsin mi?")
+                : L10n.s("Bu mesaj silinsin mi?")), L10n.s("Sil"), () -> {
+                    if (message.hasImage()) deleteMessageImageFile(message.image);
+                    if (!store.removeMessage(group.id, index)) {
+                        Toast.makeText(this, L10n.s("Silinemedi: sohbet verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    chatMetrics.remove(group.id);
+                    contextChars.remove(group.id);
+                    chainCounts.remove(group.id);
+                    LocalAiRuntime.INSTANCE.resetConversation(group.id);
+                    forgetAutoAttempts(group.id);
+                    Toast.makeText(this, L10n.s("Mesaj silindi."), Toast.LENGTH_SHORT).show();
+                    showChat(group);
+                });
+    }
+
+    /**
+     * True regenerate: the chosen last AI message and everything after it leaves the
+     * transcript, then the turn restarts from the last user message.
+     */
+    private void regenerateLastAction(int index) {
+        Group group = store.group(visibleChatId);
+        if (group == null) return;
+        if (group.id.equals(generatingChatId)) return;
+        if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading()) {
+            Toast.makeText(this, L10n.s("Model yükleniyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (LocalAiRuntime.INSTANCE.isBenchmarking()) {
+            Toast.makeText(this, L10n.s("Motor testi sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!modelCanRespond()) {
+            openModels(() -> openChat(group.id));
+            return;
+        }
+        List<Message> stored = store.messages(group.id);
+        for (int i = index; i < stored.size(); i++) {
+            if (stored.get(i).hasImage()) deleteMessageImageFile(stored.get(i).image);
+        }
+        if (!store.removeMessagesFrom(group.id, index)) {
+            Toast.makeText(this, L10n.s("Yeniden üretilemedi: sohbet verisi okunamıyor."), Toast.LENGTH_LONG).show();
+            return;
+        }
+        chatMetrics.remove(group.id);
+        contextChars.remove(group.id);
+        chainCounts.remove(group.id);
+        LocalAiRuntime.INSTANCE.resetConversation(group.id);
+        forgetAutoAttempts(group.id);
+        showChat(group);
+        // continueOrRetry starts the fresh turn from the (now last) user message;
+        // it stays synchronous, so the auto-generate post queued by showChat sees
+        // generatingChatId != null and aborts.
+        continueOrRetry(group);
     }
 
     private void renderMessage(TextView view, String speaker, String text, long at) {
@@ -3957,7 +4341,33 @@ public class MainActivity extends Activity {
         if (at > 0) {
             styled.setSpan(new ForegroundColorSpan(Design.muted()), display.length(), headLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
+        // Markdown-lite body: *italic* / **bold** fold into the same balloon.
+        applyMarkdown(styled, text, headLength + 1);
         view.setText(styled);
+    }
+
+    /**
+     * Maps MarkdownLite segments into {@code styled} beginning at {@code start};
+     * segment lengths advance the cursor, so offsets stay aligned without re-parsing.
+     * Off by preference (mkdown_lite).
+     */
+    private void applyMarkdown(SpannableString styled, String text, int start) {
+        if (text == null || text.isEmpty()) return;
+        boolean enabled = prefs().getBoolean("markdown_lite", true);
+        int cursor = start;
+        for (MarkdownLite.Segment segment : MarkdownLite.parse(text)) {
+            int begin = cursor;
+            int end = begin + segment.text.length();
+            cursor = end;
+            if (!enabled || (!segment.bold && !segment.italic)) continue;
+            if (begin < end && end <= styled.length()) {
+                styled.setSpan(new StyleSpan(
+                        segment.bold && segment.italic
+                                ? android.graphics.Typeface.BOLD_ITALIC
+                                : segment.bold ? android.graphics.Typeface.BOLD : android.graphics.Typeface.ITALIC),
+                        begin, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
     }
 
     private void scrollChatToBottom(boolean force) {

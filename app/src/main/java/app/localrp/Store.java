@@ -176,6 +176,7 @@ class Store {
         List<Message> all = messages(groupId);
         return all.isEmpty() ? null : all.get(all.size() - 1);
     }
+
     void addMessage(String id, Message message) {
         String raw = preferences.getString("chat_" + id, null);
         if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("chat_" + id); return; }
@@ -183,16 +184,49 @@ class Store {
         updated.add(message);
         writeMessages(id, updated);
     }
+
+    /** Replaces one stored message's text (speaker/reader/image/timestamp preserved). */
+    boolean updateMessage(String id, int index, String newText) {
+        String raw = preferences.getString("chat_" + id, null);
+        if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("chat_" + id); return false; }
+        List<Message> all = messages(id);
+        if (index < 0 || index >= all.size()) return false;
+        Message original = all.get(index);
+        List<Message> updated = new ArrayList<>(all);
+        updated.set(index, new Message(original.speaker, newText, original.user, original.at, original.image));
+        return writeMessages(id, updated);
+    }
+
+    boolean removeMessage(String id, int index) {
+        String raw = preferences.getString("chat_" + id, null);
+        if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("chat_" + id); return false; }
+        List<Message> all = messages(id);
+        if (index < 0 || index >= all.size()) return false;
+        List<Message> updated = new ArrayList<>(all);
+        updated.remove(index);
+        return writeMessages(id, updated);
+    }
+
+    /** Drops everything at and after an index (regenerate needs to forget the last turn). */
+    boolean removeMessagesFrom(String id, int index) {
+        String raw = preferences.getString("chat_" + id, null);
+        if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("chat_" + id); return false; }
+        List<Message> all = messages(id);
+        if (index < 0 || index >= all.size()) return false;
+        return writeMessages(id, new ArrayList<>(all.subList(0, index)));
+    }
+
     void clearMessages(String id) {
         preferences.edit().remove("chat_" + id).apply();
         chatCache.remove(id);
         integrityIssues.remove("chat_" + id); // user-initiated clear repairs the slot
     }
-    private void writeMessages(String id, List<Message> all) {
+    private boolean writeMessages(String id, List<Message> all) {
         String encoded = PersistenceCodec.encodeMessages(all);
-        if (encoded.isEmpty()) return; // encode failure must not replace valid data
+        if (encoded.isEmpty()) return false; // encode failure must not replace valid data
         preferences.edit().putString("chat_" + id, encoded).apply();
         chatCache.put(id, all);
+        return true;
     }
     private boolean putCharacters(List<CharacterProfile> all) {
         String encoded = PersistenceCodec.encodeCharacters(all);

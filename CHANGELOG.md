@@ -2,6 +2,16 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.0-alpha1 — 2026-11-07 (Mesaj eylemleri + sohbet arama + markdown + karakter çoğaltma)
+
+DeepSeek incelemesinin öncelik listesinden ilk grup uygulandı: RP kalitesini en hızlı artıran sohbet araçları.
+
+- **Mesaj eylemleri**: kayıtlı mesajlara uzun basınca artık Düzenle, Sil ve Yeniden üret de var (kopyalama aynen duruyor). Düzenle, metni tek diyalogda değiştirir ve motor bağlamını tazeler; Sil mesajı ve görsel dosyasını kaldırır; Yeniden üret, son AI mesajını silip turu son kullanıcı mesajından yeniden başlatır (bağlam sıfırlanır, zincir sayacı temizlenir).
+- **Sohbette arama**: menüdeki "Sohbette ara" tüm kaydı Türkçe-uyumlu katlama ile tarar; bulunan sonuçlara dokununca sohbet penceresi o mesaja atlar (pencere daha eski mesajları yükleyerek kayar). Akış halindeki taslaklar kopyala-only menüde kalır.
+- **Markdown-lite**: `*italik*` ve `**kalın**` baloncuk metninde stil olarak uygulanur; eşleşmeyen yıldızlar metinde kalır; italik içinde kalın çalışır. Sahne hafızası ekranından kapatılabilir (markdown_lite).
+- **Karakter kartı ekstraları**: kart uzun basınca "Kopya oluştur" ve "JSON dışa aktar" çıkar; dışa aktarım SAF ile tek karakterlik PersistenceCodec JSON belgesi yazar.
+- versionCode 29 / 0.19.0-alpha1.
+
 ## v0.18.1-alpha1 — 2026-11-06 (Hata düzeltme paketi — görsel motor + sohbet)
 
 Kapsamlı hata incelemesinin (3 kritik, 10 orta, 8 düşük bulgu) düzeltme paketi. Uygulamanın davranışı ve veri biçimi değişmedi; çökmeler, durum sızıntıları ve UI boşlukları kapatıldı.
