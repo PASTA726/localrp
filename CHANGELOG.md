@@ -2,6 +2,21 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.1-alpha1 — 2026-11-07 (Big Pickle GUI incelemesi — 1. tur: navigasyon + okunabilirlik)
+
+Big Pickle raporunun "1. tur" (gezinme doğruluğu + balon düzeni + erişilebilirlik hızlı kazançları) uygulandı. Tasarım dili aynen korunur.
+
+- **Sohbetten dönüş artık geldiğin yere**: ana sayfadaki sohbet kartından açılan sohbet geri okuyla Ana sayfaya, Sohbetler listesinden açılan sohbet listeye döner (backAction origin takibi).
+- **Bayat model geri eylem hedefi**: Ayarlar ekranındaki "Modeli yükle ve yönet" girişi artık açıkça Ayarlar'a bağlanır (eski bir sohbetin geri dönüş hedefi olarak kalması sorunu kapanır).
+- **Balon gerçek boyutları**: ağırlık tabanlı genişlik fiilen çalışmıyordu (satırda tek ağırlıklı çocuk balondur) — artık WRAP_CONTENT + maxWidth (kullanıcı ~%62, karakter ~%74) ve kullanıcı balonları sağa yaslı. Görsel balonlarda aynı kural ImageView maxWidth'ına uygulanır.
+- **Çift saat kalktı**: metin balonlarında saat yalnızca başlıkta; görsel balonlarda satır ucundaki saat tek kaynak kalır.
+- **WCAG kontrast yükseltmeleri** (hesaplanmış): Okyanus vurgu 2.96→4.69 (#0B7F94), Orman 3.47→5.26 (#2E7A48), Lavanta vurgu 4.38→5.65 (#6B48E8), açık tema tehlike rengi 3.91→4.51 (#D93B41), Lavanta hero alt metni 2.44→4.10 (heroB #7159EC + metin #EFEAFA), Gün Batımı hero alt metni 2.41→3.76 (#FFF5E0). Renk tonları korunarak yalnızca doygunluk koyulaştırıldı.
+- **Dokunma hedefleri + etiketler**: iki geri ok 40→48dp ve "Geri" contentDescription; sohbet ⋯ menüsü 48dp + "Sohbet menüsü" etiketi; "Daha eski mesajlar" düğmesi 48dp.
+- **"Son sohbetler" gerçekten son**: ana sayfa ve Sohbetler listesi son mesaj saatine göre azalan sıralanır; ana sayfa listesi ilk 4 ile sınırlıdır.
+- versionCode 30 / 0.19.1-alpha1.
+- **"Son sohbetler" gerçekten son**: ana sayfa koşum sayfa çalıştırması son mesaj saatine göre azalan sıralı; ana sayfa listenin ateşli üst sınırı 4; CN Sohbetleri sayfa tamı sıra.
+- versionCode 30 / 0.19.1-alpha1.
+
 ## v0.19.0-alpha1 — 2026-11-07 (Mesaj eylemleri + sohbet arama + markdown + karakter çoğaltma)
 
 DeepSeek incelemesinin öncelik listesinden ilk grup uygulandı: RP kalitesini en hızlı artıran sohbet araçları.
