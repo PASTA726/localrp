@@ -1021,6 +1021,26 @@ public class MainActivity extends Activity {
         EditText negativeInput = dialogField(L10n.s("İstenmeyenler (boş kalabilir)"));
         negativeInput.setHint(L10n.s("Örn: bulanık, düşük kalite"));
         form.addView(negativeInput);
+        // Sampling control panel (DeepSeek item 8): steps / CFG / seed go with the
+        // prompt and persist for the next run; empty inputs keep engine defaults.
+        SharedPreferences prefs = prefs();
+        int preferredSteps = prefs.getInt("img_steps", LocalImageEngine.INSTANCE.preparedStepCount());
+        String preferredCfg = prefs.getString("img_cfg", "5");
+        EditText stepsInput = dialogField(L10n.s("Adım sayısı (10–50)"));
+        stepsInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        stepsInput.setText(String.valueOf(preferredSteps));
+        stepsInput.setSingleLine(true);
+        form.addView(stepsInput);
+        EditText cfgInput = dialogField(L10n.s("CFG ölçeği (1.5–15)"));
+        cfgInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        cfgInput.setText(preferredCfg);
+        cfgInput.setSingleLine(true);
+        form.addView(cfgInput);
+        EditText seedInput = dialogField(L10n.s("Tohum (boş = rastgele)"));
+        seedInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
+        seedInput.setSingleLine(true);
+        seedInput.setText(prefs.getString("img_seed", ""));
+        form.addView(seedInput);
 
         final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(L10n.s("Görsel üret (") + LocalImageEngine.INSTANCE.loadedModelName() + ")")
@@ -1035,15 +1055,220 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, L10n.s("Bir fikir yaz."), Toast.LENGTH_SHORT).show();
                 return;
             }
+            int steps = clampInt(stepsInput.getText().toString(), preferredSteps, 10, 50);
+            float cfg = clampFloat(cfgInput.getText().toString(), 5f, 1.5f, 15f);
+            long seed = parseSeed(seedInput.getText().toString());
+            prefs.edit().putInt("img_steps", steps).putString("img_cfg", String.valueOf(cfg))
+                    .putString("img_seed", seedInput.getText().toString().trim()).apply();
             dialog.dismiss();
-            startChatImageGeneration(group, prompt, negativeInput.getText().toString().trim());
+            startChatImageGeneration(group, prompt, negativeInput.getText().toString().trim(), steps, cfg, seed);
         }));
         tintDialog(dialog);
         dialog.show();
     }
 
-    /** Dialog-safe EditText twin of field(...); detached from the page content tree. */
-    private EditText dialogField(String hint) {
+    /**
+     * Gallery (DeepSeek item 8): every PNG under the images directory, newest first.
+     * Tap opens the fullscreen viewer; long press offers avatar/re-attach/delete.
+     */
+    private void showGallery(Runnable back) {
+        visibleChatId = null;
+        backAction = back != null ? back : this::showSettings;
+        setPage("Görsel galerisi", "Üretilen ve sohbete eklenen görseller", "settings");
+        File directory = LocalImageEngine.INSTANCE.imagesDirectory(this);
+        File[] files = directory.listFiles();
+        List<File> images = new ArrayList<>();
+        if (files != null) {
+            for (File file : files) {
+                String name = file.getName().toLowerCase(java.util.Locale.US);
+                if (file.isFile() && name.endsWith(".png")) images.add(file);
+            }
+        }
+        images.sort((a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+        if (images.isEmpty()) {
+            addEmpty("Burada henüz görsel yok", "Sohbette ✨ ile üret ya da 📷 ile bir fotoğraf ekle.", null, null);
+            return;
+        }
+        for (File image : images) addGalleryRow(image);
+    }
+
+    private void addGalleryRow(File image) {
+        LinearLayout card = makeCard();
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView thumb = new ImageView(this);
+        thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        setBackgroundThumb(thumb, image.getPath(), dp(56));
+        row.addView(thumb, new LinearLayout.LayoutParams(dp(56), dp(56)));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setPadding(dp(12), 0, 0, 0);
+        TextView name = label(image.getName(), 14, Design.text());
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+        texts.addView(name);
+        TextView meta = label(new Date(image.lastModified()) + "  ·  " + humanSize(image.length()), 12, Design.muted());
+        meta.setPadding(0, dp(3), 0, 0);
+        texts.addView(meta);
+        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        card.addView(row);
+        card.setOnClickListener(v -> showImageViewer(image.getPath()));
+        card.setOnLongClickListener(v -> {
+            showGalleryActions(image);
+            return true;
+        });
+        addCardToPage(card);
+    }
+
+    /** Gallery thumbs decode off the UI thread; the view is replaced when ready. */
+    private void setBackgroundThumb(ImageView view, String path, int sizePx) {
+        Thread decode = new Thread(() -> {
+            Bitmap bitmap = LocalImageEngine.INSTANCE.decode(path, sizePx);
+            if (bitmap == null) return;
+            runOnUiThread(() -> {
+                if (view.isAttachedToWindow()) view.setImageBitmap(bitmap);
+                else bitmap.recycle();
+            });
+        }, "localrp-gallery-thumb");
+        decode.start();
+    }
+
+    /** Long-press gallery actions: character avatar, re-attach to a chat, delete. */
+    private void showGalleryActions(File image) {
+        String[] items = {L10n.s("Karakter avatarı yap"), L10n.s("Sohbete ekle"), L10n.s("Sil")};
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(image.getName())
+                .setItems(items, (d, which) -> {
+                    if (which == 0) makeAvatarFrom(image);
+                    else if (which == 1) attachGalleryImage(image);
+                    else if (galleryImageInUse(image)) {
+                        Toast.makeText(this, L10n.s("Bu görsel bir sohbette veya karakter avatarında kullanılıyor; önce o kaydı sil."), Toast.LENGTH_LONG).show();
+                    } else confirm(L10n.s("Bu görsel silinsin mi?"), L10n.s("Sil"), () -> {
+                        if (image.delete()) {
+                            Toast.makeText(this, L10n.s("Görsel silindi."), Toast.LENGTH_SHORT).show();
+                            showGallery(this::showSettings);
+                        } else {
+                            Toast.makeText(this, L10n.s("Silinemedi: dosya yazılabilir değil."), Toast.LENGTH_LONG).show();
+                        }
+                    });
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+        tintDialog(dialog);
+        dialog.show();
+    }
+
+    /** A gallery file referenced by a transcript or a character avatar must not be deleted. */
+    private boolean galleryImageInUse(File image) {
+        String path = image.getPath();
+        for (Group group : store.groups()) {
+            for (Message message : store.messages(group.id)) {
+                if (message.hasImage() && path.equals(message.image)) return true;
+            }
+        }
+        for (CharacterProfile character : store.characters()) {
+            if (character.avatarPath != null && path.equals(character.avatarPath)) return true;
+        }
+        return false;
+    }
+
+    /** Copies the image into the avatar space and lets the user pick the character. */
+    private void makeAvatarFrom(File image) {
+        List<CharacterProfile> characters = store.characters();
+        if (characters.isEmpty()) {
+            Toast.makeText(this, L10n.s("Önce bir karakter oluştur."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] names = new String[characters.size()];
+        for (int i = 0; i < characters.size(); i++) names[i] = characters.get(i).name;
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(L10n.s("Hangi karakter?"))
+                .setItems(names, (d, which) -> {
+                    CharacterProfile character = characters.get(which);
+                    File avatarDirectory = new File(getFilesDir(), "avatars");
+                    if (!avatarDirectory.exists() && !avatarDirectory.mkdirs()) {
+                        Toast.makeText(this, L10n.s("Avatar kopyası yazılamadı."), Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    File target = new File(avatarDirectory,
+                            "ava-gen-" + System.currentTimeMillis() + ".png");
+                    boolean copied = false;
+                    try (java.io.FileInputStream input = new java.io.FileInputStream(image)) {
+                        try (java.io.FileOutputStream output = new java.io.FileOutputStream(target)) {
+                            byte[] buffer = new byte[8192];
+                            int read;
+                            while ((read = input.read(buffer)) > 0) output.write(buffer, 0, read);
+                            copied = true;
+                        }
+                    } catch (java.io.IOException failed) {
+                        // copied stays false; reported below
+                    }
+                    if (!copied) {
+                        Toast.makeText(this, L10n.s("Avatar kopyası yazılamadı."), Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    character.avatarPath = target.getPath();
+                    if (!store.saveCharacter(character)) {
+                        target.delete(); // an unsaved copy must not pile up in storage
+                        Toast.makeText(this, L10n.s("Avatar kaydedilemedi: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    Toast.makeText(this, character.name + L10n.s(" için avatar güncellendi."), Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+        tintDialog(dialog);
+        dialog.show();
+    }
+
+    /** Re-attaches a gallery image to any chat as the user's photo message. */
+    private void attachGalleryImage(File image) {
+        List<Group> groups = store.groups();
+        if (groups.isEmpty()) {
+            Toast.makeText(this, L10n.s("Önce bir sohbet oluştur."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] names = new String[groups.size()];
+        for (int i = 0; i < groups.size(); i++) names[i] = groups.get(i).name;
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(L10n.s("Hangi sohbet?"))
+                .setItems(names, (d, which) -> {
+                    Group group = groups.get(which);
+                    Message sent = new Message("Sen", "", true, System.currentTimeMillis(), image.getPath());
+                    store.addMessage(group.id, sent);
+                    Toast.makeText(this, group.name + L10n.s(" sohbetine eklendi."), Toast.LENGTH_SHORT).show();
+                    if (group.id.equals(visibleChatId)) showChat(group);
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+        tintDialog(dialog);
+        dialog.show();
+    }
+
+    /** Numeric dialog field clamp; bad or empty input keeps the current value. */
+    private int clampInt(String raw, int current, int minimum, int maximum) {
+        try {
+            int value = Integer.parseInt(raw.trim());
+            return Math.max(minimum, Math.min(maximum, value));
+        } catch (NumberFormatException bad) {
+            return current;
+        }
+    }
+
+    private float clampFloat(String raw, float current, float minimum, float maximum) {
+        try {
+            float value = Float.parseFloat(raw.trim().replace(',', '.'));
+            if (Float.isNaN(value) || Float.isInfinite(value)) return current;
+            return Math.max(minimum, Math.min(maximum, value));
+        } catch (NumberFormatException bad) {
+            return current;
+        }
+    }
+
+    /** Numeric seed; empty or unparseable input maps to -1 = engine-chosen random. */
+    private long parseSeed(String raw) {
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (NumberFormatException bad) {
+            return -1L;
+        }
+    }
+
+    /** Dialog-safe EditText twin of field(...); detached from the page content tree. */    private EditText dialogField(String hint) {
         EditText input = new EditText(this);
         input.setHint(hint);
         input.setTextSize(15);
@@ -1061,6 +1286,14 @@ public class MainActivity extends Activity {
 
     /** Runs the on-device generation and routes its events into the open chat. */
     private void startChatImageGeneration(Group group, String prompt, String negative) {
+        SharedPreferences prefs = prefs();
+        startChatImageGeneration(group, prompt, negative,
+                prefs.getInt("img_steps", LocalImageEngine.INSTANCE.preparedStepCount()), 5f, -1L);
+    }
+
+    /** Runs the on-device generation and routes its events into the open chat. */
+    private void startChatImageGeneration(Group group, String prompt, String negative,
+                                          int steps, float cfg, long seed) {
         if (generatingChatId != null) {
             Toast.makeText(this, L10n.s("Önce yürüyen yanıtı bekleyin."), Toast.LENGTH_SHORT).show();
             return;
@@ -1069,10 +1302,9 @@ public class MainActivity extends Activity {
             chatStatusView.setText(LocalImageEngine.INSTANCE.loadedModelName() + L10n.s(" · görsel üretiliyor…"));
         }
 
-        final java.util.Random random = new java.util.Random();
         boolean accepted = LocalImageEngine.INSTANCE.generate(
-                this, prompt, negative, 512, 512, LocalImageEngine.INSTANCE.preparedStepCount(), 5f,
-                random.nextLong(), new LocalImageEngine.ImageListener() {
+                this, prompt, negative, 512, 512, steps, cfg,
+                seed, new LocalImageEngine.ImageListener() {
             @Override public void onStatus(String message) {
                 if (!uiAlive()) return;
                 if (group.id.equals(visibleChatId) && chatStatusView != null) {
@@ -1716,6 +1948,7 @@ public class MainActivity extends Activity {
 
         addSection("Görünüm", null, null);
         addSecondary("GUI temasını değiştir", v -> showAppearance());
+        addSecondary("Görsel galerisi", v -> showGallery(this::showSettings));
 
         addSection("Veri yedeği", null, null);
         addInfoCard("Yedekleme", L10n.s("Karakterler, sohbetler ve geçmişler tek bir .json dosyasına yazılır. ")
