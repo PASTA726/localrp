@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.5-alpha1 — 2026-11-09 (DeepSeek madde 9: yedek v2 — medya dahil ZIP)
+
+DeepSeek incelemesinin "yedekleme" kaleminin birinci bölümü (madde 9a) uygulandı. İkinci bölüm (seçmeli dışa aktarma + geri alınabilir silme) sonraki tura kaldı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.
+
+- **Yedeği dışa aktar (medya dahil)**: Ayarlar → Veri yedeği → yeni düğme tek bir `.zip` yazar:
+  - `bundle.json` — karakterler, sohbetler, geçmişler (yeni sürüm 2 biçimi; görsel/kapak yolları `@avatars/…` / `@images/…` işaretleriyle yazılır).
+  - `checksum.txt` — iki SHA-256 sağlaması: JSON metni ve ZIP içindeki tüm görsel baytları (kapsama: dosya adı + baytlar).
+  - `media/avatars/…`, `media/images/…` — yalnızca yedekte gerçekten referans edilen dosyalar; cihazda silinmişse atlanır.
+- **İçe aktarma iki yol**: `PK` sihirli byte'ı ile ZIP tanınır; ZIP'te önce sağlamalar doğrulanır (uyuşmazlıkta yedek tümüyle reddedilir). ZIP kayması koruması: yalnızca `bundle.json`, `checksum.txt` ve `media/…/tek-dosya-adı` girdileri okunur; `..` ve ters eğik çizgi içeren adlar reddedilir; girdi başına 64 MB açılma sınırı vardır. Medya baytları yerel kopya eksikken açılır; aynı ad yerelde varsa paketlenen bayt üzerine yazar — paket kendi kendi yoluna ne yazdıysa o geri gelir.
+- **Eski JSON yedekleri aynen çalışır**: sürüm 1 salt-JSON yedeği (mutlak yollar) hiçbir değişiklik olmadan okunur; başka cihazdan gelen yollar bugünkü gibi ayıklanır.
+- versionCode 34 / 0.19.5-alpha1.
+
 ## v0.19.4-alpha1 — 2026-11-09 (DeepSeek madde 8: görsel kontrol paneli + galeri)
 
 DeepSeek incelemesinin "görsel" kalemi (madde 8) uygulandı. Değişiklikler salt-okunur harici inceleme (Codex CLI) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.

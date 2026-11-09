@@ -474,6 +474,12 @@ public final class L10n {
         EN.put("Avatar kaydedilemedi: karakter verisi okunamıyor.",
                 "Could not save the avatar: the character data is unreadable.");
         EN.put("Önce bir sohbet oluştur.", "Create a conversation first.");
+
+        // ---- backup v2: ZIP bundle with media (DeepSeek item 9)
+        EN.put("Yedeği dışa aktar (medya dahil)", "Export backup (media included)");
+        EN.put("Yedek doğrulamadı: sağlama farkı.",
+                "Backup failed verification: checksum mismatch.");
+        EN.put(" medya dosyası", " media file(s)");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
         EN.put(" silindi.", " deleted.");
