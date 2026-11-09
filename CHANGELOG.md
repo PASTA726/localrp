@@ -2,6 +2,19 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.3-alpha1 — 2026-11-09 (Big Pickle GUI incelemesi — 3. tur: görsel, ikon, önizleme)
+
+Big Pickle raporunun 3. tur maddeleri uygulandı (9, 13, 15, 16, 18; madde 17 — 18+ kapısı — zaten 2. tur tint ile kapsandı). Ayrıca uygulama yeni bir vektör launcher ikonu aldı ve bu turun değişiklikleri salt-okunur harici inceleme (Codex CLI) ile iki kez birbiri ardından gözden geçirildi.
+
+- **Görsel mesaj artık kimlikli**: görsel balonlarda metin balonlardaki gibi kalın vurgulu konuşmacı başlığı var (ad + saat); görsel balonlardaki çift saat kalktı, saat artık tek kaynak olarak başlıkta.
+- **Tam ekran görüntüleyici**: görsel balona dokunmak artık tam ekran görüntüleyiciyi açar; kıs / aç (pinch) yakınlaştırma, sürükleyerek kaydırma, çift dokunmayla zoom, tek dokunma veya ✕ ile kapanır. Matrix matematiği sığdırma ölçeğine bağlandı ve pan sınırlı (görsel ekrandan çıkamaz). Yavaş kod çözmede dialog kapandıysa bitmap geri dönüştürülür (recycle).
+- **Composer hiyerarşisi**: konuşmacı çipi görsel olarak sönüklaştı; 📷 ve ✨ ekleme düğmeleri sönük düz zemine çekildi; tek belirgin aksiyon artık 48dp dairesel gönder düğmesi. 📷/✨/gönder düğmelerine contentDescription eklendi.
+- **Tema önizlemesi**: Görünüm ekranındaki her palet kartı artık canlı mini önizleme gösterir (hero şeridi + karakter balonu + kullanıcı balonu), aday paletin kendi token'larıyla boyanır — aktif temadan bağımsız doğru önizleme.
+- **Katalog çipleri bilgi veriyor**: her model kartında yeni uygunluk çipi var: indirme boyutu + RAM'e göre "bu cihazda rahat" ya da "RAM'e göre riskli" etiketi; görsel model kartlarında da aynı çip.
+- **Açılış flaşı + geçiş**: windowBackground artık kayıtlı palet ailesiyle eşleşir (koyu paletler için ayrı AppThemeDark twin'i); beyaz açılış karesi kalktı. Sayfa geçişlerine 120ms hafif fade eklendi.
+- **Yeni launcher ikonu**: iki konuşma balonu + amber kıvılcım (RP + görsel üretim), indigo-mor gradyan zemin üzerinde; adaptive icon tamamen vektöre taşındı, minSdk 33 ile artık gereksiz 10 PNG dökümü kaldırıldı — APK ve kaynak ağacı hafifledi.
+- versionCode 32 / 0.19.3-alpha1.
+
 ## v0.19.2-alpha1 — 2026-11-07 (Big Pickle GUI incelemesi — 2. tur: klavye, odak, diyaloglar)
 
 Big Pickle raporunun 2. turundaki beş madde uygulandı (3, 4, 7, 11, 14). Tasarım dili aynen korunur.
