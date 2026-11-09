@@ -62,7 +62,8 @@ public class PersistenceBundleTest {
     public void decodeBundle_rejectsNonBackupValues() {
         assertNull(PersistenceCodec.decodeBundle(null));
         assertNull(PersistenceCodec.decodeBundle("[]")); // old array backups are not bundles
-        assertNull(PersistenceCodec.decodeBundle("{\"version\":2}"));
+        assertNull(PersistenceCodec.decodeBundle("{}")); // no version marker at all
+        assertNull(PersistenceCodec.decodeBundle("{\"version\":0}"));
         assertNull(PersistenceCodec.decodeBundle("{broken"));
     }
 
@@ -128,5 +129,153 @@ public class PersistenceBundleTest {
         assertEquals(2, merged.get("g2").size());
         assertEquals(1, merged.get("g3").size()); // equal length: stored copy wins, no duplication
         assertEquals("farklı", merged.get("g3").get(0).text);
+    }
+
+    // ---- backup v2: media markers, SHA-256, version gating ----
+
+    @Test
+    public void mediaMarkers_roundTripBetweenAbsolutePathAndMarker() {
+        assertEquals("@avatars/ava-1.png",
+                PersistenceCodec.toMediaRelative("/data/user/0/app.localrp/files/avatars/ava-1.png",
+                        "/data/user/0/app.localrp/files/avatars",
+                        "/data/user/0/app.localrp/files/models/images"));
+        assertEquals("@images/gen-3.png",
+                PersistenceCodec.toMediaRelative("/data/user/0/app.localrp/files/models/images/gen-3.png",
+                        "/data/user/0/app.localrp/files/avatars",
+                        "/data/user/0/app.localrp/files/models/images"));
+        // Outside both roots, empty and null inputs must all degrade to "".
+        assertEquals("", PersistenceCodec.toMediaRelative("/storage/emulated/0/DCIM/pic.jpg",
+                "/data/user/0/app.localrp/files/avatars",
+                "/data/user/0/app.localrp/files/models/images"));
+        assertEquals("", PersistenceCodec.toMediaRelative("/data/user/0/app.localrp/files",
+                "/data/user/0/app.localrp/files/avatars",
+                "/data/user/0/app.localrp/files/models/images"));
+        assertEquals("", PersistenceCodec.toMediaRelative("", "/r/avatars", "/r/images"));
+        assertEquals("", PersistenceCodec.toMediaRelative(null, "/r/avatars", "/r/images"));
+    }
+
+    @Test
+    public void mediaMarkers_resolve_withTraversalProtection() {
+        String avatars = "/data/user/0/app.localrp/files/avatars";
+        String images = "/data/user/0/app.localrp/files/models/images";
+        assertEquals(avatars + "/ava-1.png",
+                PersistenceCodec.resolveMediaPath("@avatars/ava-1.png", avatars, images));
+        assertEquals(images + "/gen-3.png",
+                PersistenceCodec.resolveMediaPath("@images/gen-3.png", avatars, images));
+        // traversal, nested segments, empty and unknown spaces collapse to nothing
+        assertEquals("", PersistenceCodec.resolveMediaPath("@avatars/../x.png", avatars, images));
+        assertEquals("", PersistenceCodec.resolveMediaPath("@avatars/a/b.png", avatars, images));
+        assertEquals("", PersistenceCodec.resolveMediaPath("@avatars/", avatars, images));
+        assertEquals("", PersistenceCodec.resolveMediaPath("@other/x.png", avatars, images));
+        assertEquals("", PersistenceCodec.resolveMediaPath("@avatars", avatars, images));
+        // version-1 absolute paths pass through unchanged, and empty stays empty
+        assertEquals("/sdcard/pic.png", PersistenceCodec.resolveMediaPath("/sdcard/pic.png", avatars, images));
+        assertEquals("", PersistenceCodec.resolveMediaPath("", avatars, images));
+    }
+
+    @Test
+    public void mediaMarkers_rejectBackslashAndDotNames(){
+        String avatars = "/r/avatars";
+        String images = "/r/images";
+        assertEquals("", PersistenceCodec.toMediaRelative("/r/avatars/a\\b.png", avatars, images));
+        assertEquals("", PersistenceCodec.toMediaRelative("/r/avatars/..", avatars, images));
+        assertEquals("", PersistenceCodec.toMediaRelative("/r/images/x\\y.png", avatars, images));
+    }
+
+    @Test
+    public void mediaDigestHex_coversNamesAndBytesDeterministically() {
+        assertTrue(PersistenceCodec.mediaDigestHex(new java.util.TreeMap<>())
+                .equals(PersistenceCodec.sha256Hex(new byte[0])));
+        java.util.SortedMap<String, byte[]> one = new java.util.TreeMap<>();
+        one.put("media/avatars/a.png", new byte[]{'x'});
+        assertEquals(
+                PersistenceCodec.sha256Hex("media/avatars/a.png:x".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                PersistenceCodec.mediaDigestHex(one));
+        // different byte content must flip the digest
+        java.util.SortedMap<String, byte[]> other = new java.util.TreeMap<>();
+        other.put("media/avatars/a.png", new byte[]{'y'});
+        assertFalse(PersistenceCodec.mediaDigestHex(one).equals(PersistenceCodec.mediaDigestHex(other)));
+    }
+
+    @Test
+    public void sha256Hex_matchesKnownDigest() {
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                PersistenceCodec.sha256Hex("abc".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        assertEquals(64, PersistenceCodec.sha256Hex(new byte[0]).length());
+    }
+
+    @Test
+    public void bundleV2_keepsMediaMarkersWithAvatarIncluded() {
+        PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
+        bundle.version = 2;
+        bundle.avatarsRoot = "/data/local/files/avatars";
+        bundle.imagesRoot = "/data/local/files/images";
+        CharacterProfile c = character("c1", "Elif");
+        c.avatarPath = "/data/local/files/avatars/ava-1.png";
+        bundle.characters.add(c);
+        bundle.groups.add(group("g1"));
+        List<Message> transcript = new ArrayList<>();
+        transcript.add(new Message("Sen", "", true, 1700_000_000_000L, "/data/local/files/images/gen-1.png"));
+        bundle.chats.put("g1", transcript);
+
+        String encoded = PersistenceCodec.encodeBundle(bundle);
+        assertTrue(encoded.contains("\"version\":2"));
+        assertTrue(encoded.contains("@avatars/ava-1.png"));
+        assertTrue(encoded.contains("@images/gen-1.png"));
+        // Absolute device paths must never travel in a v2 payload.
+        assertFalse(encoded.contains("/data/local/files/avatars/ava-1.png"));
+        assertFalse(encoded.contains("/data/local/files/images/gen-1.png"));
+
+        PersistenceCodec.Bundle decoded = PersistenceCodec.decodeBundle(encoded);
+        assertNotNull(decoded);
+        assertEquals(2, decoded.version);
+        assertEquals("@avatars/ava-1.png", decoded.characters.get(0).avatarPath);
+        assertEquals("@images/gen-1.png", decoded.chats.get("g1").get(0).image);
+    }
+
+    @Test
+    public void bundleV1_stillDecodesWithAbsolutePath() {
+        PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
+        bundle.characters.add(character("c1", "Elif"));
+        bundle.groups.add(group("g1"));
+        List<Message> transcript = new ArrayList<>();
+        transcript.add(new Message("Sen", "", true, 1700_000_000_000L, "/data/local/images/gen-1.png"));
+        bundle.chats.put("g1", transcript);
+
+        String encoded = PersistenceCodec.encodeBundle(bundle); // default version = 1
+        assertTrue(encoded.contains("\"version\":1"));
+        assertTrue(encoded.contains("/data/local/images/gen-1.png"));
+
+        PersistenceCodec.Bundle decoded = PersistenceCodec.decodeBundle(encoded);
+        assertNotNull(decoded);
+        assertEquals(1, decoded.version);
+        assertEquals("/data/local/images/gen-1.png", decoded.chats.get("g1").get(0).image);
+        assertEquals("", decoded.characters.get(0).avatarPath); // v1 packs no avatar key
+    }
+
+    @Test
+    public void decodeBundle_rejectsUnknownVersions() {
+        assertNull(PersistenceCodec.decodeBundle("{\"version\":3,\"characters\":[],\"groups\":[],\"chats\":{}}"));
+        assertNull(PersistenceCodec.decodeBundle("{\"characters\":[],\"groups\":[],\"chats\":{}}"));
+    }
+
+    @Test
+    public void bundleV2_withoutRootsDropsMediaSafely() {
+        PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
+        bundle.version = 2; // roots left null: defensive encode must not leak absolute paths
+        CharacterProfile c = character("c1", "Elif");
+        c.avatarPath = "/data/local/files/avatars/ava-1.png";
+        bundle.characters.add(c);
+        List<Message> transcript = new ArrayList<>();
+        transcript.add(new Message("Sen", "", true, 1L, "/data/local/files/images/gen-1.png"));
+        bundle.chats.put("g1", transcript);
+
+        String encoded = PersistenceCodec.encodeBundle(bundle);
+        assertFalse(encoded.contains("ava-1.png"));
+        assertFalse(encoded.contains("gen-1.png"));
+        PersistenceCodec.Bundle decoded = PersistenceCodec.decodeBundle(encoded);
+        assertNotNull(decoded);
+        assertEquals("", decoded.characters.get(0).avatarPath);
+        assertEquals("", decoded.chats.get("g1").get(0).image);
     }
 }

@@ -59,6 +59,7 @@ public class MainActivity extends Activity {
     private static final int AVATAR_PICK = 77;
     private static final int CHAT_PHOTO_PICK = 78;
     private static final int CHAR_EXPORT = 79;
+    private static final int BACKUP_EXPORT_MEDIA = 80;
     private static final String PREFS = "localrp";
     private static final String DEFAULT_AI_INSTRUCTIONS = "Her zaman sahnenin içinde kal. Seçili karakter olarak konuş ve kullanıcının rolünü üstlenme.";
     private static final String DEFAULT_AI_INSTRUCTIONS_EN = "Stay inside the scene at all times. Speak as the selected character and never take over the user's role.";
@@ -1961,6 +1962,14 @@ public class MainActivity extends Activity {
             intent.putExtra(Intent.EXTRA_TITLE, "localrp-yedek-" + stamp + ".json");
             startActivityForResult(intent, BACKUP_EXPORT);
         });
+        addSecondary("Yedeği dışa aktar (medya dahil)", v -> {
+            String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/zip");
+            intent.putExtra(Intent.EXTRA_TITLE, "localrp-yedek-" + stamp + ".zip");
+            startActivityForResult(intent, BACKUP_EXPORT_MEDIA);
+        });
         addSecondary("Yedeği geri yükle", v -> confirm(
                 L10n.s("Geri yükleme aynı kimlikli karakter/sohbetleri günceller, yeni olanları ekler. ") +
                         L10n.s("Geçmişler yalnızca yedekteki kopya daha uzunsa değiştirilir. Devam edilsin mi?"),
@@ -3242,6 +3251,10 @@ public class MainActivity extends Activity {
             exportBackup(data.getData());
             return;
         }
+        if (requestCode == BACKUP_EXPORT_MEDIA && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            exportBackupMedia(data.getData());
+            return;
+        }
         if (requestCode == CHAR_EXPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
             exportCharacter(data.getData());
             return;
@@ -3346,9 +3359,103 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    /**
+     * Writes the v2 backup: one ZIP containing bundle.json (media paths as @ markers),
+     * checksum.txt (SHA-256 of the JSON payload) and the referenced media bytes under
+     * media/avatars/ and media/images/. Missing local files are skipped; their markers
+     * degrade to no reference on import, mirroring v1's off-origin rule.
+     */
+    private void exportBackupMedia(android.net.Uri target) {
+        new Thread(() -> {
+            String avatarRoot, imageRoot;
+            try {
+                avatarRoot = new File(getFilesDir(), "avatars").getCanonicalPath();
+                imageRoot = LocalImageEngine.INSTANCE.imagesDirectory(this).getCanonicalPath();
+            } catch (java.io.IOException failure) {
+                runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek oluşturulamadı (veri okunamıyor)."), Toast.LENGTH_LONG).show());
+                return;
+            }
+            java.util.Map<String, List<Message>> chats = new java.util.HashMap<>();
+            List<Group> groups = store.groups();
+            for (Group group : groups) chats.put(group.id, new ArrayList<>(store.messages(group.id)));
+            PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
+            bundle.version = 2;
+            bundle.avatarsRoot = avatarRoot;
+            bundle.imagesRoot = imageRoot;
+            bundle.characters.addAll(store.characters());
+            bundle.groups.addAll(groups);
+            bundle.chats.putAll(chats);
+            String payload = PersistenceCodec.encodeBundle(bundle);
+            if (payload.isEmpty()) {
+                runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek oluşturulamadı (veri okunamıyor)."), Toast.LENGTH_LONG).show());
+                return;
+            }
+            java.util.LinkedHashSet<String> markers = new java.util.LinkedHashSet<>();
+            for (CharacterProfile c : bundle.characters) {
+                String marker = PersistenceCodec.toMediaRelative(c.avatarPath, avatarRoot, imageRoot);
+                if (!marker.isEmpty()) markers.add(marker);
+            }
+            for (List<Message> transcript : bundle.chats.values()) {
+                for (Message m : transcript) {
+                    String marker = PersistenceCodec.toMediaRelative(m.image, avatarRoot, imageRoot);
+                    if (!marker.isEmpty()) markers.add(marker);
+                }
+            }
+            byte[] json = payload.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            String checksum = PersistenceCodec.sha256Hex(json);
+            // Buffer the referenced files so the media checksum covers exact bytes,
+            // and identical entry names can never duplicate inside the ZIP.
+            java.util.SortedMap<String, byte[]> packedMedia = new java.util.TreeMap<>();
+            for (String marker : markers) {
+                String sourcePath = PersistenceCodec.resolveMediaPath(marker, avatarRoot, imageRoot);
+                File source = new File(sourcePath);
+                if (!source.isFile()) continue; // deleted on this device; import will degrade
+                byte[] fileBytes;
+                try (java.io.FileInputStream fileInput = new java.io.FileInputStream(source);
+                     java.io.ByteArrayOutputStream sink = new java.io.ByteArrayOutputStream()) {
+                    byte[] chunk = new byte[8192];
+                    int read;
+                    while ((read = fileInput.read(chunk)) >= 0) sink.write(chunk, 0, read);
+                    fileBytes = sink.toByteArray();
+                } catch (java.io.IOException failure) {
+                    continue;
+                }
+                String entry = (marker.startsWith("@avatars/") ? "media/avatars/" : "media/images/") + source.getName();
+                packedMedia.put(entry, fileBytes);
+            }
+            String mediaChecksum = PersistenceCodec.mediaDigestHex(packedMedia);
+            try (java.io.OutputStream output = getContentResolver().openOutputStream(target);
+                 java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(output)) {
+                if (output == null) throw new IllegalStateException("Dosya açılamadı.");
+                zip.putNextEntry(new java.util.zip.ZipEntry("bundle.json"));
+                zip.write(json);
+                zip.closeEntry();
+                zip.putNextEntry(new java.util.zip.ZipEntry("checksum.txt"));
+                zip.write((checksum + "\n" + mediaChecksum + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                zip.closeEntry();
+                for (java.util.Map.Entry<String, byte[]> packed : packedMedia.entrySet()) {
+                    zip.putNextEntry(new java.util.zip.ZipEntry(packed.getKey()));
+                    zip.write(packed.getValue());
+                    zip.closeEntry();
+                }
+                zip.flush();
+            } catch (Exception failure) {
+                runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek yazılamadı: ") + failure.getMessage(), Toast.LENGTH_LONG).show());
+                return;
+            }
+            int characterCount = bundle.characters.size();
+            int groupCount = bundle.groups.size();
+            int packedCount = packedMedia.size();
+            runOnUiThread(() -> Toast.makeText(this,
+                    L10n.s("Yedek yazıldı · ") + characterCount + L10n.s(" karakter · ") + groupCount
+                            + L10n.s(" sohbet · ") + packedCount + L10n.s(" medya dosyası"),
+                    Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
     private void importBackup(android.net.Uri source) {
         new Thread(() -> {
-            String raw;
+            byte[] bytes;
             try (java.io.InputStream input = getContentResolver().openInputStream(source)) {
                 if (input == null) throw new IllegalStateException("Dosya açılamadı.");
                 java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
@@ -3360,11 +3467,17 @@ public class MainActivity extends Activity {
                         throw new IllegalStateException("Dosya beklenenden çok büyük.");
                     }
                 }
-                raw = buffer.toString("UTF-8");
+                bytes = buffer.toByteArray();
             } catch (Exception failure) {
                 runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek okunamadı: ") + failure.getMessage(), Toast.LENGTH_LONG).show());
                 return;
             }
+            // ZIP bundles (backup v2) start with the "PK" magic; JSON v1 files cannot.
+            if (bytes.length >= 2 && bytes[0] == 'P' && bytes[1] == 'K') {
+                importBackupZip(bytes);
+                return;
+            }
+            String raw = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
             PersistenceCodec.Bundle bundle = PersistenceCodec.decodeBundle(raw);
             if (bundle == null) {
                 runOnUiThread(() -> Toast.makeText(this, L10n.s("Bu dosya geçerli bir LocalRP yedeği değil."), Toast.LENGTH_LONG).show());
@@ -3390,19 +3503,145 @@ public class MainActivity extends Activity {
                     }
                 }
             } catch (java.io.IOException ignored) { }
-            final boolean restored = store.restoreBundle(bundle.characters, bundle.groups, bundle.chats);
-            runOnUiThread(() -> {
-                if (!restored) {
-                    Toast.makeText(this, L10n.s("Geri yükleme yapılamadı: mevcut veriler okunamıyor."), Toast.LENGTH_LONG).show();
-                    if (!store.integrityIssues().isEmpty()) reportIntegrityIssues();
-                    return;
-                }
-                Toast.makeText(this,
-                        L10n.s("Geri yüklendi · ") + bundle.characters.size() + L10n.s(" karakter · ") + bundle.groups.size() + L10n.s(" sohbet"),
-                        Toast.LENGTH_LONG).show();
-                showHome();
-            });
+            applyImportedBundle(bundle);
         }).start();
+    }
+
+    /** Restores a decoded bundle and reports the outcome on the UI thread (both import paths share this). */
+    private void applyImportedBundle(PersistenceCodec.Bundle bundle) {
+        final boolean restored = store.restoreBundle(bundle.characters, bundle.groups, bundle.chats);
+        runOnUiThread(() -> {
+            if (!restored) {
+                Toast.makeText(this, L10n.s("Geri yükleme yapılamadı: mevcut veriler okunamıyor."), Toast.LENGTH_LONG).show();
+                if (!store.integrityIssues().isEmpty()) reportIntegrityIssues();
+                return;
+            }
+            Toast.makeText(this,
+                    L10n.s("Geri yüklendi · ") + bundle.characters.size() + L10n.s(" karakter · ") + bundle.groups.size() + L10n.s(" sohbet"),
+                    Toast.LENGTH_LONG).show();
+            showHome();
+        });
+    }
+
+    /**
+     * Imports a backup v2 ZIP bundle: verifies the SHA-256 checksum, copies packaged
+     * media into the local avatar/image directories, then restores through the normal
+     * merge path. Unsafe or unknown entries are ignored; an @ marker without packaged
+     * bytes degrades to no reference (the same rule as off-origin v1 paths).
+     */
+    private void importBackupZip(byte[] zipBytes) {
+        String payload = null;
+        String checksumLine = null;
+        java.util.Map<String, byte[]> media = new java.util.HashMap<>();
+        try (java.io.InputStream input = new java.io.ByteArrayInputStream(zipBytes);
+             java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(input, java.nio.charset.StandardCharsets.UTF_8)) {
+            java.util.zip.ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                String name = entry.getName();
+                byte[] bytes = null;
+                if ("bundle.json".equals(name)) {
+                    bytes = readZipEntry(zip);
+                    payload = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+                } else if ("checksum.txt".equals(name)) {
+                    checksumLine = new String(readZipEntry(zip), java.nio.charset.StandardCharsets.UTF_8);
+                } else if (name.startsWith("media/avatars/") && isSingleSegment(name.substring("media/avatars/".length()))) {
+                    media.put(name, readZipEntry(zip));
+                } else if (name.startsWith("media/images/") && isSingleSegment(name.substring("media/images/".length()))) {
+                    media.put(name, readZipEntry(zip));
+                }
+                zip.closeEntry();
+            }
+        } catch (Exception failure) {
+            runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek okunamadı: ") + failure.getMessage(), Toast.LENGTH_LONG).show());
+            return;
+        }
+        if (payload == null || checksumLine == null) {
+            runOnUiThread(() -> Toast.makeText(this, L10n.s("Bu dosya geçerli bir LocalRP yedeği değil."), Toast.LENGTH_LONG).show());
+            return;
+        }
+        // Two lines: first the JSON payload digest, then the packaged-media digest.
+        String[] checksumLines = checksumLine.trim().split("\\r?\\n");
+        if (checksumLines.length < 2
+                || !checksumLines[0].trim().matches("[0-9a-f]{64}")
+                || !checksumLines[1].trim().matches("[0-9a-f]{64}")) {
+            runOnUiThread(() -> Toast.makeText(this, L10n.s("Bu dosya geçerli bir LocalRP yedeği değil."), Toast.LENGTH_LONG).show());
+            return;
+        }
+        java.util.SortedMap<String, byte[]> sortedMedia = new java.util.TreeMap<>(media);
+        String computed = PersistenceCodec.sha256Hex(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String computedMedia = PersistenceCodec.mediaDigestHex(sortedMedia);
+        if (!computed.equals(checksumLines[0].trim())
+                || !computedMedia.equals(checksumLines[1].trim())
+                || computedMedia.isEmpty()) {
+            runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek doğrulamadı: sağlama farkı."), Toast.LENGTH_LONG).show());
+            return;
+        }
+        PersistenceCodec.Bundle bundle = PersistenceCodec.decodeBundle(payload);
+        if (bundle == null) {
+            runOnUiThread(() -> Toast.makeText(this, L10n.s("Bu dosya geçerli bir LocalRP yedeği değil."), Toast.LENGTH_LONG).show());
+            return;
+        }
+        try {
+            String avatarRoot = new File(getFilesDir(), "avatars").getCanonicalPath();
+            String imageRoot = LocalImageEngine.INSTANCE.imagesDirectory(this).getCanonicalPath();
+            for (CharacterProfile c : bundle.characters) {
+                if (c.avatarPath != null && c.avatarPath.startsWith("@")) {
+                    c.avatarPath = placeBundleMedia(c.avatarPath, avatarRoot, imageRoot, media);
+                }
+            }
+            for (List<Message> transcript : bundle.chats.values()) {
+                for (Message m : transcript) {
+                    if (m.hasImage() && m.image.startsWith("@")) {
+                        m.image = placeBundleMedia(m.image, avatarRoot, imageRoot, media);
+                    }
+                }
+            }
+        } catch (java.io.IOException failure) {
+            runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek okunamadı: ") + failure.getMessage(), Toast.LENGTH_LONG).show());
+            return;
+        }
+        applyImportedBundle(bundle);
+    }
+
+    /** Maps one @ marker to a local file, unpackaging its media bytes when missing. */
+    private String placeBundleMedia(String marker, String avatarRoot, String imageRoot,
+                                    java.util.Map<String, byte[]> media) {
+        String localPath = PersistenceCodec.resolveMediaPath(marker, avatarRoot, imageRoot);
+        if (localPath.isEmpty()) return "";
+        File target = new File(localPath);
+        String entry = (marker.startsWith("@avatars/") ? "media/avatars/" : "media/images/") + target.getName();
+        byte[] bytes = media.get(entry);
+        if (bytes == null) return target.isFile() ? localPath : "";
+        File directory = target.getParentFile();
+        if (directory == null || (!directory.exists() && !directory.mkdirs())) return "";
+        // Packaged bytes are authoritative for their own path: the bundle was lifted
+        // from a device where this path meant exactly this image.
+        try (java.io.FileOutputStream output = new java.io.FileOutputStream(target)) {
+            output.write(bytes);
+        } catch (java.io.IOException failure) {
+            return "";
+        }
+        return localPath;
+    }
+
+    /** A media entry name must be one plain path segment; anything else is ignored. */
+    private static boolean isSingleSegment(String name) {
+        return !name.isEmpty() && name.indexOf('/') < 0 && name.indexOf('\\') < 0
+                && name.indexOf('\0') < 0 && !".".equals(name) && !"..".equals(name);
+    }
+
+    /** Reads one ZIP entry, refusing anything that decompresses beyond a sane cap. */
+    private static byte[] readZipEntry(java.util.zip.ZipInputStream zip) throws java.io.IOException {
+        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+        byte[] chunk = new byte[8192];
+        int read;
+        while ((read = zip.read(chunk)) >= 0) {
+            buffer.write(chunk, 0, read);
+            if (buffer.size() > 64L * 1024 * 1024) { // a 512px PNG lands far below this
+                throw new IllegalStateException("Yedek girdisi beklenenden çok büyük.");
+            }
+        }
+        return buffer.toByteArray();
     }
 
     private void loadSelectedModel() {

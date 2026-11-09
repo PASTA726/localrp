@@ -298,18 +298,107 @@ final class PersistenceCodec {
     // ---- backup bundle (characters + groups + transcripts in one JSON object) ----
 
     /**
-     * version 1 = { characters:[], groups:[], chats:{ "<groupId>":[messages...] } }.
+     * version 1 = { version:1, characters:[], groups:[], chats:{ "<groupId>":[messages...] } }
+     * with absolute file paths (the original SAF backup).
+     * version 2 = same shape, but media paths are "@avatars/<name>" / "@images/<name>"
+     * markers relative to the device's avatar/image directories, so a ZIP bundle can
+     * carry the bytes under media/avatars/ and media/images/.
      */
     static final class Bundle {
+        int version = 1;
+        /** Device-local roots used to rewrite absolute paths into @ markers (optional, v2 exports only). */
+        String avatarsRoot, imagesRoot;
         final List<CharacterProfile> characters = new ArrayList<>();
         final List<Group> groups = new ArrayList<>();
         final java.util.Map<String, List<Message>> chats = new java.util.HashMap<>();
     }
 
+    // ---- media markers (backup v2) ----
+
+    /**
+     * Maps a device-local absolute path under the avatar or image directory to a
+     * "@avatars/<name>" / "@images/<name>" marker. Returns "" for empty paths and
+     * paths outside both roots (they cannot travel inside a bundle).
+     */
+    static String toMediaRelative(String path, String avatarsRoot, String imagesRoot) {
+        if (path == null || path.isEmpty()) return "";
+        String prefix0 = avatarsRoot == null ? null : avatarsRoot + "/";
+        String prefix1 = imagesRoot == null ? null : imagesRoot + "/";
+        int space = -1;
+        String rootPrefix = null;
+        if (prefix0 != null && path.startsWith(prefix0)) { space = 0; rootPrefix = prefix0; }
+        else if (prefix1 != null && path.startsWith(prefix1)) { space = 1; rootPrefix = prefix1; }
+        if (rootPrefix == null) return "";
+        String name = path.substring(rootPrefix.length());
+        if (name.isEmpty() || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0
+                || ".".equals(name) || "..".equals(name)) {
+            return "";
+        }
+        return space == 0 ? "@avatars/" + name : "@images/" + name;
+    }
+
+    /**
+     * Inverse of {@link #toMediaRelative}: turns a media marker into a device-local
+     * absolute path. Non-marker input passes through unchanged (version-1 absolute
+     * paths stay absolute); unknown spaces, unsafe names or ".." collapse to "".
+     */
+    static String resolveMediaPath(String input, String avatarsRoot, String imagesRoot) {
+        if (input == null || input.isEmpty()) return "";
+        if (!input.startsWith("@")) return input;
+        int slash = input.indexOf('/', 1);
+        if (slash < 0) return "";
+        String space = input.substring(1, slash);
+        String name = input.substring(slash + 1);
+        String root = "avatars".equals(space) ? avatarsRoot : "images".equals(space) ? imagesRoot : null;
+        if (root == null || name.isEmpty() || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0
+                || ".".equals(name) || "..".equals(name)) {
+            return "";
+        }
+        return root.endsWith("/") ? root + name : root + "/" + name;
+    }
+
+    /** Lowercase hex SHA-256 of the given bytes; "" only when the JRE has no SHA-256. */
+    static String sha256Hex(byte[] bytes) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            return hexLower(digest.digest(bytes));
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            return "";
+        }
+    }
+
+    /**
+     * Digest over the whole packaged-media set, not just the JSON: every sorted entry
+     * contributes name + ':' + bytes, so swapping or reordering media flips the value.
+     * An empty map digests like any other empty input.
+     */
+    static String mediaDigestHex(java.util.SortedMap<String, byte[]> media) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            for (java.util.Map.Entry<String, byte[]> entry : media.entrySet()) {
+                digest.update(entry.getKey().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                digest.update((byte) ':');
+                digest.update(entry.getValue() == null ? new byte[0] : entry.getValue());
+            }
+            return hexLower(digest.digest());
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            return "";
+        }
+    }
+
+    private static String hexLower(byte[] hash) {
+        StringBuilder text = new StringBuilder(hash.length * 2);
+        for (byte b : hash) {
+            text.append("0123456789abcdef".charAt((b >> 4) & 0xF));
+            text.append("0123456789abcdef".charAt(b & 0xF));
+        }
+        return text.toString();
+    }
+
     static String encodeBundle(Bundle bundle) {
         try {
             JSONObject root = new JSONObject();
-            root.put("version", 1);
+            root.put("version", bundle.version);
             JSONArray chars = new JSONArray();
             for (CharacterProfile c : bundle.characters) {
                 JSONObject o = new JSONObject();
@@ -319,6 +408,10 @@ final class PersistenceCodec {
                 o.put("personality", c.personality);
                 o.put("instructions", c.instructions);
                 o.put("examples", c.examples);
+                if (bundle.version >= 2) {
+                    String avatar = toMediaRelative(c.avatarPath, bundle.avatarsRoot, bundle.imagesRoot);
+                    if (!avatar.isEmpty()) o.put("avatar", avatar);
+                }
                 chars.put(o);
             }
             root.put("characters", chars);
@@ -341,7 +434,12 @@ final class PersistenceCodec {
                     o.put("text", m.text);
                     o.put("user", m.user);
                     o.put("at", m.at);
-                    if (m.hasImage()) o.put("image", m.image);
+                    if (m.hasImage()) {
+                        String image = bundle.version >= 2
+                                ? toMediaRelative(m.image, bundle.avatarsRoot, bundle.imagesRoot)
+                                : m.image;
+                        if (!image.isEmpty()) o.put("image", image);
+                    }
                     messages.put(o);
                 }
                 chats.put(entry.getKey(), messages);
@@ -353,13 +451,15 @@ final class PersistenceCodec {
         }
     }
 
-    /** Returns null when the value is not a version-1 backup object. */
+    /** Returns null when the value is not a version-1 or version-2 backup object. */
     static Bundle decodeBundle(String raw) {
         if (raw == null) return null;
         try {
             JSONObject root = new JSONObject(raw.trim());
-            if (root.optInt("version", -1) != 1) return null;
+            int version = root.optInt("version", -1);
+            if (version != 1 && version != 2) return null;
             Bundle bundle = new Bundle();
+            bundle.version = version;
             JSONArray chars = root.optJSONArray("characters");
             if (chars != null) {
                 for (int i = 0; i < chars.length(); i++) {
@@ -372,6 +472,7 @@ final class PersistenceCodec {
                         c.personality = o.optString("personality");
                         c.instructions = o.optString("instructions");
                         c.examples = o.optString("examples");
+                        c.avatarPath = o.optString("avatar");
                         bundle.characters.add(c);
                     } catch (JSONException badRecord) { }
                 }
