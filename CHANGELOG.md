@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.4-alpha1 — 2026-11-09 (DeepSeek madde 8: görsel kontrol paneli + galeri)
+
+DeepSeek incelemesinin "görsel" kalemi (madde 8) uygulandı. Değişiklikler salt-okunur harici inceleme (Codex CLI) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.
+
+- **Görsel üretim paneli**: ✨ diyaloğunda artık adım sayısı (10–50), CFG ölçeği (1.5–15) ve tohum alanları var; boş tohum rastgele demek. Son kullanılan değerler bir sonraki açılışta korunur. Girdiler motor sınırına kırpılır (NaN/sonsuz reddedilir).
+- **Görsel galerisi**: Ayarlar → Görünüm → "Görsel galerisi" — üretimler ve sohbet fotoğrafları küçük önizlemelerle en yeniden listelenir. Karta dokunmak tam ekran zoomable görüntüleyiciyi açar (v0.19.3'ten).
+- **Galeri eylemleri** (uzun basınca):
+  - **Karakter avatarı yap** — görseli avatar alanına kopyalar, karakteri listeden seçtirir; klasör yoksa açılır, kayıt başarısızsa öksüz kopya silinir.
+  - **Sohbete ekle** — görseli seçilen sohbete senin fotoğraf mesajın olarak yerleştirir.
+  - **Sil** — onaylı silme; dosya bir sohbette veya karakter avatarında kullanılıyorsa silme kilitlenir ve ne yapması gerektiği söylenir.
+- versionCode 33 / 0.19.4-alpha1.
+
 ## v0.19.3-alpha1 — 2026-11-09 (Big Pickle GUI incelemesi — 3. tur: görsel, ikon, önizleme)
 
 Big Pickle raporunun 3. tur maddeleri uygulandı (9, 13, 15, 16, 18; madde 17 — 18+ kapısı — zaten 2. tur tint ile kapsandı). Ayrıca uygulama yeni bir vektör launcher ikonu aldı ve bu turun değişiklikleri salt-okunur harici inceleme (Codex CLI) ile iki kez birbiri ardından gözden geçirildi.

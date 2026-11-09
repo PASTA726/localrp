@@ -449,6 +449,31 @@ public final class L10n {
         EN.put("Görsel açılamadı.", "The image could not be opened.");
         EN.put("Konuşma balonları · sahneler", "Conversation balloons · scenes");
         EN.put("Hikâyen burada başlıyor.", "Your story starts here.");
+
+        // ---- image control panel + gallery (DeepSeek item 8)
+        EN.put("Adım sayısı (10–50)", "Sampling steps (10–50)");
+        EN.put("CFG ölçeği (1.5–15)", "CFG scale (1.5–15)");
+        EN.put("Tohum (boş = rastgele)", "Seed (empty = random)");
+        EN.put("Görsel galerisi", "Image gallery");
+        EN.put("Üretilen ve sohbete eklenen görseller", "Generated and chat-attached images");
+        EN.put("Burada henüz görsel yok", "No images here yet");
+        EN.put("Sohbette ✨ ile üret ya da 📷 ile bir fotoğraf ekle.", "Generate with ✨ in a chat, or attach with 📷.");
+        EN.put("Karakter avatarı yap", "Set as character avatar");
+        EN.put("Sohbete ekle", "Add to a chat");
+        EN.put("Bu görsel silinsin mi?", "Delete this image?");
+        EN.put("Görsel silindi.", "Image deleted.");
+        EN.put("Silinemedi: dosya yazılabilir değil.", "Delete failed: the file is not writable.");
+        EN.put("Hangi karakter?", "Which character?");
+        EN.put("Hangi sohbet?", "Which conversation?");
+        EN.put(" için avatar güncellendi.", "'s avatar was updated.");
+        EN.put(" sohbetine eklendi.", " was added to the conversation.");
+        EN.put("Avatar kopyası yazılamadı.", "Could not write the avatar copy.");
+        EN.put("Önce bir karakter oluştur.", "Create a character first.");
+        EN.put("Bu görsel bir sohbette veya karakter avatarında kullanılıyor; önce o kaydı sil.",
+                "This image is used in a chat or as a character avatar; delete that record first.");
+        EN.put("Avatar kaydedilemedi: karakter verisi okunamıyor.",
+                "Could not save the avatar: the character data is unreadable.");
+        EN.put("Önce bir sohbet oluştur.", "Create a conversation first.");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
         EN.put(" silindi.", " deleted.");
