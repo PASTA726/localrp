@@ -4,8 +4,21 @@
         <!-- Cold-start palette mirror of the default theme (Lavanta in AppTheme.java):
              the first frame is drawn from these, Design.applyBars() then repaints with tokens. -->
         <item name="android:colorAccent">#694DD6</item>
+        <!-- GUI review item 18: windowBackground matches pageBg so dark themes no longer
+             flash a white square before the first frame. -->
         <item name="android:navigationBarColor">#F8F7FB</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:statusBarColor">#F8F7FB</item>
+        <item name="android:windowBackground">#F7F7F9</item>
+    </style>
+
+    <!-- Dark cold-start twin, selected in onCreate from the saved ui_theme preference. -->
+    <style name="AppThemeDark" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#9B7BFF</item>
+        <item name="android:navigationBarColor">#0E0F13</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#0E0F13</item>
+        <item name="android:windowBackground">#0E0F13</item>
     </style>
 </resources>

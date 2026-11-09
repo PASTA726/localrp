@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -176,6 +177,15 @@ public class MainActivity extends Activity {
     private final java.util.Map<String, Integer> chainCounts = new java.util.HashMap<>();
 
     @Override public void onCreate(Bundle state) {
+        // Window background (GUI review item 18): the cold-start window uses the saved
+        // palette family, so dark themes no longer draw a white square before the
+        // first content frame.
+        SharedPreferences startPrefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (isDarkThemeId(startPrefs.getString("ui_theme", "lavanta"))) {
+            setTheme(R.style.AppThemeDark);
+        } else {
+            setTheme(R.style.AppTheme);
+        }
         super.onCreate(state);
         store = new Store(this, BUILTIN_ROLEPLAY_ID);
         store.migrateToRoleplay();
@@ -791,8 +801,11 @@ public class MainActivity extends Activity {
         tools.setOrientation(LinearLayout.HORIZONTAL);
         tools.setGravity(Gravity.CENTER_VERTICAL);
 
-        chatSpeakerView = label("", 13, Design.text());
+        // Composer hierarchy (GUI review item 13): the speaker chip reads as a quiet
+        // secondary control; the input + accent send button carry the visual weight.
+        chatSpeakerView = label("", 12, Design.muted());
         chatSpeakerView.setPadding(dp(14), dp(9), dp(14), dp(9));
+        chatSpeakerView.setMinHeight(dp(40));
         chatSpeakerView.setBackground(rounded(Design.cardBg(), Design.cardBg(), 24));
         chatSpeakerView.setOnClickListener(v -> showSpeakerPicker(group));
         tools.addView(chatSpeakerView, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
@@ -859,12 +872,15 @@ public class MainActivity extends Activity {
         inputParams.setMargins(0, dp(8), 0, 0);
         composerRow.addView(input, inputParams);
 
+        // Attachment buttons step down visually (muted strokes, not accent fills); the
+        // round accent send stays the single prominent action.
         Button photo = button("📷");
         photo.setTextSize(15);
         photo.setPadding(0, 0, 0, 0);
         photo.setMinWidth(dp(44));
         photo.setMinHeight(dp(44));
-        photo.setTextColor(Design.text());
+        photo.setTextColor(Design.muted());
+        photo.setContentDescription(L10n.s("Fotoğraf ekle"));
         photo.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
         photo.setOnClickListener(v -> {
             imageAttachGroup = group;
@@ -885,8 +901,9 @@ public class MainActivity extends Activity {
         paint.setPadding(0, 0, 0, 0);
         paint.setMinWidth(dp(44));
         paint.setMinHeight(dp(44));
-        paint.setTextColor(Design.onAccent());
-        paint.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 30));
+        paint.setTextColor(Design.accent());
+        paint.setContentDescription(L10n.s("Görsel üret"));
+        paint.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
         paint.setOnClickListener(v -> showImageGenerateDialog(group));
         LinearLayout.LayoutParams paintParams = new LinearLayout.LayoutParams(dp(44), dp(44));
         paintParams.setMargins(dp(8), 0, 0, 0);
@@ -894,10 +911,11 @@ public class MainActivity extends Activity {
 
         Button action = button("➤");
         chatActionButton = action;
-        action.setTextSize(17);
+        action.setTextSize(18);
         action.setPadding(0, 0, 0, 0);
-        action.setMinWidth(dp(46));
-        action.setMinHeight(dp(46));
+        action.setMinWidth(dp(48));
+        action.setMinHeight(dp(48));
+        action.setContentDescription(L10n.s("Gönder (veya üretimi durdur)"));
         action.setTextColor(Design.onAccent());
         action.setBackground(rounded(Design.accent(), Design.accent(), 30));
         action.setOnClickListener(v -> {
@@ -905,7 +923,7 @@ public class MainActivity extends Activity {
             else if (LocalImageEngine.INSTANCE.isGenerating()) LocalImageEngine.INSTANCE.stopGeneration();
             else sendMessage(group, input);
         });
-        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(dp(46), dp(46));
+        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(dp(48), dp(48));
         actionParams.setMargins(dp(8), dp(8), 0, 0);
         composerRow.addView(action, actionParams);
         chatComposer.addView(composerRow, fullWidth());
@@ -1865,6 +1883,7 @@ public class MainActivity extends Activity {
             hero.setPadding(dp(10), dp(4), dp(10), dp(4));
             swatches.addView(hero);
             card.addView(swatches);
+            card.addView(themePreview(candidate));
             card.setOnClickListener(v -> {
                 prefs().edit().putString("ui_theme", candidate.id).apply();
                 Design.refresh(this);
@@ -1874,6 +1893,99 @@ public class MainActivity extends Activity {
             });
             addCardToPage(card);
         }
+    }
+
+    /**
+     * Mini live preview (GUI review item 15): hero strip, character balloon and user
+     * balloon rendered with the candidate palette's own tokens, not the active theme.
+     */
+    private LinearLayout themePreview(AppTheme theme) {
+        LinearLayout preview = new LinearLayout(this);
+        preview.setOrientation(LinearLayout.VERTICAL);
+        preview.setPadding(dp(10), dp(10), dp(10), dp(12));
+        preview.setBackground(rounded(theme.pageBg, theme.pageBg, 14));
+
+        GradientDrawable heroBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{theme.heroA, theme.heroB});
+        heroBg.setCornerRadius(dp(12));
+        TextView heroText = new TextView(this);
+        heroText.setText(L10n.s("Hikâyen burada başlıyor."));
+        heroText.setTextSize(12);
+        heroText.setTextColor(theme.heroText);
+        heroText.setPadding(dp(10), dp(7), dp(10), dp(7));
+        heroText.setBackground(heroBg);
+        preview.addView(heroText, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        TextView heroSub = label("Konuşma balonları · sahneler", 11, theme.heroSub);
+        heroSub.setPadding(dp(2), dp(5), 0, 0);
+        preview.addView(heroSub);
+
+        TextView charBalloon = new TextView(this);
+        charBalloon.setTextSize(12);
+        charBalloon.setTextColor(theme.text);
+        charBalloon.setPadding(dp(10), dp(7), dp(10), dp(7));
+        charBalloon.setBackground(rounded(theme.cardBg, theme.cardBg, 12));
+        SpannableString charText = new SpannableString("Nova · 20:41\nGüzel bir gece…");
+        charText.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, 4, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        charText.setSpan(new android.text.style.ForegroundColorSpan(theme.accent), 0, 4, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        charBalloon.setText(charText);
+        LinearLayout.LayoutParams charParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        charParams.setMargins(0, dp(8), dp(24), dp(6));
+        preview.addView(charBalloon, charParams);
+
+        LinearLayout userRow = new LinearLayout(this);
+        userRow.setGravity(Gravity.END);
+        TextView userBalloon = label("Selam!", 12, theme.text);
+        userBalloon.setPadding(dp(10), dp(7), dp(10), dp(7));
+        userBalloon.setBackground(rounded(theme.bubbleUser, theme.bubbleUserStroke, 12));
+        userRow.addView(userBalloon);
+        preview.addView(userRow, fullWidth());
+        return preview;
+    }
+
+    /** Total device RAM (bytes); 0 when unknown — callers treat it as "no verdict". */
+    private long deviceTotalMemory() {
+        android.app.ActivityManager manager = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        if (manager == null) return 0;
+        android.app.ActivityManager.MemoryInfo memory = new android.app.ActivityManager.MemoryInfo();
+        manager.getMemoryInfo(memory);
+        return memory.totalMem;
+    }
+
+    /**
+     * Fit verdict chip (GUI review item 16): downloaded size + RAM-based comfort.
+     * Loaded GGUF files occupy roughly their file size plus KV-cache/runtime overhead,
+     * so ~3× the file must fit in RAM. 0 total RAM (unknown) stays neutral.
+     */
+    private TextView catalogFitChip(long bytes) {
+        long totalMemory = deviceTotalMemory();
+        boolean known = bytes > 0 && totalMemory > 0;
+        boolean fits = known && totalMemory / 3 >= bytes;
+        TextView chip = new TextView(this);
+        chip.setTextSize(12);
+        chip.setGravity(Gravity.CENTER);
+        chip.setPadding(dp(9), dp(4), dp(9), dp(4));
+        chip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 10));
+        if (!known) {
+            chip.setTextColor(Design.muted());
+            chip.setText(L10n.s("İndirme ") + humanSize(bytes));
+            return chip;
+        }
+        LinearLayout.LayoutParams self = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        self.setMargins(dp(7), 0, 0, 0);
+        chip.setLayoutParams(self);
+        if (fits) {
+            chip.setTextColor(Design.accent());
+            chip.setText(L10n.s("İndirme ") + humanSize(bytes) + L10n.s("  ·  bu cihazda rahat"));
+        } else {
+            chip.setTextColor(Design.danger());
+            chip.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 10));
+            chip.setText(L10n.s("İndirme ") + humanSize(bytes) + L10n.s("  ·  RAM'e göre riskli"));
+        }
+        return chip;
     }
 
     private void showModelCatalog() {
@@ -2136,6 +2248,7 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         gpuParams.setMargins(dp(7), 0, 0, 0);
         chips.addView(gpuChip, gpuParams);
+        chips.addView(catalogFitChip(model.bytes));
         card.addView(chips);
         TextView why = label(model.why, 13, Design.muted());
         why.setPadding(0, dp(7), 0, dp(2));
@@ -2332,6 +2445,10 @@ public class MainActivity extends Activity {
         TextView why = label(model.why, 13, Design.muted());
         why.setPadding(0, dp(7), 0, dp(2));
         card.addView(why);
+        LinearLayout fitRow = new LinearLayout(this);
+        fitRow.setPadding(0, dp(9), 0, dp(2));
+        fitRow.addView(catalogFitChip(model.bytes));
+        card.addView(fitRow);
 
         boolean downloading = isImageCatalogDownloading(model);
         File stored = imageCatalogFile(model);
@@ -3595,7 +3712,16 @@ public class MainActivity extends Activity {
             pageRoot.addView(navWrap, fullWidth());
         }
         setContentView(pageRoot);
+        // Light page transition (GUI review item 18): ~120ms fade unifies navigation
+        // without inventing a new design language.
+        pageRoot.setAlpha(0f);
+        pageRoot.animate().alpha(1f).setDuration(120).start();
         Design.applyBars(this);
+    }
+
+    /** Dark palettes get the dark cold-start window theme (see onCreate). */
+    private boolean isDarkThemeId(String themeId) {
+        return "golge".equals(themeId) || "deniz-gecesi".equals(themeId) || "gun-batimi".equals(themeId);
     }
 
     private void addNavItem(LinearLayout nav, String icon, String title, boolean selected, Runnable action) {
@@ -4125,6 +4251,16 @@ public class MainActivity extends Activity {
                 ? rounded(Design.bubbleUser(), Design.bubbleUserStroke(), 20)
                 : rounded(Design.cardBg(), Design.cardBg(), 20));
 
+        // Identity (GUI review item 9): image balloons used to be anonymous; the same
+        // bold accent header as text balloons now names the speaker. The header is the
+        // single timestamp source — the row-side duplicate clock is gone.
+        TextView imageHead = new TextView(this);
+        imageHead.setTextSize(15);
+        imageHead.setTextColor(Design.text());
+        imageHead.setText(balloonHeader(message.speaker, message.at));
+        imageHead.setPadding(0, 0, 0, dp(8));
+        wrap.addView(imageHead, fullWidth());
+
         ImageView image = new ImageView(this);
         image.setScaleType(ImageView.ScaleType.FIT_CENTER);
         image.setAdjustViewBounds(true);
@@ -4177,6 +4313,8 @@ public class MainActivity extends Activity {
             showMessageActions(message);
             return true;
         });
+        // Tap-to-view: the full-screen zoomable viewer replaces the inert tap.
+        image.setOnClickListener(v -> showImageViewer(message.image));
 
         // Same wrap sizing as text balloons; the image itself gets the maxWidth.
         int imageMax = (int) (getResources().getDisplayMetrics().widthPixels * (user ? 0.64f : 0.76f));
@@ -4197,11 +4335,185 @@ public class MainActivity extends Activity {
             row.addView(companion, companionParams);
         }
         row.addView(wrap, wrapParams);
-        TextView companionTime = label(clock.format(new Date(message.at)), 10, Design.muted());
-        companionTime.setPadding(dp(3), 0, dp(3), dp(3));
-        row.addView(companionTime, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        // The header carries the single timestamp for image balloons.
         parent.addView(row, fullWidth());
         return caption != null ? caption : fallback;
+    }
+
+    /** Bold accent speaker name with a muted time — reused by text and image balloons. */
+    private CharSequence balloonHeader(String speaker, long at) {
+        String display = L10n.speaker(speaker);
+        String header = at > 0 ? display + "  ·  " + clock.format(new Date(at)) : display;
+        SpannableString styled = new SpannableString(header);
+        styled.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), 0, display.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(new ForegroundColorSpan(Design.accent()), 0, display.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (at > 0) {
+            styled.setSpan(new ForegroundColorSpan(Design.muted()), display.length(), header.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return styled;
+    }
+
+    /** Full-screen image viewer (GUI review item 9): pinch-zoom, drag-pan, tap or ✕ closes. */
+    private void showImageViewer(String path) {
+        if (path == null || path.isEmpty()) return;
+        android.app.Dialog viewer = new android.app.Dialog(this);
+        viewer.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Design.pageBg());
+        ZoomableImage image = new ZoomableImage(viewer);
+        root.addView(image, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        TextView close = label("✕", 16, Design.text());
+        close.setGravity(Gravity.CENTER);
+        close.setContentDescription(L10n.s("Kapat"));
+        close.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 22));
+        close.setOnClickListener(v -> viewer.dismiss());
+        FrameLayout.LayoutParams closeParams = new FrameLayout.LayoutParams(dp(44), dp(44));
+        closeParams.gravity = Gravity.TOP | Gravity.END;
+        closeParams.setMargins(0, dp(18), dp(18), 0);
+        root.addView(close, closeParams);
+        viewer.setContentView(root);
+        viewer.show();
+        new Thread(() -> {
+            Bitmap bitmap = LocalImageEngine.INSTANCE.decode(path, dp(1024));
+            if (bitmap == null) {
+                runOnUiThread(() -> {
+                    if (!viewer.isShowing()) return;
+                    Toast.makeText(this, L10n.s("Görsel açılamadı."), Toast.LENGTH_SHORT).show();
+                });
+                return;
+            }
+            runOnUiThread(() -> {
+                if (!viewer.isShowing()) {
+                    bitmap.recycle(); // dialog already closed on a slow decode
+                    return;
+                }
+                image.setBitmap(bitmap);
+            });
+        }, "localrp-image-viewer").start();
+    }
+
+    /** Matrix-zoomable full-screen ImageView: pinch zoom, drag pan, tap closes. */
+    private final class ZoomableImage extends android.widget.ImageView {
+        private final android.app.Dialog viewer;
+        private final android.graphics.Matrix matrix = new android.graphics.Matrix();
+        private android.graphics.Bitmap baseBitmap;
+        private float fitScale = 1f;
+        private float currentScale = 1f;
+        private float lastX, lastY;
+        private final float[] matrixValues = new float[9];
+
+        ZoomableImage(android.app.Dialog viewer) {
+            super(MainActivity.this);
+            this.viewer = viewer;
+            setScaleType(android.widget.ImageView.ScaleType.MATRIX);
+            android.view.ScaleGestureDetector scaleDetector = new android.view.ScaleGestureDetector(
+                    MainActivity.this, new android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                @Override public boolean onScale(android.view.ScaleGestureDetector detector) {
+                    // Scale bounds are relative to the fitted size, not a hard 1.0.
+                    float target = Math.max(fitScale, Math.min(fitScale * 6, currentScale * detector.getScaleFactor()));
+                    float applied = target / currentScale;
+                    matrix.postScale(applied, applied, detector.getFocusX(), detector.getFocusY());
+                    currentScale = target;
+                    clampPan();
+                    setImageMatrix(matrix);
+                    invalidate();
+                    return true;
+                }
+            });
+            android.view.GestureDetector gestures = new android.view.GestureDetector(MainActivity.this,
+                    new android.view.GestureDetector.SimpleOnGestureListener() {
+                        @Override public boolean onSingleTapConfirmed(android.view.MotionEvent event) {
+                            viewer.dismiss();
+                            return true;
+                        }
+
+                        @Override public boolean onDoubleTap(android.view.MotionEvent event) {
+                            float target = currentScale > fitScale * 1.5f ? fitScale : fitScale * 2.5f;
+                            matrix.postScale(target / currentScale, target / currentScale, event.getX(), event.getY());
+                            currentScale = target;
+                            clampPan();
+                            setImageMatrix(matrix);
+                            invalidate();
+                            return true;
+                        }
+                    });
+            setOnTouchListener(new android.view.View.OnTouchListener() {
+                @Override public boolean onTouch(View v, android.view.MotionEvent event) {
+                    boolean zooming = scaleDetector.onTouchEvent(event) && scaleDetector.isInProgress();
+                    gestures.onTouchEvent(event);
+                    switch (event.getActionMasked()) {
+                        case android.view.MotionEvent.ACTION_DOWN:
+                            lastX = event.getRawX();
+                            lastY = event.getRawY();
+                            break;
+                        case android.view.MotionEvent.ACTION_MOVE:
+                            if (!zooming && currentScale > fitScale * 1.01f) {
+                                matrix.postTranslate(event.getRawX() - lastX, event.getRawY() - lastY);
+                                clampPan();
+                                setImageMatrix(matrix);
+                                invalidate();
+                            }
+                            lastX = event.getRawX();
+                            lastY = event.getRawY();
+                            break;
+                    }
+                    return true;
+                }
+            });
+        }
+
+        void setBitmap(android.graphics.Bitmap bitmap) {
+            baseBitmap = bitmap;
+            setImageBitmap(bitmap);
+            fit();
+        }
+
+        private void fit() {
+            if (baseBitmap == null) return;
+            int width = getWidth();
+            int height = getHeight();
+            if (width == 0 || height == 0) {
+                post(this::fit);
+                return;
+            }
+            matrix.reset();
+            float scale = Math.min(
+                    width / (float) baseBitmap.getWidth(),
+                    height / (float) baseBitmap.getHeight());
+            fitScale = scale;
+            currentScale = scale;
+            matrix.setScale(scale, scale, 0, 0);
+            matrix.postTranslate((width - baseBitmap.getWidth() * scale) / 2f,
+                    (height - baseBitmap.getHeight() * scale) / 2f);
+            setImageMatrix(matrix);
+            invalidate();
+        }
+
+        /** Keeps the scaled image on screen: it can never be panned fully away. */
+        private void clampPan() {
+            if (baseBitmap == null) return;
+            matrix.getValues(matrixValues);
+            float scaledWidth = baseBitmap.getWidth() * currentScale;
+            float scaledHeight = baseBitmap.getHeight() * currentScale;
+            float x = matrixValues[Matrix.MTRANS_X];
+            float y = matrixValues[Matrix.MTRANS_Y];
+            int width = getWidth();
+            int height = getHeight();
+            if (scaledWidth > width) x = Math.max(width - scaledWidth, Math.min(x, 0));
+            else x = (width - scaledWidth) / 2f;
+            if (scaledHeight > height) y = Math.max(height - scaledHeight, Math.min(y, 0));
+            else y = (height - scaledHeight) / 2f;
+            matrixValues[Matrix.MTRANS_X] = x;
+            matrixValues[Matrix.MTRANS_Y] = y;
+            matrix.setValues(matrixValues);
+        }
+
+        @Override
+        protected void onSizeChanged(int w, int h, int oldW, int oldH) {
+            super.onSizeChanged(w, h, oldW, oldH);
+            fit();
+        }
     }
 
     private TextView addMessage(LinearLayout parent, String speaker, String text, boolean user, long at) {

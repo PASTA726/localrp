@@ -438,6 +438,17 @@ public final class L10n {
                 "*Stands at the door, a tired smile.* Hi… you're right on time.");
         EN.put("Selam! Burada seni tekrar görmek güzel.", "Hey! Good to see you here again.");
         EN.put("Bu sahneyi nasıl kurdun? Baştan anlat.", "How did you set this scene up? Tell me from the start.");
+
+        // ---- GUI round 3
+        EN.put("İndirme ", "Download ");
+        EN.put("  ·  bu cihazda rahat", "  ·  fits this device comfortably");
+        EN.put("  ·  RAM'e göre riskli", "  ·  risky for this RAM");
+        EN.put("Fotoğraf ekle", "Attach photo");
+        EN.put("Görsel üret", "Generate an image");
+        EN.put("Gönder (veya üretimi durdur)", "Send (or stop generating)");
+        EN.put("Görsel açılamadı.", "The image could not be opened.");
+        EN.put("Konuşma balonları · sahneler", "Conversation balloons · scenes");
+        EN.put("Hikâyen burada başlıyor.", "Your story starts here.");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
         EN.put(" silindi.", " deleted.");

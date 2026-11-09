@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LocalRP launcher foreground: character bubble with a face, a smaller user bubble,
+     and an amber spark (RP + image generation). Content stays inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Character bubble (white, tail lower-left) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M44,30 h18 a8,8 0 0 1 8,8 v16 a8,8 0 0 1 -8,8 h-12 l-8,9 v-9 h-6 a8,8 0 0 1 -8,-8 v-16 a8,8 0 0 1 8,-8 z" />
+    <!-- Face on the character bubble -->
+    <path
+        android:fillColor="#FF6A3BE0"
+        android:pathData="M45,41 a3,3 0 1 1 0.01,0 z M57,41 a3,3 0 1 1 0.01,0 z" />
+    <path
+        android:strokeColor="#FF6A3BE0"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M43,50 Q51,55 59,50" />
+    <!-- User bubble (soft lavender, tail lower-right), overlapping -->
+    <path
+        android:fillColor="#FFEAE2FF"
+        android:pathData="M62,56 h17 a7,7 0 0 1 7,7 v4 a7,7 0 0 1 -7,7 h-5 l5,6 -12,-6 h-5 a7,7 0 0 1 -7,-7 v-4 a7,7 0 0 1 7,-7 z" />
+    <!-- Amber spark -->
+    <path
+        android:fillColor="#FFFFC24B"
+        android:pathData="M82,30 Q83,35 88,36 Q83,37 82,41 Q81,37 76,36 Q81,35 82,30 Z" />
+</vector>
