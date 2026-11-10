@@ -2,6 +2,15 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.8-alpha1 — 2026-11-10 (DeepSeek madde 11: model profilleri + fizibilite + açılışta otomatik yükleme)
+
+DeepSeek incelemesinin "model profilleri" kalemi (madde 11) uygulandı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.
+
+- **Üç durumlu fizibilite göstergesi**: model boyutuna ve cihaz RAM'ine göre "sığar / sınırda / zor" — katalog çipleri artık "rahat / sınırda / riskli" diye ayrışıyor (sınırda ≈ RAM'in %42'sine sığan dosya); "Model kopyalarını yönet" listesi de her dosyanın yanında aynı hükmi gösterir. RAM okunamadıysa hiçbir hüküm uydurulmaz.
+- **Model profili**: Ayarlar → Model kopyalarını yönet → bir model seçince: boyut, tahmini bellek kullanımı (~1,3× dosya), RAM hükmü, yükleme eylemi ve büyük "açılışta otomatik yükle" anahtarı tek diyalogda.
+- **Açılışta otomatik yükleme**: sabitlenen model ilk açılışta arka planda sessizce yüklenir (kısa bir Toast ile). Dosya silinmişse tercih kendi kendine kapanır; silme başarısızsa tercih korunur.
+- versionCode 37 / 0.19.8-alpha1.
+
 ## v0.19.7-alpha1 — 2026-11-10 (DeepSeek madde 7: sohbet başına üretim profili)
 
 DeepSeek incelemesinin "sohbet başına üretim profili" kalemi (madde 7) uygulandı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.
