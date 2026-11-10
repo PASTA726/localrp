@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** Unit tests for the OpenAI-compatible streaming seam (DeepSeek item 14, batch A). */
@@ -85,6 +86,62 @@ public class OpenAiCompatTest {
         assertFalse(OpenAiCompat.allowsEndpoint("api.example.com/v1/chat/completions"));
         assertFalse(OpenAiCompat.allowsEndpoint(null));
         assertFalse(OpenAiCompat.allowsEndpoint(""));
+    }
+
+    @Test
+    public void assembleTurns_systemFirst_historyAlternating_finalUserTurn() {
+        List<Message> history = new ArrayList<>();
+        history.add(new Message("Elif", "Selam", false, 1L));          // assistant (assistant turn)
+        history.add(new Message("Evren", "Nasılsın?", true, 2L));      // user turn
+        history.add(new Message("Elif", "İyiyim", false, 3L));         // assistant turn
+        history.add(new Message("Evren", "Devam et", true, 4L));       // trailing user → final turn only
+
+        List<OpenAiCompat.Turn> turns = OpenAiCompat.assembleTurns("SYSTEM", history, "Devam et", 8);
+        assertEquals("system", turns.get(0).role);
+        assertEquals("SYSTEM", turns.get(0).content);
+        assertEquals(5, turns.size());
+        assertEquals("assistant", turns.get(1).role);
+        assertEquals("Selam", turns.get(1).content);
+        assertEquals("user", turns.get(2).role);
+        assertEquals("Nasılsın?", turns.get(2).content);
+        assertEquals("assistant", turns.get(3).role);
+        assertEquals("İyiyim", turns.get(3).content);
+        OpenAiCompat.Turn finalTurn = turns.get(turns.size() - 1);
+        assertEquals("user", finalTurn.role);
+        assertEquals("Devam et", finalTurn.content);
+        // The trailing user text never duplicates inside the transcript body.
+        long userTextCount = turns.stream().filter(t -> "Devam et".equals(t.content)).count();
+        assertEquals(1, userTextCount);
+    }
+
+    @Test
+    public void assembleTurns_historyDepthBoundsAndImagePlaceholder() {
+        List<Message> history = new ArrayList<>();
+        for (int i = 0; i < 6; i++) history.add(new Message("A", "m" + i, false, i));
+        history.add(new Message("Evren", "yeni", true, 9L));
+        List<OpenAiCompat.Turn> turns = OpenAiCompat.assembleTurns("s", history, "yeni", 3);
+        assertEquals(5, turns.size()); // system + 3 kept turns + final user
+        assertEquals("m3", turns.get(1).content);
+
+        // A non-trailing image-only user record keeps the engine's placeholder.
+        List<Message> withImage = new ArrayList<>();
+        withImage.add(new Message("Evren", "", true, 1L, "/tmp/x.jpg"));
+        withImage.add(new Message("A", "bak kedi", false, 2L));
+        List<OpenAiCompat.Turn> imageTurns = OpenAiCompat.assembleTurns("s", withImage, "ne bu?", 8);
+        assertEquals("user", imageTurns.get(1).role);
+        assertEquals("[görsel]", imageTurns.get(1).content);
+        assertEquals("assistant", imageTurns.get(2).role);
+        assertEquals("bak kedi", imageTurns.get(2).content);
+    }
+
+    @Test
+    public void assembleTurns_garbageInputsNeverCrash() {
+        List<OpenAiCompat.Turn> turns = OpenAiCompat.assembleTurns(null, null, null, 0);
+        assertEquals(2, turns.size()); // system turn + final user turn (chat continuity)
+        assertEquals("system", turns.get(0).role);
+        assertEquals("", turns.get(0).content);
+        assertEquals("user", turns.get(1).role);
+        assertEquals("", turns.get(1).content);
     }
 
     @Test

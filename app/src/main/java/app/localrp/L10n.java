@@ -563,6 +563,67 @@ public final class L10n {
         EN.put("Anahtar kelime ve olgu alanları dolu olmalı.", "Both the keywords and the fact are required.");
         EN.put("Kaydedilemedi: dünya kitabı verisi okunamıyor.",
                 "Could not save: the world book data is unreadable.");
+
+        // ---- online provider settings + routing (DeepSeek item 14/B)
+        EN.put("Çevrimiçi sağlayıcı", "Online provider");
+        EN.put("Faz 5 · opsiyonel · çevrimdışı varsayılan kalır",
+                "Phase 5 · optional · offline stays the default");
+        EN.put("Veri dışarı çıkarır", "Sends data off-device");
+        EN.put("Bu ayar açıkken ve eksiksizken yanıtlar, seçtiğin OpenAI-uyumlu https adresine gider; sohbet içerik cihazdan çıkmış olur. Kapalıyken hiçbir şey gönderilmez.",
+                "With this on and fully configured, replies go to the OpenAI-compatible https address you chose; conversation content then leaves the device. While off, nothing is sent.");
+        EN.put("Sağlayıcıyı etkinleştir", "Enable the provider");
+        EN.put("Sağlayıcı açık — kapata geç", "Provider is on — switch it off");
+        EN.put("Önce adres, model adı ve API anahtarını eksiksiz doldur.",
+                "First complete the address, the model name and the API key.");
+        EN.put("Sağlayıcı etkin: yanıtlar artık seçtiğin servisten gelecek.",
+                "Provider enabled: replies will now come from the service you chose.");
+        EN.put("Sağlayıcı kapalı: çevrimdışı model varsayana döndü.",
+                "Provider off: the offline model is the default again.");
+        EN.put("Durum: ", "Status: ");
+        EN.put("hazır", "ready");
+        EN.put("eksiksiz değil", "incomplete");
+        EN.put("Durum: kapalı", "Status: off");
+        EN.put("Bağlantı", "Connection");
+        EN.put("OpenAI uyumlu sohbet tamamlama adresi. Yalnızca https kabul edilir; örnek: https://api.example.com/v1/chat/completions",
+                "OpenAI-compatible chat-completions URL. Only https is accepted, e.g. https://api.example.com/v1/chat/completions");
+        EN.put("https endpoint", "https endpoint");
+        EN.put("Model adı", "Model name");
+        EN.put("Prompta kaç mesajlık sohbet geçmişi taşınır (2–20): telefonla ayardan değil, bu sayıdan düzenlenir.",
+                "How many transcript messages ride the prompt (2–20) — configured here, not on the phone.");
+        EN.put("Geçmiş mesaj sayısı", "Transcript message count");
+        EN.put("Bağlantı bilgilerini kaydet", "Save connection details");
+        EN.put("Geçmiş mesaj sayısı bir sayı olmalı.", "The transcript message count must be a number.");
+        EN.put("Adres https ile başlamalı; API anahtarı düz bağlantıda sızabilir.",
+                "The address must start with https; the API key could leak over a plain connection.");
+        EN.put("Model adı boş olamaz.", "The model name cannot be empty.");
+        EN.put("Geçmiş mesaj sayısı 2 ile 20 arasında olmalı.", "The transcript message count must be between 2 and 20.");
+        EN.put("Kaydedildi.", "Saved.");
+        EN.put("API anahtarı", "API key");
+        EN.put("Anahtar kayıtlı: cihazdaki anahtarla kriptolu tutulur (AndroidKeyStore AES/GCM); düz metin diskte durmaz.",
+                "Key stored: encrypted with the device key (AndroidKeyStore AES/GCM); it never sits on disk in plain text.");
+        EN.put("Anahtar yok. Anahtar yalnızca bu cihazda kriptolu saklanır ve hiçbir yedekte taşınmaz.",
+                "No key yet. The key stays encrypted on this device only and never travels inside backups.");
+        EN.put("Yeni anahtar (kaydetmek için doldur)", "New key (fill to store)");
+        EN.put("Anahtarı kaydet", "Store the key");
+        EN.put("Anahtar alanı boş olamaz.", "The key field cannot be empty.");
+        EN.put("Anahtar kaydedilemedi: cihaz güvenlik deposu kullanılamıyor.",
+                "Could not store the key: the device secure store is unavailable.");
+        EN.put("Anahtar kaydedildi.", "Key stored.");
+        EN.put("Anahtarı sil", "Erase the key");
+        EN.put("Kayıtlı API anahtarı silinsin mi? Uygulama anahtarı yeniden soracak.",
+                "Erase the stored API key? The app will ask for it again.");
+        EN.put("Anahtar silindi.", "Key erased.");
+        EN.put("Bağlantı testi", "Connection test");
+        EN.put("Kısa bir deneme isteği gönderir (birkaç token); bu, açık bir kullanıcı eylemidir.",
+                "Sends a short test request (a few tokens); this is an explicit user action.");
+        EN.put("Bağlantıyı test et", "Test the connection");
+        EN.put("Önce geçerli bir https adresi ve model adı yaz.", "First write a valid https address and a model name.");
+        EN.put("Önce API anahtarını gir.", "First enter the API key.");
+        EN.put("Test ediliyor…", "Testing…");
+        EN.put("Test başarılı: bağlantı ve anahtar çalışıyor.", "Test passed: the connection and the key work.");
+        EN.put("Test başarısız: ", "Test failed: ");
+        EN.put("Online sağlayıcı · veri açık onayınla gider",
+                "Online provider · data leaves with your explicit consent");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
         EN.put("Dil Türkçe olarak ayarlandı.", "Language set to Turkish.");
