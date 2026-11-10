@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.10-alpha1 — 2026-11-10 (DeepSeek madde 12: dünya kitabı / lorebook)
+
+DeepSeek incelemesinin "lorebook" kalemi (madde 12) uygulandı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.
+
+- **Dünya kitabı**: sohbet menüsünde yeni "Dünya kitabı" öğesi. Her sohbet kendi kitabını taşır: anahtar kelime(ler) (virgülle ayırın) + modelin bilmesi gereken olgu.
+- **Anahtar-kelime tetikleme**: yanıt üretiminde son 3 mesajda bir anahtar geçerse o kayıt prompta "Dünya kitabı" bloğu olarak yazılır. Eşleşme büyük/küçük harf duyarsızdır; ı/İ/I/i yazım farkları her iki tarafta aynı forma katlanır.
+- **Bütçe**: blok en fazla 900 karakter tutar; sığmayan kayıtlar sırayla kırpılır. Anahtar hiç geçmezse blok prompta hiç yazılmaz (bedava).
+- **Yedek**: dünya kitabı kayıtları v1 ve v2 yedek paketlerine "lore" alanı olarak yazılır; seçmeli dışa aktarma yalnızca seçilen sohbetlerin kitaplarını taşır. Geri yüklemede boş olmayan içe aktarılan kitap, aynı sohbetin mevcut kitabını değiştirir.
+- **Bilinçli tercihler**: bütçe sabittir (ayarlama kaldırıldı); restore asla mevcut kayıt silmez (sohbet geçmişindeki "yalnızca daha uzun" kuralıyla aynı felsefe); diyakritik farklı yazımlar nadir yanlış pozitif üretebilir — ancak bu yalnızca fazladan bilgi enjekte eder.
+- versionCode 39 / 0.19.10-alpha1.
+
 ## v0.19.9-alpha1 — 2026-11-10 (DeepSeek madde 13: ilk kurulum akışı — dil → model → ilk karakter)
 
 DeepSeek incelemesinin "onboarding" kalemi (madde 13) uygulandı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.

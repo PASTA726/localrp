@@ -192,6 +192,19 @@ class Store {
         return writeMessages(groupId, transcript);
     }
 
+    /** World book (DeepSeek item 12): this conversation's keyword-triggered facts. */
+    List<Lorebook.Entry> lore(String groupId) {
+        return Lorebook.decode(preferences.getString("lore_" + groupId, null));
+    }
+
+    /** Overwrites the conversation's lore; refuses when the stored payload is unreadable. */
+    boolean saveLore(String groupId, List<Lorebook.Entry> entries) {
+        String raw = preferences.getString("lore_" + groupId, null);
+        if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("lore_" + groupId); return false; }
+        preferences.edit().putString("lore_" + groupId, Lorebook.encode(entries)).apply();
+        return true;
+    }
+
     /** Replaces one stored message's text (speaker/reader/image/timestamp preserved). */
     boolean updateMessage(String id, int index, String newText) {
         String raw = preferences.getString("chat_" + id, null);
@@ -242,13 +255,21 @@ class Store {
         return true;
     }
 
+    boolean restoreBundle(List<CharacterProfile> characters, List<Group> groups,
+                          java.util.Map<String, List<Message>> chats) {
+        return restoreBundle(characters, groups, chats, null);
+    }
+
     /**
      * User-initiated backup restore. Refuses while any catalog is unreadable
      * (the repair path is still the startup report / chat clear), merges by id,
      * and replaces a transcript only when the imported copy is strictly longer.
+     * Lorebook entries (DeepSeek item 12) travel with the bundle; non-empty
+     * imported lore replaces this conversation's stored book, empty drops nothing.
      */
     boolean restoreBundle(List<CharacterProfile> characters, List<Group> groups,
-                          java.util.Map<String, List<Message>> chats) {
+                          java.util.Map<String, List<Message>> chats,
+                          java.util.Map<String, List<Lorebook.Entry>> lorebooks) {
         String rawChars = preferences.getString("characters", null);
         String rawGroups = preferences.getString("groups", null);
         if (!PersistenceCodec.overwriteAllowed(rawChars) || !PersistenceCodec.overwriteAllowed(rawGroups)) {
@@ -282,6 +303,14 @@ class Store {
             editor.putString("chat_" + entry.getKey(), encoded);
             chatCache.put(entry.getKey(), entry.getValue());
             integrityIssues.remove("chat_" + entry.getKey());
+        }
+        if (lorebooks != null) {
+            for (java.util.Map.Entry<String, List<Lorebook.Entry>> entry : lorebooks.entrySet()) {
+                if (!knownGroups.contains(entry.getKey())) continue;
+                List<Lorebook.Entry> imported = entry.getValue();
+                if (imported == null || imported.isEmpty()) continue;
+                editor.putString("lore_" + entry.getKey(), Lorebook.encode(imported));
+            }
         }
         editor.apply();
         return true;

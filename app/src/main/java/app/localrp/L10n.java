@@ -546,6 +546,23 @@ public final class L10n {
                 "Characters are profiles that steer conversations; everything can be edited later.");
         EN.put("En az bir isim yaz veya hazır bir karakter seç.",
                 "Write at least a name or pick a preset character.");
+
+        // ---- world book / lorebook (DeepSeek item 12)
+        EN.put("Dünya kitabı", "World book");
+        EN.put(" dünya kitabı girdilerini silinsin mi?", "'s world book entries be deleted?");
+        EN.put("Her kayıt anahtar kelime(ler) ve bir olgudur. Son 3 mesajda bir anahtar geçerse olgu prompta yazılır; blok en fazla 900 karakter tutar, anahtar hiç geçmezse yer kaplamaz.",
+                "Each record is trigger keyword(s) plus a fact. When a key appears in the last 3 messages, the fact is added to the prompt; the block keeps at most 900 characters and costs nothing when no key appears.");
+        EN.put("Henüz bilgi yok", "No entries yet");
+        EN.put("Dünyanın kalıcı bilgileri: yerler, kurallar, geçmiş olaylar, karakterler.",
+                "The world's lasting facts: places, rules, past events, characters.");
+        EN.put("＋  Yeni bilgi", "＋  New entry");
+        EN.put("Anahtar kelimeler (virgülle ayır)", "Trigger keywords (comma-separated)");
+        EN.put("Olgu (modelin bilmesi gereken bilgi)", "Fact (what the model needs to know)");
+        EN.put("Bilgiyi düzenle", "Edit entry");
+        EN.put("Yeni bilgi", "New entry");
+        EN.put("Anahtar kelime ve olgu alanları dolu olmalı.", "Both the keywords and the fact are required.");
+        EN.put("Kaydedilemedi: dünya kitabı verisi okunamıyor.",
+                "Could not save: the world book data is unreadable.");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
         EN.put("Dil Türkçe olarak ayarlandı.", "Language set to Turkish.");

@@ -42,17 +42,31 @@ final class RoleplayPrompt {
         return build(sceneName, speaker, castIds, castLookup, history, continuing, continuation,
                 aiInstructions, themeName, themeInstruction, historyDepth, historyCharBudget, persona, false);
     }
-
     /**
      * @param english true = assemble the whole engine prompt in English and instruct the
      *                model to reply in English (English-tuned models roleplay better).
      *                false = the byte-identical Turkish prompt of earlier versions.
+     * @param lorebook world book entries (DeepSeek item 12); may be null. Triggered
+     *                 entries are injected on fresh builds only (continuing turns
+     *                 already carry the block inside the engine's saved context).
      */
     static String build(String sceneName, CharacterProfile speaker, List<String> castIds,
                         Function<String, CharacterProfile> castLookup, List<Message> history,
                         boolean continuing, boolean continuation,
                         String aiInstructions, String themeName, String themeInstruction,
                         int historyDepth, int historyCharBudget, String[] persona, boolean english) {
+        return build(sceneName, speaker, castIds, castLookup, history, continuing, continuation,
+                aiInstructions, themeName, themeInstruction, historyDepth, historyCharBudget,
+                persona, english, null);
+    }
+
+    /** Full overload: identity, persona, world book (lore) and history assembly. */
+    static String build(String sceneName, CharacterProfile speaker, List<String> castIds,
+                        Function<String, CharacterProfile> castLookup, List<Message> history,
+                        boolean continuing, boolean continuation,
+                        String aiInstructions, String themeName, String themeInstruction,
+                        int historyDepth, int historyCharBudget, String[] persona, boolean english,
+                        List<Lorebook.Entry> lorebook) {
         StringBuilder prompt = new StringBuilder();
         String speakerName = clip(speaker.name, 80);
         Message last = history.isEmpty() ? null : history.get(history.size() - 1);
@@ -71,6 +85,25 @@ final class RoleplayPrompt {
             prompt.append("Bu tur yalnızca ").append(speakerName).append(" karakterini konuşacak şekilde yanıt ver.\n");
         }
         if (!continuing) {
+            // World book (DeepSeek item 12): only entries whose keys match the last few
+            // transcript lines are injected, under a fixed character budget.
+            if (lorebook != null && !lorebook.isEmpty()) {
+                StringBuilder scan = new StringBuilder();
+                for (int i = Math.max(0, history.size() - 3); i < history.size(); i++) {
+                    Message scanMessage = history.get(i);
+                    if (scanMessage.text != null && !scanMessage.text.isEmpty()) {
+                        scan.append(scanMessage.text).append("\n");
+                    }
+                }
+                String scanText = scan.length() > 1600 ? scan.substring(scan.length() - 1600) : scan.toString();
+                List<Lorebook.Entry> triggered = Lorebook.triggered(lorebook, scanText);
+                if (!triggered.isEmpty()) {
+                    prompt.append(english
+                            ? "World book (facts matching keywords in the scene):\n"
+                            : "Dünya kitabı (sahnede geçen anahtar kelimelerle tetiklenen olgular):\n");
+                    prompt.append(Lorebook.assemble(triggered, Lorebook.BLOCK_CHAR_BUDGET));
+                }
+            }
             String description = clip(speaker.description, 700);
             String personality = clip(speaker.personality, 900);
             String instructions = clip(speaker.instructions, 900);
