@@ -211,6 +211,13 @@ public class MainActivity extends Activity {
         }
         applySystemPrompt();
         LocalAiRuntime.INSTANCE.setManualContextBudget(prefs.getInt("context_budget_chars", -1));
+        // A selective-export selection must survive the activity recreation that SAF
+        // storage pickers may trigger; returning without it would dump a full backup.
+        if (state != null && state.getStringArrayList("pendingExportChars") != null
+                && state.getStringArrayList("pendingExportGroups") != null) {
+            pendingExportCharacters = new java.util.HashSet<>(state.getStringArrayList("pendingExportChars"));
+            pendingExportGroups = new java.util.HashSet<>(state.getStringArrayList("pendingExportGroups"));
+        }
         String modelUri = prefs.getString("selected_model_uri", null);
         if (modelUri != null) selectedModel = Uri.parse(modelUri);
         selectedModelName = prefs.getString("selected_model_name", selectedModelName);
@@ -494,11 +501,24 @@ public class MainActivity extends Activity {
         });
         if (editing && !BUILTIN_ROLEPLAY_ID.equals(existing.id)) {
             addDangerButton("Karakteri sil", v -> confirm(existing.name + " silinsin mi?", () -> {
+                CharacterProfile snapshot = store.character(existing.id); // fresh copy off the stored JSON
                 if (!store.deleteCharacter(existing.id)) {
                     Toast.makeText(this, L10n.s("Silinemedi: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
                     return;
                 }
                 showCharacters();
+                // Group members of this character keep working: prompts tolerate a
+                // missing member, and the undo path simply re-saves the profile.
+                if (snapshot != null) {
+                    showUndoBar(existing.name + L10n.s(" silindi."), () -> {
+                        if (!store.saveCharacter(snapshot)) {
+                            Toast.makeText(this, L10n.s("Geri alınamadı: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        Toast.makeText(this, existing.name + L10n.s(" geri getirildi."), Toast.LENGTH_SHORT).show();
+                        showCharacters();
+                    }, null);
+                }
             }));
         }
     }
@@ -550,9 +570,23 @@ public class MainActivity extends Activity {
             addDangerButton("Sohbet geçmişini temizle", v -> clearChat(existing));
             addDangerButton("Grubu sil", v -> confirm(existing.name + " ve sohbeti silinsin mi?", "Sil", () -> {
                 LocalAiRuntime.INSTANCE.stopGeneration();
-                deleteMessageImages(existing.id);
+                // Snapshots must come off the store BEFORE deleteGroup wipes the record;
+                // image files are kept until the undo window closes so restore can win.
+                Group snapshot = store.group(existing.id);
+                List<Message> transcript = new ArrayList<>(store.messages(existing.id));
                 store.deleteGroup(existing.id);
                 showHome();
+                if (snapshot != null) {
+                    showUndoBar(existing.name + L10n.s(" silindi."), () -> {
+                        if (!store.saveGroup(snapshot) || !store.replaceMessages(snapshot.id, transcript)) {
+                            store.deleteGroup(snapshot.id); // compensating: no half-restored chat stays visible
+                            Toast.makeText(this, L10n.s("Geri alınamadı: sohbet verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        Toast.makeText(this, existing.name + L10n.s(" geri getirildi."), Toast.LENGTH_SHORT).show();
+                        showChats();
+                    }, () -> deleteMessageImages(snapshot.id));
+                }
             }));
         }
     }
@@ -1955,6 +1989,7 @@ public class MainActivity extends Activity {
         addInfoCard("Yedekleme", L10n.s("Karakterler, sohbetler ve geçmişler tek bir .json dosyasına yazılır. ")
                 + L10n.s("Dosya tamamen senin kontrolündedir: uygulama hiçbir veriyi otomatik göndermez."), "Yerel");
         addPrimary("Yedeği dışa aktar", v -> {
+            clearPendingSelection();
             String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -1963,6 +1998,7 @@ public class MainActivity extends Activity {
             startActivityForResult(intent, BACKUP_EXPORT);
         });
         addSecondary("Yedeği dışa aktar (medya dahil)", v -> {
+            clearPendingSelection();
             String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -1970,6 +2006,7 @@ public class MainActivity extends Activity {
             intent.putExtra(Intent.EXTRA_TITLE, "localrp-yedek-" + stamp + ".zip");
             startActivityForResult(intent, BACKUP_EXPORT_MEDIA);
         });
+        addSecondary("Seçmeli dışa aktar", v -> showSelectiveExport());
         addSecondary("Yedeği geri yükle", v -> confirm(
                 L10n.s("Geri yükleme aynı kimlikli karakter/sohbetleri günceller, yeni olanları ekler. ") +
                         L10n.s("Geçmişler yalnızca yedekteki kopya daha uzunsa değiştirilir. Devam edilsin mi?"),
@@ -3247,12 +3284,14 @@ public class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == BACKUP_EXPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            exportBackup(data.getData());
-            return;
-        }
-        if (requestCode == BACKUP_EXPORT_MEDIA && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            exportBackupMedia(data.getData());
+        if (requestCode == BACKUP_EXPORT || requestCode == BACKUP_EXPORT_MEDIA) {
+            if (resultCode != RESULT_OK) { // picker cancelled: a staged selection must not leak
+                clearPendingSelection();
+                return;
+            }
+            if (data == null || data.getData() == null) { clearPendingSelection(); return; }
+            if (requestCode == BACKUP_EXPORT) exportBackup(data.getData());
+            else exportBackupMedia(data.getData());
             return;
         }
         if (requestCode == CHAR_EXPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
@@ -3330,16 +3369,187 @@ public class MainActivity extends Activity {
         pane.addView(face, new LinearLayout.LayoutParams(dp(64), dp(64)));
     }
 
+    /** Bottom toast-like bar for reversible deletions; finalizes when dismissed or timed out. */
+    private void showUndoBar(String text, Runnable restore, Runnable finalizeDelete) {
+        hideUndoBar(true); // at most one pending deletion at a time
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        int pad = dp(14);
+        bar.setPadding(pad, pad, pad, pad);
+        android.graphics.drawable.GradientDrawable background = new android.graphics.drawable.GradientDrawable();
+        background.setColor(Design.cardBg());
+        background.setCornerRadius(dp(18));
+        bar.setBackground(background);
+        TextView message = label(text, 13, Design.text());
+        bar.addView(message, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        TextView undoButton = label(L10n.s("Geri al"), 13, Design.accent());
+        undoButton.setTypeface(null, android.graphics.Typeface.BOLD);
+        undoButton.setPadding(dp(16), dp(6), dp(4), dp(6));
+        undoButton.setOnClickListener(v -> {
+            hideUndoBar(false);
+            restore.run();
+        });
+        bar.addView(undoButton);
+        int margin = dp(14);
+        android.widget.FrameLayout.LayoutParams layout = new android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        layout.gravity = Gravity.BOTTOM;
+        layout.setMargins(margin, margin, margin, margin + dp(26)); // clears the gesture bar
+        Runnable finalizer = () -> {
+            if (bar.getParent() != null) ((ViewGroup) bar.getParent()).removeView(bar);
+            undoBar = null;
+            if (finalizeDelete != null) finalizeDelete.run();
+        };
+        undoFinalize = finalizer;
+        undoBar = bar;
+        ((ViewGroup) getWindow().getDecorView()).addView(bar, layout);
+        undoClock.postDelayed(finalizer, 8000);
+    }
+
+    /** Removes the deletion bar; with finalize, the deletion becomes permanent. */
+    private void hideUndoBar(boolean finalize) {
+        Runnable finalizer = undoFinalize;
+        if (finalizer != null) undoClock.removeCallbacks(finalizer);
+        LinearLayout bar = undoBar;
+        undoFinalize = null;
+        undoBar = null;
+        if (bar != null && bar.getParent() != null) ((ViewGroup) bar.getParent()).removeView(bar);
+        if (finalize && finalizer != null) finalizer.run();
+    }
+
+    /** Navigation or page swap finalizes a pending reversible deletion. */
+    private void dismissUndoBar() {
+        if (undoBar != null) hideUndoBar(true);
+    }
+
+    /** Staged selection for the next SAF export; null = full backup (DeepSeek item 9b). */
+    private java.util.Set<String> pendingExportCharacters;
+    private java.util.Set<String> pendingExportGroups;
+
+    private LinearLayout undoBar;
+    private Runnable undoFinalize;
+    private final android.os.Handler undoClock = new android.os.Handler(android.os.Looper.getMainLooper());
+
+    @Override public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (pendingExportCharacters != null) {
+            outState.putStringArrayList("pendingExportChars", new ArrayList<>(pendingExportCharacters));
+        }
+        if (pendingExportGroups != null) {
+            outState.putStringArrayList("pendingExportGroups", new ArrayList<>(pendingExportGroups));
+        }
+    }
+
+    /** Drops a staged selection the moment it is consumed or the picker is cancelled. */
+    private void clearPendingSelection() {
+        pendingExportCharacters = null;
+        pendingExportGroups = null;
+    }
+
+    /**
+     * Collects the current dataset into a bundle. JSON exports get version 1 with null
+     * roots; ZIP exports get version 2 with the device's media roots for @ markers.
+     * A staged selective export narrows the bundle before either encoding.
+     */
+    private PersistenceCodec.Bundle buildFullBundle(String avatarRoot, String imageRoot) {
+        java.util.Map<String, List<Message>> chats = new java.util.HashMap<>();
+        List<Group> groups = store.groups();
+        for (Group group : groups) chats.put(group.id, new ArrayList<>(store.messages(group.id)));
+        PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
+        bundle.characters.addAll(store.characters());
+        bundle.groups.addAll(groups);
+        bundle.chats.putAll(chats);
+        if (pendingExportCharacters != null && pendingExportGroups != null) {
+            bundle = PersistenceCodec.selectBundle(bundle, pendingExportCharacters, pendingExportGroups);
+        }
+        if (avatarRoot != null) { // ZIP path: media markers need the real device roots
+            bundle.version = 2;
+            bundle.avatarsRoot = avatarRoot;
+            bundle.imagesRoot = imageRoot;
+        }
+        return bundle;
+    }
+
+    /** Selective export (DeepSeek item 9b): choose characters + chats, then pick the format. */
+    private void showSelectiveExport() {
+        backAction = this::showSettings;
+        setPage("Seçmeli dışa aktar", "Yalnızca seçtiğin karakterler ve sohbetler yazılır", "settings");
+        List<CharacterProfile> characters = store.characters();
+        List<Group> groups = store.groups();
+        if (characters.isEmpty() && groups.isEmpty()) {
+            addEmpty("Yazılacak bir şey yok", "Önce karakter ya da sohbet oluştur.", null, null);
+            return;
+        }
+        List<CheckBox> characterBoxes = new ArrayList<>();
+        addSection("Karakterler", "Seçtiğin sohbetlerin karakterleri otomatik yazılır", null);
+        for (CharacterProfile character : characters) {
+            CheckBox choice = new CheckBox(this);
+            choice.setText("   " + character.name);
+            choice.setTextSize(16);
+            choice.setPadding(dp(4), dp(5), dp(4), dp(5));
+            choice.setTextColor(Design.text());
+            content.addView(choice);
+            characterBoxes.add(choice);
+        }
+        List<CheckBox> groupBoxes = new ArrayList<>();
+        addSection("Sohbetler", "Geçmişleriyle birlikte yazılır", null);
+        for (Group group : groups) {
+            CheckBox choice = new CheckBox(this);
+            choice.setText("   " + group.name);
+            choice.setTextSize(16);
+            choice.setPadding(dp(4), dp(5), dp(4), dp(5));
+            choice.setTextColor(Design.text());
+            content.addView(choice);
+            groupBoxes.add(choice);
+        }
+        addPrimary("Devam et", v -> {
+            java.util.Set<String> characterIds = new java.util.HashSet<>();
+            for (int i = 0; i < characterBoxes.size(); i++) {
+                if (characterBoxes.get(i).isChecked()) characterIds.add(characters.get(i).id);
+            }
+            java.util.Set<String> groupIds = new java.util.HashSet<>();
+            for (int i = 0; i < groupBoxes.size(); i++) {
+                if (groupBoxes.get(i).isChecked()) groupIds.add(groups.get(i).id);
+            }
+            if (characterIds.isEmpty() && groupIds.isEmpty()) {
+                Toast.makeText(this, L10n.s("En az bir karakter veya sohbet seç."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            pendingExportCharacters = characterIds;
+            pendingExportGroups = groupIds;
+            showExportFormatPicker();
+        });
+    }
+
+    private void showExportFormatPicker() {
+        String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
+        new AlertDialog.Builder(this)
+                .setTitle(L10n.s("Yedek biçimi"))
+                .setItems(new String[]{L10n.s("JSON (küçük, görsellersiz)"), L10n.s("ZIP (görsellerle)")},
+                        (d, which) -> {
+                            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                            intent.addCategory(Intent.CATEGORY_OPENABLE);
+                            if (which == 0) {
+                                intent.setType("application/json");
+                                intent.putExtra(Intent.EXTRA_TITLE, "localrp-yedek-" + stamp + ".json");
+                                startActivityForResult(intent, BACKUP_EXPORT);
+                            } else {
+                                intent.setType("application/zip");
+                                intent.putExtra(Intent.EXTRA_TITLE, "localrp-yedek-" + stamp + ".zip");
+                                startActivityForResult(intent, BACKUP_EXPORT_MEDIA);
+                            }
+                        })
+                .setNegativeButton(L10n.s("Vazgeç"), (d, w) -> clearPendingSelection())
+                .create()
+                .show();
+    }
+
     /** Streams the full local dataset (characters + groups + transcripts) to the chosen file. */
     private void exportBackup(android.net.Uri target) {
         new Thread(() -> {
-            java.util.Map<String, List<Message>> chats = new java.util.HashMap<>();
-            List<Group> groups = store.groups();
-            for (Group group : groups) chats.put(group.id, new ArrayList<>(store.messages(group.id)));
-            PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
-            bundle.characters.addAll(store.characters());
-            bundle.groups.addAll(groups);
-            bundle.chats.putAll(chats);
+            PersistenceCodec.Bundle bundle = buildFullBundle(null, null);
+            clearPendingSelection();
             String payload = PersistenceCodec.encodeBundle(bundle);
             if (payload.isEmpty()) {
                 runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek oluşturulamadı (veri okunamıyor)."), Toast.LENGTH_LONG).show());
@@ -3375,16 +3585,8 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek oluşturulamadı (veri okunamıyor)."), Toast.LENGTH_LONG).show());
                 return;
             }
-            java.util.Map<String, List<Message>> chats = new java.util.HashMap<>();
-            List<Group> groups = store.groups();
-            for (Group group : groups) chats.put(group.id, new ArrayList<>(store.messages(group.id)));
-            PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
-            bundle.version = 2;
-            bundle.avatarsRoot = avatarRoot;
-            bundle.imagesRoot = imageRoot;
-            bundle.characters.addAll(store.characters());
-            bundle.groups.addAll(groups);
-            bundle.chats.putAll(chats);
+            PersistenceCodec.Bundle bundle = buildFullBundle(avatarRoot, imageRoot);
+            clearPendingSelection();
             String payload = PersistenceCodec.encodeBundle(bundle);
             if (payload.isEmpty()) {
                 runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek oluşturulamadı (veri okunamıyor)."), Toast.LENGTH_LONG).show());
@@ -4002,6 +4204,7 @@ public class MainActivity extends Activity {
             }
             LocalAiRuntime.INSTANCE.stopGeneration();
             LocalAiRuntime.INSTANCE.resetConversation(null);
+            hideUndoBar(false); // teardown without firing the file-delete finalizer
         }
         super.onDestroy();
     }
@@ -4021,6 +4224,7 @@ public class MainActivity extends Activity {
 
     private void setPage(String title, String subtitle, String tab, boolean chat) {
         currentTab = tab;
+        dismissUndoBar(); // leaving a page finalizes any pending reversible deletion
         if (chatInput != null && chatInputChatId != null) {
             String draft = chatInput.getText().toString();
             if (draft.trim().isEmpty()) chatDrafts.remove(chatInputChatId);

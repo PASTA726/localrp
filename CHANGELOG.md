@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.6-alpha1 — 2026-11-10 (DeepSeek madde 9b: seçmeli dışa aktarma + geri alınabilir silme)
+
+DeepSeek incelemesinin "yedekleme" kaleminin ikinci bölümü (madde 9b) uygulandı; böylece madde 9 tamamen kapandı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.
+
+- **Seçmeli dışa aktar**: Ayarlar → Veri yedeği → "Seçmeli dışa aktar" — karakter ve sohbet listesini işaretleyip JSON veya ZIP biçimi seçilir; yalnızca seçilenler yazılır. Seçilen sohbetlerin karakterleri tutarlılık için otomatik yazılır. Seçim, SAF dosya seçicisi aktiviteyi yeniden kurarsa bile korunur.
+- **Geri alınabilir silme**:
+  - **Karakter silme** artık 8 saniyelik "silindi — Geri al" çubuğu gösterir; Geri al'a dokunmak karakteri kaydettiği hâliyle geri getirir.
+  - **Sohbet (grup) silme** aynı çubukla geri alınır: grup, geçmişi ve cihazdaki görsel dosyaları; görseller yalnızca süre dolunca/çubuk kapatılınca silinir, böylece geri alma gerçekten çalışır.
+  - Süre dolunca veya başka bir sayfaya geçince silme kalıcılaşır; en fazla bir bekleyen geri alma olur.
+- **Bilinen sınırlar**: geri alma penceresi kapanmadan uygulama tamamen kapanırsa silinmiş sohbetin görsel dosyaları diskte kalabilir (galeriden silinebilir); sohbet geçmişi temizleme düğmesi hâlâ geri alınamaz.
+- versionCode 35 / 0.19.6-alpha1.
+
 ## v0.19.5-alpha1 — 2026-11-09 (DeepSeek madde 9: yedek v2 — medya dahil ZIP)
 
 DeepSeek incelemesinin "yedekleme" kaleminin birinci bölümü (madde 9a) uygulandı. İkinci bölüm (seçmeli dışa aktarma + geri alınabilir silme) sonraki tura kaldı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.

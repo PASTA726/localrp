@@ -131,6 +131,70 @@ public class PersistenceBundleTest {
         assertEquals("farklı", merged.get("g3").get(0).text);
     }
 
+    // ---- selective export (DeepSeek item 9b) ----
+
+    @Test
+    public void selectBundle_keepsChosenChatsAndTheirCharacters() {
+        PersistenceCodec.Bundle source = new PersistenceCodec.Bundle();
+        source.characters.add(character("c1", "Elif"));
+        source.characters.add(character("c2", "Kaan"));
+        source.characters.add(character("c3", "Derin"));
+        Group kept = group("g1");          // references c1 (from group()/default setup)
+        Group dropped = group("g2");
+        dropped.characterIds.clear();
+        dropped.characterIds.add("c2");
+        source.groups.add(kept);
+        source.groups.add(dropped);
+        source.chats.put("g1", new ArrayList<>(java.util.Collections.singletonList(
+                new Message("Elif", "selam", false, 1L))));
+        source.chats.put("g2", new ArrayList<>(java.util.Collections.singletonList(
+                new Message("Kaan", "hoş geldin", false, 2L))));
+
+        // The user explicitly picks only c3; c1 must auto-attach because g1 references
+        // it, and c2 (whose only membership is the dropped g2) must stay out.
+        PersistenceCodec.Bundle selected = PersistenceCodec.selectBundle(
+                source, new java.util.HashSet<>(java.util.Collections.singletonList("c3")),
+                new java.util.HashSet<>(java.util.Collections.singletonList("g1")));
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (CharacterProfile c : selected.characters) ids.add(c.id);
+        assertEquals(new java.util.HashSet<>(java.util.Arrays.asList("c1", "c3")), ids);
+        assertEquals(1, selected.groups.size());
+        assertEquals("g1", selected.groups.get(0).id);
+        assertEquals(1, selected.chats.size());
+        assertTrue(selected.chats.containsKey("g1"));
+    }
+
+    @Test
+    public void selectBundle_autoIncludesCharactersReferencedByChat() {
+        PersistenceCodec.Bundle source = new PersistenceCodec.Bundle();
+        source.characters.add(character("c1", "Elif"));
+        Group kept = group("g1"); // references c1 although the user only picked the chat
+        source.groups.add(kept);
+        source.chats.put("g1", new ArrayList<>());
+
+        PersistenceCodec.Bundle selected = PersistenceCodec.selectBundle(
+                source, new java.util.HashSet<>(),
+                new java.util.HashSet<>(java.util.Collections.singletonList("g1")));
+        assertEquals(1, selected.characters.size());
+        assertEquals("c1", selected.characters.get(0).id);
+        assertEquals(1, selected.groups.size());
+    }
+
+    @Test
+    public void selectBundle_emptySelectionProducesEmptyBundle() {
+        PersistenceCodec.Bundle source = new PersistenceCodec.Bundle();
+        source.characters.add(character("c1", "Elif"));
+        source.groups.add(group("g1"));
+        source.chats.put("g1", new ArrayList<>());
+
+        PersistenceCodec.Bundle selected = PersistenceCodec.selectBundle(
+                source, new java.util.HashSet<>(), new java.util.HashSet<>());
+        assertTrue(selected.characters.isEmpty());
+        assertTrue(selected.groups.isEmpty());
+        assertTrue(selected.chats.isEmpty());
+        assertEquals(source.version, selected.version);
+    }
+
     // ---- backup v2: media markers, SHA-256, version gating ----
 
     @Test

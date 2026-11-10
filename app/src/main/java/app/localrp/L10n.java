@@ -480,9 +480,23 @@ public final class L10n {
         EN.put("Yedek doğrulamadı: sağlama farkı.",
                 "Backup failed verification: checksum mismatch.");
         EN.put(" medya dosyası", " media file(s)");
+
+        // ---- selective export + undoable delete (DeepSeek item 9b)
+        EN.put("Yedek biçimi", "Backup format");
+        EN.put("JSON (küçük, görsellersiz)", "JSON (small, without images)");
+        EN.put("ZIP (görsellerle)", "ZIP (with images)");
+        EN.put("En az bir karakter veya sohbet seç.", "Select at least one character or conversation.");
+        EN.put("Yazılacak bir şey yok", "Nothing to export");
+        EN.put("Önce karakter ya da sohbet oluştur.", "Create a character or conversation first.");
+        EN.put(" silindi.", " was deleted.");
+        EN.put(" geri getirildi.", " was restored.");
+        EN.put("Geri al", "Undo");
+        EN.put("Geri alınamadı: karakter verisi okunamıyor.",
+                "Could not undo: the character data is unreadable.");
+        EN.put("Geri alınamadı: sohbet verisi okunamıyor.",
+                "Could not undo: the conversation data is unreadable.");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
-        EN.put(" silindi.", " deleted.");
         EN.put("Dil Türkçe olarak ayarlandı.", "Language set to Turkish.");
         EN.put("Dosya açılamadı.", "Could not open the file.");
         EN.put("Dosya beklenenden çok büyük.", "The file is larger than expected.");
