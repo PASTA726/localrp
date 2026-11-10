@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.11-alpha1 — 2026-11-10 (DeepSeek madde 14 / A: çevrimiçi sağlayıcı temeli)
+
+Faz 5'in ilk alt turu: **InferenceBackend soyutlaması** — çevrimdışı llama.cpp varsayılan kalır; çevrimiçi zemin bu turda üretime bağlanmaz (sıradaki tur: ayarlar arayüzü + üretim yönlendirmesi). Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; iki tur yapıldı, tüm gerçek bulgular girmeden düzeltildi.
+
+- **GenerationBackend arayüzü**: tüm yanıt üreticileri aynı sözleşmeye bağlanır (onToken/onComplete/onStopped/onError); çift motor (yerel GGUF / çevrimiçi OpenAI-uyumlu) tek akışta yönlendirilecek.
+- **OpenAiCompat istemcisi**: OpenAI-uyumlu `chat/completions` akış (SSE) sınıfı — istek gövdesi, delta ayıklama (akış + non-stream çakışma yanıtı), `[DONE]`, akış-ortası hata parçaları, sağlayıcı hata gövdelerinin okunması ve `stop()` desteği. Saf parçalar (istek gövdesi, SSE ayriştirme, hata mesajı) birim testle düzenlenir.
+- **Güvenlik dayatmaları**: endpoint **yalnızca https** kabul eder; API anahtarı düz bağlantıda sızamaz. Sunucu hatası metni kullanıcıya ham olarak aktarılmaz (URL sıntması engeli): hata yalnızca istisna sınıfıyla özetlenir.
+- **ApiKeyStore**: API anahtarı asla düz metin diskte durmaz — AndroidKeyStore'da üretilen AES/GCM anahtarıyla şifreli tutulur (Base64 iv||şifreli). Keystore kaybolursa "yapılandırılmış" yanıltmaz: yapılandırma denetimi çözümlü anahtara bakar. Anahtar silme (erase) eylemi vardır.
+- **Seçmeceler sisteme dokunmaz**: bu tur hiçbir sohbet/ayar akışını değiştirmez; çevrimdışı davranış birebir korunur.
+- Bilinçli sınırlar: stop() bağlantı penceresi içinde (≤10 sn) kalırsa POST gövdesi gönderilebilir (anahtar, kullanıcının kendi yapılandırdığı noktaya gider); sunucu akışı kapatırsa [DONE] öncesi yanıt tam kabul edilir.
+- versionCode 40 / 0.19.11-alpha1.
+
 ## v0.19.10-alpha1 — 2026-11-10 (DeepSeek madde 12: dünya kitabı / lorebook)
 
 DeepSeek incelemesinin "lorebook" kalemi (madde 12) uygulandı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.

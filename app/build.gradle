@@ -12,8 +12,8 @@ android {
         applicationId 'app.localrp'
         minSdk 33
         targetSdk 36
-        versionCode 39
-        versionName '0.19.10-alpha1'
+        versionCode 40
+        versionName '0.19.11-alpha1'
         ndk {
             abiFilters 'arm64-v8a'
         }
