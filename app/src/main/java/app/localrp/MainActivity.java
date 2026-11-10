@@ -99,6 +99,37 @@ public class MainActivity extends Activity {
 
     private int historyDepth() { return prefs().getInt("history_depth", MAX_HISTORY_MESSAGES); }
     private int historyCharBudget() { return prefs().getInt("history_chars", MAX_HISTORY_CHARS); }
+
+    // ---- per-chat generation profiles (DeepSeek item 7): -1/null keys follow the global setting ----
+
+    /** Per-chat token override key; -1 falls back to the global "max_output_tokens" (always bounded). */
+    private int chatTokenBudget(String groupId) {
+        SharedPreferences prefs = prefs();
+        int override = prefs.getInt("profile_tokens_" + groupId, -1);
+        int value = override == -1 ? prefs.getInt("max_output_tokens", 320) : override;
+        return Math.max(64, Math.min(1024, value));
+    }
+
+    private int chatHistoryDepth(String groupId) {
+        SharedPreferences prefs = prefs();
+        int override = prefs.getInt("profile_depth_" + groupId, -1);
+        int value = override == -1 ? prefs.getInt("history_depth", MAX_HISTORY_MESSAGES) : override;
+        return Math.max(2, Math.min(14, value));
+    }
+
+    /** Profile edits must not yank the engine context from under a live generation. */
+    private boolean chatProfileBusy(Group group) {
+        if (group.id.equals(generatingChatId)) {
+            Toast.makeText(this, L10n.s("Yanıt sürerken profil değiştirilemez; önce durdur."), Toast.LENGTH_SHORT).show();
+            return true;
+        }
+        return false;
+    }
+
+    private String chatThemeId(String groupId) {
+        SharedPreferences prefs = prefs();
+        return prefs.getString("profile_theme_" + groupId, prefs.getString("ai_theme", DEFAULT_AI_THEME));
+    }
     private Store store;
     private LinearLayout content;
     private LinearLayout pageRoot;
@@ -1582,7 +1613,7 @@ public class MainActivity extends Activity {
             prompt = buildRoleplayPrompt(group, speaker, continuation);
         }
         contextChars.put(group.id, contextUsed + prompt.length());
-        int maxTokens = prefs().getInt("max_output_tokens", 320);
+        int maxTokens = chatTokenBudget(group.id);
         LocalAiRuntime.INSTANCE.generate(group.id, prompt, maxTokens, new LocalAiRuntime.GenerationListener() {
             private final StringBuilder response = new StringBuilder();
             /** Last draft-save heartbeat (throttled ≥1.5 s; 0 = save on first token). */
@@ -1753,16 +1784,125 @@ public class MainActivity extends Activity {
 
     private void showChatMenu(Group group) {
         String[] items = {L10n.s("RP ayarları"), L10n.s("AI ayarları"), L10n.s("Sohbette ara"),
-                L10n.s("Sohbet geçmişini temizle"), L10n.s("Sohbet listesine dön")};
+                L10n.s("Üretim profili"), L10n.s("Sohbet geçmişini temizle"), L10n.s("Sohbet listesine dön")};
         AlertDialog dialog = new AlertDialog.Builder(this).setItems(items, (d, which) -> {
             if (which == 0) showGroupEditor(group, () -> openChat(group.id));
             else if (which == 1) openModels(() -> openChat(group.id));
             else if (which == 2) showChatSearch(group);
-            else if (which == 3) clearChat(group);
+            else if (which == 3) showChatProfile(group);
+            else if (which == 4) clearChat(group);
             else showChats();
         }).create();
         tintDialog(dialog);
         dialog.show();
+    }
+
+    /**
+     * Per-chat generation profile (DeepSeek item 7): token budget, history depth and
+     * scene theme may override the global settings for this conversation only.
+     * Anything left on "follow" keeps using the relevant global preference.
+     */
+    private void showChatProfile(Group group) {
+        backAction = () -> openChat(group.id);
+        setPage("Üretim profili", group.name, "chat");
+        SharedPreferences prefs = prefs();
+        String id = group.id;
+        addInfoCard("Sohbet profili", L10n.s("Bu sayfadaki ayarlar yalnızca bu sohbet için geçerlidir. ")
+                + L10n.s("Genel ayarı izleyen öğeler Ayarlar'daki değeri kullanır."), "AI");
+
+        addSection("Yanıt uzunluğu", null, null);
+        boolean tokensOverride = prefs.getInt("profile_tokens_" + id, -1) != -1;
+        addBody((tokensOverride ? L10n.s("Bu sohbet: ") : L10n.s("Genel ayarı izler: "))
+                + chatTokenBudget(id) + L10n.s(" token"));
+        addSlider("Üst sınır (token)", chatTokenBudget(id), 64, 1024, 32,
+                value -> prefs.edit().putInt("profile_tokens_" + id, value).apply(),
+                value -> value + " token");
+        addSecondary("Uzunluğu genel ayara döndür", v -> {
+            prefs.edit().remove("profile_tokens_" + id).apply();
+            showChatProfile(group);
+        });
+
+        addSection("Geçmiş derinliği", null, null);
+        boolean depthOverride = prefs.getInt("profile_depth_" + id, -1) != -1;
+        addBody((depthOverride ? L10n.s("Bu sohbet: ") : L10n.s("Genel ayarı izler: "))
+                + chatHistoryDepth(id) + L10n.s(" mesaj"));
+        addSlider("Geçmiş mesaj sayısı", chatHistoryDepth(id), 2, 14, 1,
+                value -> prefs.edit().putInt("profile_depth_" + id, value).apply(),
+                value -> value + " mesaj");
+        addSecondary("Derinliği genel ayara döndür", v -> {
+            prefs.edit().remove("profile_depth_" + id).apply();
+            showChatProfile(group);
+        });
+
+        addSection("Sahne teması", null, null);
+        boolean themeOverride = prefs.getString("profile_theme_" + id, null) != null;
+        addBody((themeOverride ? L10n.s("Bu sohbet: ") : L10n.s("Genel ayarı izler: "))
+                + aiThemeName(chatThemeId(id)));
+        addSecondary("Bu sohbet için tema seç", v -> showChatThemePicker(group));
+        if (themeOverride) {
+            addSecondary("Temayı genel ayara döndür", v -> {
+                if (chatProfileBusy(group)) return;
+                prefs.edit().remove("profile_theme_" + id).apply();
+                contextChars.remove(id);
+                chatMetrics.remove(id);
+                LocalAiRuntime.INSTANCE.resetConversation(id);
+                showChatProfile(group);
+            });
+        }
+
+        addSection("Profili sıfırla", null, null);
+        addDangerButton("Tüm profili genel ayara döndür", v -> confirm(
+                L10n.s("Bu sohbetin üretim profili sıfırlansın mı?"), L10n.s("Sıfırla"), () -> {
+                    if (chatProfileBusy(group)) return;
+                    prefs.edit().remove("profile_tokens_" + id)
+                            .remove("profile_depth_" + id).remove("profile_theme_" + id).apply();
+                    contextChars.remove(id);
+                    chatMetrics.remove(id);
+                    LocalAiRuntime.INSTANCE.resetConversation(id);
+                    Toast.makeText(this, L10n.s("Profil genel ayara döndü."), Toast.LENGTH_SHORT).show();
+                    showChatProfile(group);
+                }));
+    }
+
+    /** Theme picker scoped to one chat; first row drops the override and follows the global theme. */
+    private void showChatThemePicker(Group group) {
+        SharedPreferences prefs = prefs();
+        String id = group.id;
+        String overrideKey = "profile_theme_" + id;
+        boolean following = prefs.getString(overrideKey, null) == null;
+        String current = chatThemeId(id);
+        String[] labels = new String[AI_THEMES.length + 2];
+        labels[0] = L10n.s("Genel ayarı izler") + " (" + aiThemeName(prefs.getString("ai_theme", DEFAULT_AI_THEME)) + ")"
+                + (following ? "  ✓" : "");
+        for (int i = 0; i < AI_THEMES.length; i++) {
+            labels[i + 1] = L10n.s(AI_THEMES[i][1]) + (!following && AI_THEMES[i][0].equals(current) ? "  ✓" : "");
+        }
+        labels[AI_THEMES.length + 1] = L10n.s("Özel tema") + ("custom".equals(current) && !following ? "  ✓" : "");
+        new AlertDialog.Builder(this).setTitle(L10n.s("AI sahne teması"))
+                .setItems(labels, (dialog, which) -> {
+                    if (chatProfileBusy(group)) return;
+                    if (which == 0) {
+                        if (following) return;
+                        prefs.edit().remove(overrideKey).apply();
+                    } else if (which == AI_THEMES.length + 1) {
+                        if (prefs.getString("ai_theme_custom_instruction", "").isEmpty()) {
+                            // Choosing custom with nothing written behaves like an empty tone hint.
+                            Toast.makeText(this, L10n.s("Özel temayı Ayarlar → AI teması → Özel tema ile yaz."), Toast.LENGTH_LONG).show();
+                        }
+                        prefs.edit().putString(overrideKey, "custom").apply();
+                    } else {
+                        String selectedId = AI_THEMES[which - 1][0];
+                        if (!following && selectedId.equals(current)) return;
+                        prefs.edit().putString(overrideKey, selectedId).apply();
+                        Toast.makeText(this, AI_THEMES[which - 1][1] + L10n.s(" teması seçildi."), Toast.LENGTH_SHORT).show();
+                    }
+                    // A prompt-style change deserves a clean continuation context.
+                    contextChars.remove(id);
+                    chatMetrics.remove(id);
+                    LocalAiRuntime.INSTANCE.resetConversation(id);
+                    showChatProfile(group);
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null).show();
     }
 
     /**
@@ -3980,7 +4120,7 @@ public class MainActivity extends Activity {
         // resolves the Android-backed inputs (store lookups, prefs, engine context flag).
         boolean english = L10n.english;
         String instructions = resolveGeneralInstructions(english);
-        String themeId = prefs().getString("ai_theme", DEFAULT_AI_THEME);
+        String themeId = chatThemeId(group.id);
         String[] persona = store.persona();
         String[] personaText = persona != null ? new String[]{persona[0], persona[1]} : null;
         return RoleplayPrompt.build(
@@ -3994,7 +4134,7 @@ public class MainActivity extends Activity {
                 instructions,
                 aiThemeName(themeId),
                 aiThemeInstruction(themeId),
-                historyDepth(),
+                chatHistoryDepth(group.id),
                 historyCharBudget(),
                 personaText,
                 english);

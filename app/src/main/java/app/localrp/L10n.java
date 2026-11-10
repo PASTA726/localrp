@@ -495,6 +495,25 @@ public final class L10n {
                 "Could not undo: the character data is unreadable.");
         EN.put("Geri alınamadı: sohbet verisi okunamıyor.",
                 "Could not undo: the conversation data is unreadable.");
+
+        // ---- per-chat generation profile (DeepSeek item 7)
+        EN.put("Üretim profili", "Generation profile");
+        EN.put("Bu sohbet: ", "This conversation: ");
+        EN.put("Genel ayarı izler: ", "Follows the global setting: ");
+        EN.put("Genel ayarı izler", "Follows the global setting");
+        EN.put(" token", " tokens");
+        EN.put("Uzunluğu genel ayara döndür", "Return length to the global setting");
+        EN.put("Derinliği genel ayara döndür", "Return depth to the global setting");
+        EN.put("Temayı genel ayara döndür", "Return theme to the global setting");
+        EN.put("Bu sohbet için tema seç", "Pick a theme for this conversation");
+        EN.put("Tüm profili genel ayara döndür", "Reset the whole profile to the global setting");
+        EN.put("Sıfırla", "Reset");
+        EN.put("Profil genel ayara döndü.", "Profile returned to the global setting.");
+        EN.put("Bu sohbetin üretim profili sıfırlansın mı?", "Reset this conversation's generation profile?");
+        EN.put("Yanıt sürerken profil değiştirilemez; önce durdur.",
+                "The profile cannot change while a reply is running; stop it first.");
+        EN.put("Özel temayı Ayarlar → AI teması → Özel tema ile yaz.",
+                "Write the custom theme under Settings → AI theme → Custom theme.");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
         EN.put("Dil Türkçe olarak ayarlandı.", "Language set to Turkish.");
