@@ -1916,17 +1916,100 @@ public class MainActivity extends Activity {
 
     private void showChatMenu(Group group) {
         String[] items = {L10n.s("RP ayarları"), L10n.s("AI ayarları"), L10n.s("Sohbette ara"),
-                L10n.s("Üretim profili"), L10n.s("Sohbet geçmişini temizle"), L10n.s("Sohbet listesine dön")};
+                L10n.s("Üretim profili"), L10n.s("Dünya kitabı"), L10n.s("Sohbet geçmişini temizle"), L10n.s("Sohbet listesine dön")};
         AlertDialog dialog = new AlertDialog.Builder(this).setItems(items, (d, which) -> {
             if (which == 0) showGroupEditor(group, () -> openChat(group.id));
             else if (which == 1) openModels(() -> openChat(group.id));
             else if (which == 2) showChatSearch(group);
             else if (which == 3) showChatProfile(group);
-            else if (which == 4) clearChat(group);
+            else if (which == 4) showLorebook(group);
+            else if (which == 5) clearChat(group);
             else showChats();
         }).create();
         tintDialog(dialog);
         dialog.show();
+    }
+
+    /**
+     * World book page (DeepSeek item 12): per-conversation keyword-triggered facts.
+     * Entries are user-authored; with no matching key they cost nothing in the prompt.
+     */
+    private void showLorebook(Group group) {
+        backAction = () -> openChat(group.id);
+        setPage("Dünya kitabı", group.name, "chat");
+        addInfoCard("Nasıl çalışır?",
+                L10n.s("Her kayıt anahtar kelime(ler) ve bir olgudur. Son 3 mesajda bir anahtar geçerse olgu prompta yazılır; ")
+                        + L10n.s("blok en fazla 900 karakter tutar, anahtar hiç geçmezse yer kaplamaz."), "Lore");
+        List<Lorebook.Entry> entries = store.lore(group.id);
+        if (entries.isEmpty()) {
+            addEmpty("Henüz bilgi yok",
+                    "Dünyanın kalıcı bilgileri: yerler, kurallar, geçmiş olaylar, karakterler.",
+                    "İlk bilgiyi ekle", v -> editLoreEntry(group, -1));
+        } else {
+            addPrimary("＋  Yeni bilgi", v -> editLoreEntry(group, -1));
+            for (int i = 0; i < entries.size(); i++) {
+                Lorebook.Entry entry = entries.get(i);
+                int index = i;
+                LinearLayout card = makeCard();
+                card.setOnClickListener(v -> editLoreEntry(group, index));
+                TextView keys = label(entry.keys, 15, Design.accent());
+                keys.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+                card.addView(keys);
+                TextView fact = label(brief(entry.text), 13, Design.text());
+                fact.setPadding(0, dp(3), 0, 0);
+                card.addView(fact);
+                addCardToPage(card);
+            }
+            addDangerButton("Dünya kitabını temizle", v -> confirm(
+                    group.name + L10n.s(" dünya kitabı girdilerini silinsin mi?"), L10n.s("Sil"), () -> {
+                        store.saveLore(group.id, new ArrayList<>());
+                        showLorebook(group);
+                    }));
+        }
+    }
+
+    /** One lore entry editor; index < 0 creates a new record. */
+    private void editLoreEntry(Group group, int index) {
+        List<Lorebook.Entry> entries = store.lore(group.id);
+        Lorebook.Entry editing = index >= 0 && index < entries.size() ? entries.get(index) : null;
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(22), 0, dp(22), 0);
+        EditText keysField = dialogField(L10n.s("Anahtar kelimeler (virgülle ayır)"));
+        if (editing != null) keysField.setText(editing.keys);
+        form.addView(keysField);
+        EditText textField = dialogField(L10n.s("Olgu (modelin bilmesi gereken bilgi)"));
+        if (editing != null) textField.setText(editing.text);
+        textField.setMinLines(3);
+        form.addView(textField);
+        new AlertDialog.Builder(this)
+                .setTitle(editing != null ? L10n.s("Bilgiyi düzenle") : L10n.s("Yeni bilgi"))
+                .setView(form)
+                .setPositiveButton(L10n.s("Kaydet"), (d, w) -> {
+                    Lorebook.Entry entry = new Lorebook.Entry(
+                            keysField.getText().toString(), textField.getText().toString());
+                    if (entry.keys.isEmpty() || entry.text.isEmpty()) {
+                        Toast.makeText(this, L10n.s("Anahtar kelime ve olgu alanları dolu olmalı."), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (editing != null) entries.set(index, entry);
+                    else entries.add(entry);
+                    if (!store.saveLore(group.id, entries)) {
+                        Toast.makeText(this, L10n.s("Kaydedilemedi: dünya kitabı verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    showLorebook(group);
+                })
+                .setNeutralButton(editing != null ? L10n.s("Sil") : null, (d, w) -> {
+                    entries.remove(index);
+                    if (!store.saveLore(group.id, entries)) {
+                        Toast.makeText(this, L10n.s("Kaydedilemedi: dünya kitabı verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    showLorebook(group);
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .show();
     }
 
     /**
@@ -3754,6 +3837,10 @@ public class MainActivity extends Activity {
         bundle.characters.addAll(store.characters());
         bundle.groups.addAll(groups);
         bundle.chats.putAll(chats);
+        for (Group group : groups) {
+            List<Lorebook.Entry> lore = store.lore(group.id);
+            if (!lore.isEmpty()) bundle.lorebooks.put(group.id, lore);
+        }
         if (pendingExportCharacters != null && pendingExportGroups != null) {
             bundle = PersistenceCodec.selectBundle(bundle, pendingExportCharacters, pendingExportGroups);
         }
@@ -4005,7 +4092,7 @@ public class MainActivity extends Activity {
 
     /** Restores a decoded bundle and reports the outcome on the UI thread (both import paths share this). */
     private void applyImportedBundle(PersistenceCodec.Bundle bundle) {
-        final boolean restored = store.restoreBundle(bundle.characters, bundle.groups, bundle.chats);
+        final boolean restored = store.restoreBundle(bundle.characters, bundle.groups, bundle.chats, bundle.lorebooks);
         runOnUiThread(() -> {
             if (!restored) {
                 Toast.makeText(this, L10n.s("Geri yükleme yapılamadı: mevcut veriler okunamıyor."), Toast.LENGTH_LONG).show();
@@ -4356,7 +4443,8 @@ public class MainActivity extends Activity {
                 chatHistoryDepth(group.id),
                 historyCharBudget(),
                 personaText,
-                english);
+                english,
+                store.lore(group.id));
     }
 
     /** General AI instruction: shipped default (chosen by language) or the user's custom text. */

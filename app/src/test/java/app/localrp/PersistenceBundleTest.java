@@ -195,6 +195,51 @@ public class PersistenceBundleTest {
         assertEquals(source.version, selected.version);
     }
 
+    @Test
+    public void selectBundle_reducesWorldBookToKeptGroups() {
+        PersistenceCodec.Bundle source = new PersistenceCodec.Bundle();
+        source.groups.add(group("g1"));
+        source.groups.add(group("g2"));
+        source.chats.put("g1", new ArrayList<>());
+        source.chats.put("g2", new ArrayList<>());
+        List<Lorebook.Entry> keptLore = new ArrayList<>();
+        keptLore.add(new Lorebook.Entry("kız kulesi", "efsanenin merkezi"));
+        List<Lorebook.Entry> droppedLore = new ArrayList<>();
+        droppedLore.add(new Lorebook.Entry("kral", "kuzeyin kadim yöneticisi"));
+        source.lorebooks.put("g1", keptLore);
+        source.lorebooks.put("g2", droppedLore);
+
+        PersistenceCodec.Bundle selected = PersistenceCodec.selectBundle(
+                source, new java.util.HashSet<>(),
+                new java.util.HashSet<>(java.util.Collections.singletonList("g1")));
+        assertEquals(1, selected.lorebooks.size());
+        assertEquals("efsanenin merkezi", selected.lorebooks.get("g1").get(0).text);
+        assertFalse(selected.lorebooks.containsKey("g2"));
+    }
+
+    @Test
+    public void bundle_roundTripsWorldBookEntries() {
+        PersistenceCodec.Bundle source = new PersistenceCodec.Bundle();
+        source.characters.add(character("c1", "Elif"));
+        source.groups.add(group("g1"));
+        source.chats.put("g1", new ArrayList<>());
+        List<Lorebook.Entry> lore = new ArrayList<>();
+        lore.add(new Lorebook.Entry("kız kulesi, fener", "Kulede bir bekçi yaşar."));
+        source.lorebooks.put("g1", lore);
+
+        PersistenceCodec.Bundle decoded = PersistenceCodec.decodeBundle(
+                PersistenceCodec.encodeBundle(source));
+        assertEquals(1, decoded.lorebooks.get("g1").size());
+        assertEquals("Kulede bir bekçi yaşar.", decoded.lorebooks.get("g1").get(0).text);
+
+        // A lore-less bundle keeps decoding cleanly and simply reads back with no book.
+        PersistenceCodec.Bundle plain = new PersistenceCodec.Bundle();
+        plain.groups.add(group("g2"));
+        PersistenceCodec.Bundle plainDecoded = PersistenceCodec.decodeBundle(
+                PersistenceCodec.encodeBundle(plain));
+        assertTrue(plainDecoded.lorebooks.isEmpty());
+    }
+
     // ---- backup v2: media markers, SHA-256, version gating ----
 
     @Test

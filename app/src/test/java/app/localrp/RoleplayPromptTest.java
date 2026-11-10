@@ -110,6 +110,47 @@ public class RoleplayPromptTest {
     }
 
     @Test
+    public void lorebook_injectsOnlyTriggeredEntriesOnFreshScenes() {
+        Map<String, CharacterProfile> registry = new HashMap<>();
+        registry.put("spk", speaker("Elif"));
+        List<Lorebook.Entry> lore = new ArrayList<>();
+        lore.add(new Lorebook.Entry("kız kulesi", "Kulenin feneri geceleri yeşil yanar."));
+        lore.add(new Lorebook.Entry("ejder", "Buz ejderi yalnızca kuzey dağlarında uyanır."));
+
+        // Fresh turn mentioning the tower: only the tower fact ships.
+        List<Message> mentioning = new ArrayList<>();
+        mentioning.add(new Message("Elif", "Bugün kız kulesi'ne yanaştık.", false, 3L));
+        String prompt = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                mentioning, false, false, "", "", "", 8, 2600, null, false, lore);
+        assertTrue(prompt.contains("Dünya kitabı"));
+        assertTrue(prompt.contains("Kulenin feneri geceleri yeşil yanar."));
+        assertFalse(prompt.contains("Buz ejderi yalnızca"));
+
+        // No keyword match anywhere → no world book line at all.
+        String silent = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), false, false, "", "", "", 8, 2600, null, false, lore);
+        assertFalse(silent.contains("Dünya kitabı"));
+    }
+
+    @Test
+    public void lorebook_isSkippedOnContinuingTurns() {
+        // The engine's saved context already carries the world book from the fresh build;
+        // continuing turns must not duplicate it.
+        Map<String, CharacterProfile> registry = new HashMap<>();
+        registry.put("spk", speaker("Elif"));
+        List<Message> mentioning = new ArrayList<>();
+        mentioning.add(new Message("Elif", "kız kulesi", false, 3L));
+        List<Lorebook.Entry> lore = new ArrayList<>();
+        lore.add(new Lorebook.Entry("kız kulesi", "Fener yeşil yanar."));
+        String prompt = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                mentioning, true, false, "", "", "", 8, 2600, null, true, lore);
+        assertFalse(prompt.contains("World book"));
+    }
+
+    @Test
     public void englishMode_assemblesEnglishPromptWithUserReplyRule() {
         Map<String, CharacterProfile> registry = new HashMap<>();
         registry.put("spk", speaker("Elif"));

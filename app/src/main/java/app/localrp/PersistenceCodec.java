@@ -311,6 +311,8 @@ final class PersistenceCodec {
         final List<CharacterProfile> characters = new ArrayList<>();
         final List<Group> groups = new ArrayList<>();
         final java.util.Map<String, List<Message>> chats = new java.util.HashMap<>();
+        /** World book (DeepSeek item 12): per-group lore entries, optional in both versions. */
+        final java.util.Map<String, List<Lorebook.Entry>> lorebooks = new java.util.HashMap<>();
     }
 
     // ---- media markers (backup v2) ----
@@ -445,6 +447,12 @@ final class PersistenceCodec {
                 chats.put(entry.getKey(), messages);
             }
             root.put("chats", chats);
+            JSONObject loreRoot = new JSONObject();
+            for (java.util.Map.Entry<String, List<Lorebook.Entry>> entry : bundle.lorebooks.entrySet()) {
+                if (entry.getValue() == null || entry.getValue().isEmpty()) continue;
+                loreRoot.put(entry.getKey(), new JSONArray(Lorebook.encode(entry.getValue())));
+            }
+            root.put("lore", loreRoot);
             return root.toString();
         } catch (JSONException e) {
             return "";
@@ -510,6 +518,16 @@ final class PersistenceCodec {
                     bundle.chats.put(groupId, list);
                 }
             }
+            JSONObject loreRoot = root.optJSONObject("lore");
+            if (loreRoot != null) {
+                java.util.Iterator<String> loreKeys = loreRoot.keys();
+                while (loreKeys.hasNext()) {
+                    String groupId = loreKeys.next();
+                    JSONArray entries = loreRoot.optJSONArray(groupId);
+                    if (entries == null) continue;
+                    bundle.lorebooks.put(groupId, Lorebook.decode(entries.toString()));
+                }
+            }
             return bundle;
         } catch (JSONException broken) {
             return null;
@@ -537,6 +555,9 @@ final class PersistenceCodec {
         }
         for (java.util.Map.Entry<String, List<Message>> entry : source.chats.entrySet()) {
             if (groupIds.contains(entry.getKey())) selected.chats.put(entry.getKey(), entry.getValue());
+        }
+        for (java.util.Map.Entry<String, List<Lorebook.Entry>> entry : source.lorebooks.entrySet()) {
+            if (groupIds.contains(entry.getKey())) selected.lorebooks.put(entry.getKey(), entry.getValue());
         }
         return selected;
     }
