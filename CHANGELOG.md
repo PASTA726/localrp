@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.7-alpha1 — 2026-11-10 (DeepSeek madde 7: sohbet başına üretim profili)
+
+DeepSeek incelemesinin "sohbet başına üretim profili" kalemi (madde 7) uygulandı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.
+
+- **Üretim profili**: sohbet menüsünde yeni "Üretim profili" öğesi. Bu ekranda üç ayar sohbet özeline alınır; bir değer override olursa yalnız bu sohbette yazılır, diğer sohbetlerde genel ayar aynen sürer:
+  - **Yanıt uzunluğu** (64–1024 token) — genel "max_output_tokens" yerine sohbet özeli yazılır.
+  - **Geçmiş derinliği** (2–14 mesaj) — genel "history_depth" yerine sohbet özeli yazılır.
+  - **Sahne teması** — genel "ai_theme" yerine sohbet özeli yazılır; genel "özel tema" tanımı da bu sohbet için seçilebilir.
+- Her ayar için tek tek "genel ayara döndür" düğmeleri ve profili tümüyle sıfırlayan onaylı bir "Profili sıfırla" eylemi var. Tema değişikliği/geri dönüşü ve profil sıfırlama o sohbetin motor bağlamını temizler; bu değişiklikler o sohbette yanıt sürerken engellenir.
+- Ayarlar'daki genel motor tercihlerine dokunulmaz; bellek modeli ve tema sistemi aynı kalır.
+- versionCode 36 / 0.19.7-alpha1.
+
 ## v0.19.6-alpha1 — 2026-11-10 (DeepSeek madde 9b: seçmeli dışa aktarma + geri alınabilir silme)
 
 DeepSeek incelemesinin "yedekleme" kaleminin ikinci bölümü (madde 9b) uygulandı; böylece madde 9 tamamen kapandı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.
