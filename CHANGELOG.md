@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.9-alpha1 — 2026-11-10 (DeepSeek madde 13: ilk kurulum akışı — dil → model → ilk karakter)
+
+DeepSeek incelemesinin "onboarding" kalemi (madde 13) uygulandı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.
+
+- **İlk kurulum akışı**: yeni kurulum (hiç verisi olmayan) ilk açılışta üç adımlı bir akışla karşılanır; verisi olan tüm kullanıcılar bu akışı asla görmez:
+  1. **Dil**: Türkçe / English seçimi anında uygulanır; seçim, model prompt dilini de belirler.
+  2. **Model**: cihazdaki kayıtlı model kopyalarına dokunarak yükleme (fizibilite etiketiyle), model kataloğunu açma ya da atlayıp sonradan Ayarlar'dan tamamlama. Yükleme tamamlanınca sayfa durumu otomatik güncellenir.
+  3. **İlk karakter**: ad + tanıtım + kişilik formu veya hazır karakterlerden alanları dolduran tek dokunuş; "Oluştur ve başla" ile ana ekrana inilir.
+- Akış tamamlandığında `onboarding_done` işaretlenir; adım adım geri gitme (‹) desteklenir.
+- versionCode 38 / 0.19.9-alpha1.
+
 ## v0.19.8-alpha1 — 2026-11-10 (DeepSeek madde 11: model profilleri + fizibilite + açılışta otomatik yükleme)
 
 DeepSeek incelemesinin "model profilleri" kalemi (madde 11) uygulandı. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; bulgular sürüm girmeden düzeltildi.
