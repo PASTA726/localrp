@@ -516,6 +516,31 @@ final class PersistenceCodec {
         }
     }
 
+    /**
+     * Selective export: reduces a full bundle to the chosen groups and characters.
+     * Characters referenced by a chosen group always travel too, so restored chats
+     * stay coherent; transcript entries outside the kept groups are dropped.
+     */
+    static Bundle selectBundle(Bundle source, java.util.Set<String> characterIds, java.util.Set<String> groupIds) {
+        Bundle selected = new Bundle();
+        selected.version = source.version;
+        selected.avatarsRoot = source.avatarsRoot;
+        selected.imagesRoot = source.imagesRoot;
+        java.util.Set<String> wanted = new java.util.HashSet<>(characterIds);
+        for (Group g : source.groups) {
+            if (!groupIds.contains(g.id)) continue;
+            selected.groups.add(g);
+            wanted.addAll(g.characterIds);
+        }
+        for (CharacterProfile c : source.characters) {
+            if (wanted.contains(c.id)) selected.characters.add(c);
+        }
+        for (java.util.Map.Entry<String, List<Message>> entry : source.chats.entrySet()) {
+            if (groupIds.contains(entry.getKey())) selected.chats.put(entry.getKey(), entry.getValue());
+        }
+        return selected;
+    }
+
     /** Insert-or-update over a stored list, matching on the id field. */
     static List<CharacterProfile> mergeCharacters(List<CharacterProfile> stored, List<CharacterProfile> imported) {
         List<CharacterProfile> merged = new ArrayList<>(stored);

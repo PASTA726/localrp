@@ -185,6 +185,13 @@ class Store {
         writeMessages(id, updated);
     }
 
+    /** Wholesale transcript replace (undo-restore path); refuses to clobber corrupt payloads. */
+    boolean replaceMessages(String groupId, List<Message> transcript) {
+        String raw = preferences.getString("chat_" + groupId, null);
+        if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("chat_" + groupId); return false; }
+        return writeMessages(groupId, transcript);
+    }
+
     /** Replaces one stored message's text (speaker/reader/image/timestamp preserved). */
     boolean updateMessage(String id, int index, String newText) {
         String raw = preferences.getString("chat_" + id, null);
