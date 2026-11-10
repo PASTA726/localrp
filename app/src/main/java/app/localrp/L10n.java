@@ -531,6 +531,21 @@ public final class L10n {
         EN.put("Açılışta otomatik yükleme kapatıldı.", "Auto-load at launch turned off.");
         EN.put(" açılışta otomatik yüklenecek.", " will load automatically at launch.");
         EN.put("Açılışta otomatik yükleniyor…", "Auto-loading at launch…");
+
+        // ---- first-launch onboarding (DeepSeek item 13)
+        EN.put("İleri: model seçimi", "Next: pick a model");
+        EN.put("Yükleme bitince bu sayfa güncellenir; beklemek zorunda değilsin.",
+                "This page refreshes when loading finishes; you do not have to wait.");
+        EN.put("Model yüklü; sohbetler internet olmadan da sürer.",
+                "The model is loaded; conversations run without internet too.");
+        EN.put("Model seçmezsen karakterler ve sohbetler yine kaydedilir; ancak yanıt üretimi için bir model yüklemelisin.",
+                "Without a model, characters and conversations are still saved; but you must load a model before replies can be generated.");
+        EN.put("Bu adımı istediğin zaman Ayarlar → Model yönetimi'nden tamamlayabilirsin.",
+                "You can finish this step later under Settings → Model management.");
+        EN.put("Karakterler, sohbetleri yönlendiren profillerdir; her şeyi sonra düzenleyebilirsin.",
+                "Characters are profiles that steer conversations; everything can be edited later.");
+        EN.put("En az bir isim yaz veya hazır bir karakter seç.",
+                "Write at least a name or pick a preset character.");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
         EN.put("Dil Türkçe olarak ayarlandı.", "Language set to Turkish.");

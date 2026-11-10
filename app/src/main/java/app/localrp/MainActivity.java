@@ -255,7 +255,7 @@ public class MainActivity extends Activity {
         if (LocalAiRuntime.INSTANCE.isModelReady()) modelStatus = "Hazır · bu işlem için internet gerekmez";
         else if (LocalAiRuntime.INSTANCE.isModelLoading()) modelStatus = "Model yükleniyor…";
         else if (selectedModel != null) modelStatus = "Seçildi · yüklemeye hazır";
-        showHome();
+        if (shouldShowOnboarding()) showOnboarding(); else showHome();
         // Auto-load the pinned model a tick after the first frame so the UI is alive
         // before any long JNI work starts (DeepSeek item 11).
         new android.os.Handler(android.os.Looper.getMainLooper()).post(this::maybeAutoLoadModelAtStartup);
@@ -296,6 +296,135 @@ public class MainActivity extends Activity {
         List<CharacterProfile> characters = store.characters();
         if (characters.isEmpty()) addEmpty("Hikâyene karakter ekle", "Kişiliğini ve konuşma tarzını birlikte tanımla.", "＋  Karakter oluştur", v -> showCharacterEditor(null));
         else addCharacterGrid(characters);
+    }
+
+    // ---- first-launch onboarding (DeepSeek item 13): dil → model → ilk karakter ----
+
+    /** True only while the three-step guided setup is on screen. */
+    private boolean onboardingActive;
+
+    /**
+     * Which step is currently rendered ("intro"/"model"/"character"). Long model loads
+     * finish asynchronously and may land after the user has moved on — the callbacks
+     * must only refresh the model step, never yank the user backwards.
+     */
+    private String onboardingStep = "intro";
+
+    /** A brand-new install (no data and no completion marker) enters the guided setup;
+     * existing users with any saved data are never interrupted by onboarding. */
+    private boolean shouldShowOnboarding() {
+        SharedPreferences prefs = prefs();
+        return !prefs.getBoolean("onboarding_done", false)
+                && store.characters().isEmpty() && store.groups().isEmpty();
+    }
+
+    /** Step 1 — welcome + app/UI/prompt language. */
+    private void showOnboarding() {
+        onboardingActive = true;
+        visibleChatId = null;
+        backAction = null;
+        onboardingStep = "intro";
+        SharedPreferences prefs = prefs();
+        setPage("LocalRP'ye hoş geldin", "Yerel, çevrimdışı yapay zekâ ile rol yapma", "home");
+        addInfoCard("Tamamen senin cihazında",
+                L10n.s("Karakterler, sohbetler ve model dosyaları yalnızca bu telefonda kalır; ")
+                        + L10n.s("hiçbir sohbet verisi otomatik olarak gönderilmez."), "Gizlilik");
+        addSection("Dil", "Uygulama ve yanıt dili", null);
+        addSecondary(L10n.s("Türkçe") + (prefs.getString("app_language", "tr").equals("tr") ? "  ✓" : ""),
+                v -> pickOnboardingLanguage("tr"));
+        addSecondary("English (recommended: better RP)"
+                + (prefs.getString("app_language", "tr").equals("en") ? "  ✓" : ""),
+                v -> pickOnboardingLanguage("en"));
+        addPrimary(L10n.s("İleri: model seçimi"), v -> showOnboardingModel());
+    }
+
+    /** Language switch inside onboarding: must re-render the step, not the settings page. */
+    private void pickOnboardingLanguage(String language) {
+        prefs().edit().putString("app_language", language).apply();
+        L10n.refresh(language);
+        contextChars.clear();
+        showOnboarding();
+    }
+
+    /** Step 2 — model: load a stored copy, browse the catalog, or skip for now. */
+    private void showOnboardingModel() {
+        visibleChatId = null;
+        backAction = this::showOnboarding;
+        onboardingStep = "model";
+        setPage("Model seçimi", "Yanıtlar, telefonda çalışan GGUF modeliyle üretilir", "home");
+        if (modelLoading) {
+            addInfoCard("Model yükleniyor…", modelStatus, "GGUF");
+            addBody(L10n.s("Yükleme bitince bu sayfa güncellenir; beklemek zorunda değilsin."));
+        } else if (LocalAiRuntime.INSTANCE.isModelReady()) {
+            addInfoCard("Model hazır", modelStatus, "GGUF");
+            addBody(L10n.s("Model yüklü; sohbetler internet olmadan da sürer."));
+        } else {
+            addInfoCard("Model yok (henüz)", modelStatus, "GGUF");
+            addBody(L10n.s("Model seçmezsen karakterler ve sohbetler yine kaydedilir; ")
+                    + L10n.s("ancak yanıt üretimi için bir model yüklemelisin."));
+        }
+        List<File> storedModels = LocalAiRuntime.INSTANCE.storedModels(this);
+        if (!storedModels.isEmpty()) {
+            addSection("Cihazdaki model kopyaları", "Dokun: yükle", null);
+            for (File file : storedModels) {
+                int verdict = fitVerdict(file.length());
+                String verdictTag = verdict < 0 ? ""
+                        : verdict == 0 ? L10n.s("  ·  sığar")
+                        : verdict == 1 ? L10n.s("  ·  sınırda")
+                        : L10n.s("  ·  zor");
+                addSecondary(file.getName() + "  ·  " + humanSize(file.length()) + verdictTag,
+                        v -> loadStoredModelFile(file));
+            }
+        }
+        addPrimary(L10n.s("Model önerilerini gör ve indir"), v -> showModelCatalog());
+        addSecondary(L10n.s("İleri: ilk karakter"), v -> showOnboardingCharacter());
+        addBody(L10n.s("Bu adımı istediğin zaman Ayarlar → Model yönetimi'nden tamamlayabilirsin."));
+    }
+
+    /** Step 3 — first character: a short form or a one-tap preset fill. */
+    private void showOnboardingCharacter() {
+        visibleChatId = null;
+        backAction = this::showOnboardingModel;
+        onboardingStep = "character";
+        setPage("İlk karakter", "Kimliği adı kadar kişiliği çizer", "home");
+        addBody(L10n.s("Karakterler, sohbetleri yönlendiren profillerdir; her şeyi sonra düzenleyebilirsin."));
+        EditText nameField = field("Adı", "", 1);
+        nameField.setSingleLine(true);
+        EditText descriptionField = field("Kısa tanıtım (hikâyedeki yeri, dünyası)", "", 3);
+        EditText personalityField = field("Kişilik ve konuşma tarzı (isteğe bağlı)", "", 2);
+        addSection("Hazır karakterler", "Dokun: alanları doldurur", null);
+        for (PresetCharacters.Preset preset : PresetCharacters.PRESETS) {
+            addSecondary(preset.name, v -> {
+                nameField.setText(preset.name);
+                descriptionField.setText(preset.description);
+                personalityField.setText(preset.personality);
+            });
+        }
+        addPrimary(L10n.s("Karakteri oluştur ve başla"), v -> {
+            String name = nameField.getText().toString().trim();
+            if (name.isEmpty()) {
+                Toast.makeText(this, L10n.s("En az bir isim yaz veya hazır bir karakter seç."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            CharacterProfile created = new CharacterProfile();
+            created.name = name;
+            created.description = descriptionField.getText().toString().trim();
+            created.personality = personalityField.getText().toString().trim();
+            if (!store.saveCharacter(created)) {
+                Toast.makeText(this, L10n.s("Karakter kaydedilemedi: verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                return;
+            }
+            Toast.makeText(this, created.name + L10n.s(" eklendi."), Toast.LENGTH_SHORT).show();
+            finishOnboarding();
+        });
+        addSecondary(L10n.s("Atla (karakterleri sonra eklerim)"), v -> finishOnboarding());
+    }
+
+    /** Marks the guided setup complete and lands on the home screen. */
+    private void finishOnboarding() {
+        prefs().edit().putBoolean("onboarding_done", true).apply();
+        onboardingActive = false;
+        showHome();
     }
 
     private void showCharacters() {
@@ -2430,7 +2559,9 @@ public class MainActivity extends Activity {
 
     private void showModelCatalog() {
         visibleChatId = null;
-        backAction = this::showModels;
+        // During the guided first-launch flow the catalog must step back into it
+        // instead of dropping the user onto the settings page (DeepSeek item 13).
+        backAction = onboardingActive ? this::showOnboardingModel : this::showModels;
         setPage("Model önerileri", "CPU ve GPU dengelerine göre GGUF seç ve indir", "settings");
         addDeviceCard();
         addSegmentedCatalog();
@@ -3094,6 +3225,7 @@ public class MainActivity extends Activity {
                 chatMetrics.clear();
                 modelStatus = L10n.s("Hazır · ") + humanSize(bytes) + L10n.s(" · çevrimdışı");
                 if ("settings".equals(currentTab)) showModels();
+                else if (onboardingActive && "model".equals(onboardingStep)) showOnboardingModel();
                 Toast.makeText(MainActivity.this, fileName + L10n.s(" yüklendi."), Toast.LENGTH_SHORT).show();
             }
             @Override public void onError(String message) {
@@ -3101,6 +3233,7 @@ public class MainActivity extends Activity {
                 modelLoading = false;
                 modelStatus = L10n.s("Yüklenemedi: ") + message;
                 if ("settings".equals(currentTab)) showModels();
+                else if (onboardingActive && "model".equals(onboardingStep)) showOnboardingModel();
                 new AlertDialog.Builder(MainActivity.this).setTitle(L10n.s("Model yüklenemedi"))
                         .setMessage(message).setPositiveButton(L10n.s("Tamam"), null).show();
             }
