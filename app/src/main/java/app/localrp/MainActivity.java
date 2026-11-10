@@ -140,6 +140,8 @@ public class MainActivity extends Activity {
     private String modelStatus = "Model seçilmedi";
     private String visibleChatId;
     private String generatingChatId;
+    /** Active online provider client for the current turn (stop path); null offline. */
+    private OpenAiCompat providerClient;
     private String generatingSpeaker;
     private long generationSequence;
     private boolean modelLoading;
@@ -978,6 +980,11 @@ public class MainActivity extends Activity {
     }
 
     private String chatSubtitle(Group group) {
+        if (providerReady()) {
+            // Provider-enabled routing always shows what the user opted into, even when
+            // a local model also sits loaded (it wins nothing while the provider is on).
+            return L10n.s("Online sağlayıcı · veri açık onayınla gider");
+        }
         if (!LocalAiRuntime.INSTANCE.isModelReady()) {
             if (LocalAiRuntime.INSTANCE.loadedModelPath() != null) {
                 return L10n.s("Model yeniden hazırlanacak · çevrimdışı");
@@ -988,7 +995,29 @@ public class MainActivity extends Activity {
     }
 
     private boolean modelCanRespond() {
-        return LocalAiRuntime.INSTANCE.isModelReady() || LocalAiRuntime.INSTANCE.loadedModelPath() != null;
+        // Offline llama.cpp is the default; an explicitly enabled, fully configured
+        // provider also counts as able to respond (DeepSeek item 14/B).
+        return LocalAiRuntime.INSTANCE.isModelReady() || LocalAiRuntime.INSTANCE.loadedModelPath() != null
+                || providerReady();
+    }
+
+    /** True only when the user explicitly enabled a complete, valid provider config. */
+    private boolean providerReady() {
+        if (!prefs().getBoolean("provider_enabled", false)) return false;
+        if (!ApiKeyStore.INSTANCE.isConfigured(this)) return false;
+        return OpenAiCompat.allowsEndpoint(providerEndpoint()) && !providerModel().isEmpty();
+    }
+
+    private String providerEndpoint() {
+        return prefs().getString("provider_endpoint", "").trim();
+    }
+
+    private String providerModel() {
+        return prefs().getString("provider_model", "").trim();
+    }
+
+    private int providerTurnDepth() {
+        return Math.max(2, Math.min(20, prefs().getInt("provider_history_depth", 8)));
     }
 
     private void buildChatComposer(Group group) {
@@ -1117,7 +1146,10 @@ public class MainActivity extends Activity {
         action.setTextColor(Design.onAccent());
         action.setBackground(rounded(Design.accent(), Design.accent(), 30));
         action.setOnClickListener(v -> {
-            if (generatingChatId != null) LocalAiRuntime.INSTANCE.stopGeneration();
+            if (generatingChatId != null) {
+                LocalAiRuntime.INSTANCE.stopGeneration();
+                if (providerClient != null) providerClient.stop(); // online turn: cut the SSE stream too
+            }
             else if (LocalImageEngine.INSTANCE.isGenerating()) LocalImageEngine.INSTANCE.stopGeneration();
             else sendMessage(group, input);
         });
@@ -1667,8 +1699,9 @@ public class MainActivity extends Activity {
     }
 
     private void maybeAutoGenerate(Group group) {
-        if (!LocalAiRuntime.INSTANCE.isModelReady() || generatingChatId != null) return;
+        if (generatingChatId != null) return;
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading() || LocalAiRuntime.INSTANCE.isBenchmarking()) return;
+        if (!modelCanRespond()) return;
         if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) return;
         List<Message> history = store.messages(group.id);
         if (history.isEmpty() || !history.get(history.size() - 1).user) return;
@@ -1677,7 +1710,7 @@ public class MainActivity extends Activity {
         CharacterProfile speaker = chooseSpeaker(group, history.get(history.size() - 1).text);
         if (speaker == null) return;
         content.post(() -> {
-            if (group.id.equals(visibleChatId) && generatingChatId == null && LocalAiRuntime.INSTANCE.isModelReady()) {
+            if (group.id.equals(visibleChatId) && generatingChatId == null && modelCanRespond()) {
                 beginGeneration(group, speaker);
             }
         });
@@ -1734,24 +1767,85 @@ public class MainActivity extends Activity {
         generationViews.put(group.id, initialView);
         scrollChatToBottom(true);
 
-        String prompt = buildRoleplayPrompt(group, speaker, continuation);
-        boolean freshContext = !LocalAiRuntime.INSTANCE.hasConversation(group.id);
-        int contextBudget = LocalAiRuntime.INSTANCE.contextCharBudget();
-        long contextUsed = freshContext ? 0L : Math.max(0L, contextChars.getOrDefault(group.id, 0L));
-        if (!freshContext && contextUsed + prompt.length() > contextBudget) {
-            // Keep the model's native context bounded; rebuild from stored recent history.
-            LocalAiRuntime.INSTANCE.resetConversation(group.id);
-            contextUsed = 0L;
-            prompt = buildRoleplayPrompt(group, speaker, continuation);
-        }
-        contextChars.put(group.id, contextUsed + prompt.length());
+        List<OpenAiCompat.Turn> providerTurns = null;
         int maxTokens = chatTokenBudget(group.id);
-        LocalAiRuntime.INSTANCE.generate(group.id, prompt, maxTokens, new LocalAiRuntime.GenerationListener() {
-            private final StringBuilder response = new StringBuilder();
-            /** Last draft-save heartbeat (throttled ≥1.5 s; 0 = save on first token). */
-            private long lastDraftSave;
+        if (providerReady()) {
+            // Opt-in online engine (DeepSeek item 14/B): the scene identity ships as one
+            // system prompt, history as real chat turns; engine context bookkeeping (the
+            // llama.cpp shared-context budget) does not apply here.
+            providerTurns = buildProviderTurns(group, speaker, continuation);
+            providerClient = null;
+        } else {
+            String prompt = buildRoleplayPrompt(group, speaker, continuation);
+            boolean freshContext = !LocalAiRuntime.INSTANCE.hasConversation(group.id);
+            int contextBudget = LocalAiRuntime.INSTANCE.contextCharBudget();
+            long contextUsed = freshContext ? 0L : Math.max(0L, contextChars.getOrDefault(group.id, 0L));
+            if (!freshContext && contextUsed + prompt.length() > contextBudget) {
+                // Keep the model's native context bounded; rebuild from stored recent history.
+                LocalAiRuntime.INSTANCE.resetConversation(group.id);
+                contextUsed = 0L;
+                prompt = buildRoleplayPrompt(group, speaker, continuation);
+            }
+            contextChars.put(group.id, contextUsed + prompt.length());
+            LocalAiRuntime.INSTANCE.generate(group.id, prompt, maxTokens, pipe(group, speaker, startedAt, thisGeneration));
+        }
+        if (providerTurns != null) {
+            OpenAiCompat client = new OpenAiCompat(providerEndpoint(),
+                    ApiKeyStore.INSTANCE.load(this), providerModel());
+            final GenerationBackend.Listener real = pipe(group, speaker, startedAt, thisGeneration);
+            // Provider callbacks arrive on the client's reader thread (review finding);
+            // every UI touch is forwarded to the main thread like LocalAiRuntime does.
+            client.stream(providerTurns, maxTokens, new GenerationBackend.Listener() {
+                @Override public void onToken(String token) {
+                    runOnUiThread(() -> real.onToken(token));
+                }
+                @Override public void onComplete() {
+                    runOnUiThread(real::onComplete);
+                }
+                @Override public void onStopped() {
+                    runOnUiThread(real::onStopped);
+                }
+                @Override public void onError(String message) {
+                    runOnUiThread(() -> real.onError(message));
+                }
+            });
+            providerClient = client;
+        }
+    }
 
-            private void finish(boolean stopped, String error) {
+    /**
+     * Shared turn plumbing for both engines (DeepSeek item 14/B): the same bookkeeping —
+     * balloon rendering, throttled draft saves, message persistence, chain continuation,
+     * error dialogs — used to live as an anonymous listener inside beginGeneration; the
+     * online provider reuses it verbatim.
+     */
+    private GenerationPipe pipe(Group group, CharacterProfile speaker, long startedAt, long thisGeneration) {
+        return new GenerationPipe(group, speaker, startedAt, thisGeneration);
+    }
+
+    private final class GenerationPipe implements LocalAiRuntime.GenerationListener, GenerationBackend.Listener {
+        private final Group group;
+        private final CharacterProfile speaker;
+        private final long startedAt;
+        private final long thisGeneration;
+        private final StringBuilder response = new StringBuilder();
+        /** Last draft-save heartbeat (throttled ≥1.5 s; 0 = save on first token). */
+        private long lastDraftSave;
+        /** The terminal callback ran already (double-finish guard). */
+        private boolean finishedGeneration;
+
+        GenerationPipe(Group group, CharacterProfile speaker, long startedAt, long thisGeneration) {
+            this.group = group;
+            this.speaker = speaker;
+            this.startedAt = startedAt;
+            this.thisGeneration = thisGeneration;
+        }
+
+        private void finish(boolean stopped, String error) {
+                // Terminal callbacks must run once: the client terminates on one path, but
+                // a late stop-race must never re-save or re-render the turn (review finding).
+                if (finishedGeneration) return;
+                finishedGeneration = true;
                 String finalText = cleanResponse(response.toString(), speaker.name);
                 TextView displayedResponse = generationViews.remove(group.id);
                 clearGenerationDraft(group.id);
@@ -1773,6 +1867,7 @@ public class MainActivity extends Activity {
                 if (thisGeneration != generationSequence) return;
                 generatingChatId = null;
                 generatingSpeaker = null;
+                providerClient = null;
                 Group visible = visibleChatId == null ? null : store.group(visibleChatId);
                 if (visible != null) updateChatControls(visible);
                 if (group.id.equals(visibleChatId) && chatStatusView != null) {
@@ -1807,6 +1902,7 @@ public class MainActivity extends Activity {
             }
 
             @Override public void onToken(String token) {
+                if (finishedGeneration) return;
                 response.append(token);
                 contextChars.put(group.id, contextChars.getOrDefault(group.id, 0L) + token.length());
                 // Draft persistence (task G0 crash case + G11), rate-limited for B1: the full
@@ -1838,14 +1934,13 @@ public class MainActivity extends Activity {
             @Override public void onError(String message) { finish(true, message); }
 
             @Override public void onMetrics(long firstTokenMs, long totalMs, int tokenCount) {
-                if (tokenCount <= 0 || totalMs <= 0) return;
+                if (finishedGeneration || tokenCount <= 0 || totalMs <= 0) return;
                 double seconds = totalMs / 1000.0;
                 String summary = String.format(Locale.getDefault(),
                         "%.1f sn · %d token · %.1f tok/s", seconds, tokenCount, tokenCount / seconds);
                 chatMetrics.put(group.id, summary);
             }
-        });
-    }
+        }
 
     private void updateChatControls(Group group) {
         if (!group.id.equals(visibleChatId)) return;
@@ -2329,6 +2424,12 @@ public class MainActivity extends Activity {
         addSecondary("Modeli yükle ve yönet", v -> openModels(this::showSettings));
         addSecondary("Model önerilerini gör ve indir", v -> showModelCatalog());
 
+        addSection(L10n.s("Çevrimiçi sağlayıcı") + " (Faz 5)", null, null);
+        boolean providerOn = prefs().getBoolean("provider_enabled", false);
+        addBody(L10n.s("Opsiyonel ve kapalı başlar: açık değilken hiçbir veri gönderilmez, çevrimdışı model varsayılandır. ")
+                + L10n.s("Sağlayıcı açıkken yanıtlar https üzerinden gider: sohbetler yalnızca sizin onayınızla dışarı çıkar."));
+        addSecondary(L10n.s("Online AI sağlayıcı") + (providerOn ? "  ✓" : ""), v -> showProvider());
+
         addSection("Yanıt tarzı", null, null);
         String themeId = prefs().getString("ai_theme", DEFAULT_AI_THEME);
         addInfoCard(aiThemeName(themeId), aiThemeDescription(themeId), "Sahne atmosferi");
@@ -2470,6 +2571,160 @@ public class MainActivity extends Activity {
         Toast.makeText(this, language.equals(L10n.s("en"))
                 ? "Yanıt dili İngilizce olarak ayarlandı — model promptları artık İngilizce."
                 : "Dil Türkçe olarak ayarlandı.", Toast.LENGTH_SHORT).show();
+    }
+
+    /** Online provider settings (DeepSeek item 14/B): strictly opt-in, https-only. */
+    private void showProvider() {
+        visibleChatId = null;
+        backAction = this::showSettings;
+        SharedPreferences prefs = prefs();
+        setPage(L10n.s("Çevrimiçi sağlayıcı"), L10n.s("Faz 5 · opsiyonel · çevrimdışı varsayılan kalır"), "settings");
+        addInfoCard(L10n.s("Veri dışarı çıkarır"),
+                L10n.s("Bu ayar açıkken ve eksiksizken yanıtlar, seçtiğin OpenAI-uyumlu https adresine gider; ")
+                        + L10n.s("sohbet içerik cihazdan çıkmış olur. Kapalıyken hiçbir şey gönderilmez."), "Gizlilik");
+
+        boolean enabled = prefs.getBoolean("provider_enabled", false);
+        addPrimary(enabled ? L10n.s("Sağlayıcı açık — kapata geç") : L10n.s("Sağlayıcıyı etkinleştir"), v -> {
+            boolean turningOn = !prefs.getBoolean("provider_enabled", false);
+            if (turningOn && !providerConfigured(prefs)) {
+                Toast.makeText(this, L10n.s("Önce adres, model adı ve API anahtarını eksiksiz doldur."), Toast.LENGTH_LONG).show();
+                return;
+            }
+            prefs.edit().putBoolean("provider_enabled", turningOn).apply();
+            Toast.makeText(this, turningOn
+                    ? L10n.s("Sağlayıcı etkin: yanıtlar artık seçtiğin servisten gelecek.")
+                    : L10n.s("Sağlayıcı kapalı: çevrimdışı model varsayana döndü."), Toast.LENGTH_SHORT).show();
+            showProvider();
+        });
+        addBody(enabled
+                ? L10n.s("Durum: ") + (providerReady() ? L10n.s("hazır") : L10n.s("eksiksiz değil"))
+                : L10n.s("Durum: kapalı"));
+
+        addSection(L10n.s("Bağlantı"), null, null);
+        addBody(L10n.s("OpenAI uyumlu sohbet tamamlama adresi. Yalnızca https kabul edilir; örnek: https://api.example.com/v1/chat/completions"));
+        EditText endpointField = field(L10n.s("https endpoint"), prefs.getString("provider_endpoint", ""));
+        endpointField.setSingleLine(true);
+        content.addView(endpointField, fullWidth());
+        EditText modelField = field(L10n.s("Model adı"), prefs.getString("provider_model", ""));
+        modelField.setSingleLine(true);
+        content.addView(modelField, fullWidth());
+        int turnDepth = prefs.getInt("provider_history_depth", 8);
+        addBody(L10n.s("Prompta kaç mesajlık sohbet geçmişi taşınır (2–20): telefonla ayardan değil, bu sayıdan düzenlenir."));
+        EditText depthField = field(L10n.s("Geçmiş mesaj sayısı"), String.valueOf(turnDepth));
+        depthField.setSingleLine(true);
+        content.addView(depthField, fullWidth());
+        addPrimary(L10n.s("Bağlantı bilgilerini kaydet"), v -> {
+            String endpoint = endpointField.getText().toString().trim();
+            String model = modelField.getText().toString().trim();
+            int depth;
+            try {
+                depth = Integer.parseInt(depthField.getText().toString().trim());
+            } catch (NumberFormatException bad) {
+                Toast.makeText(this, L10n.s("Geçmiş mesaj sayısı bir sayı olmalı."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!OpenAiCompat.allowsEndpoint(endpoint)) {
+                Toast.makeText(this, L10n.s("Adres https ile başlamalı; API anahtarı düz bağlantıda sızabilir."), Toast.LENGTH_LONG).show();
+                return;
+            }
+            if (model.isEmpty()) {
+                Toast.makeText(this, L10n.s("Model adı boş olamaz."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (depth < 2 || depth > 20) {
+                Toast.makeText(this, L10n.s("Geçmiş mesaj sayısı 2 ile 20 arasında olmalı."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            prefs.edit().putString("provider_endpoint", endpoint)
+                    .putString("provider_model", model)
+                    .putInt("provider_history_depth", depth).apply();
+            Toast.makeText(this, L10n.s("Kaydedildi."), Toast.LENGTH_SHORT).show();
+            showProvider();
+        });
+
+        addSection(L10n.s("API anahtarı"), null, null);
+        boolean keySet = ApiKeyStore.INSTANCE.isConfigured(this);
+        addBody(keySet
+                ? L10n.s("Anahtar kayıtlı: cihazdaki anahtarla kriptolu tutulur (AndroidKeyStore AES/GCM); düz metin diskte durmaz.")
+                : L10n.s("Anahtar yok. Anahtar yalnızca bu cihazda kriptolu saklanır ve hiçbir yedekte taşınmaz."));
+        final EditText keyField = field(keySet ? L10n.s("Yeni anahtar (kaydetmek için doldur)") : L10n.s("API anahtarı"), "");
+        keyField.setSingleLine(true);
+        keyField.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        content.addView(keyField, fullWidth());
+        addSecondary(L10n.s("Anahtarı kaydet"), v -> {
+            String plain = keyField.getText().toString().trim();
+            if (plain.isEmpty()) {
+                Toast.makeText(this, L10n.s("Anahtar alanı boş olamaz."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!ApiKeyStore.INSTANCE.save(this, plain)) {
+                Toast.makeText(this, L10n.s("Anahtar kaydedilemedi: cihaz güvenlik deposu kullanılamıyor."), Toast.LENGTH_LONG).show();
+                return;
+            }
+            keyField.setText("");
+            Toast.makeText(this, L10n.s("Anahtar kaydedildi."), Toast.LENGTH_SHORT).show();
+            showProvider();
+        });
+        if (keySet) {
+            addDangerButton(L10n.s("Anahtarı sil"), v -> confirm(L10n.s("Kayıtlı API anahtarı silinsin mi? Uygulama anahtarı yeniden soracak."), L10n.s("Sil"), () -> {
+                ApiKeyStore.INSTANCE.erase(this);
+                Toast.makeText(this, L10n.s("Anahtar silindi."), Toast.LENGTH_SHORT).show();
+                if (prefs().getBoolean("provider_enabled", false)) {
+                    prefs().edit().putBoolean("provider_enabled", false).apply(); // incomplete config cannot stay "on"
+                }
+                showProvider();
+            }));
+        }
+
+        addSection(L10n.s("Bağlantı testi"), null, null);
+        addBody(L10n.s("Kısa bir deneme isteği gönderir (birkaç token); bu, açık bir kullanıcı eylemidir."));
+        addPrimary(L10n.s("Bağlantıyı test et"), v -> testProviderConnection(
+                endpointField.getText().toString().trim(),
+                modelField.getText().toString().trim()));
+    }
+
+    /** Endpoint + model + key all present (used to guard turning the provider on). */
+    private boolean providerConfigured(SharedPreferences prefs) {
+        return ApiKeyStore.INSTANCE.isConfigured(this)
+                && OpenAiCompat.allowsEndpoint(prefs.getString("provider_endpoint", "").trim())
+                && !prefs.getString("provider_model", "").trim().isEmpty();
+    }
+
+    /** One-shot opt-in ping: a few tokens from the configured endpoint; no auto-retry. */
+    private void testProviderConnection(String endpoint, String model) {
+        if (!OpenAiCompat.allowsEndpoint(endpoint) || model.isEmpty()) {
+            Toast.makeText(this, L10n.s("Önce geçerli bir https adresi ve model adı yaz."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!ApiKeyStore.INSTANCE.isConfigured(this)) {
+            Toast.makeText(this, L10n.s("Önce API anahtarını gir."), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Toast.makeText(this, L10n.s("Test ediliyor…"), Toast.LENGTH_SHORT).show();
+        OpenAiCompat client = new OpenAiCompat(endpoint, ApiKeyStore.INSTANCE.load(this), model);
+        client.stream(java.util.List.of(new OpenAiCompat.Turn("user", L10n.english ? "Say 'ok'." : "Sadece 'ok' yaz.")), 8,
+                new GenerationBackend.Listener() {
+                    private boolean reported;
+
+                    private void ok() {
+                        if (reported) return;
+                        reported = true;
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                                L10n.s("Test başarılı: bağlantı ve anahtar çalışıyor."), Toast.LENGTH_LONG).show());
+                    }
+
+                    @Override public void onToken(String token) {
+                        ok();
+                        client.stop(); // one-shot ping: cut the stream after the first token
+                    }
+                    @Override public void onComplete() { ok(); }
+                    @Override public void onStopped() { ok(); }
+                    @Override public void onError(String message) {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                                L10n.s("Test başarısız: ") + message, Toast.LENGTH_LONG).show());
+                    }
+                });
     }
 
     private void showAppearance() {
@@ -4422,6 +4677,15 @@ public class MainActivity extends Activity {
     }
 
     private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation) {
+        return buildRoleplayPrompt(group, speaker, continuation,
+                LocalAiRuntime.INSTANCE.hasConversation(group.id), chatHistoryDepth(group.id));
+    }
+
+    /** Provider mode (DeepSeek item 14/B) assembles a history-free system prompt:
+     *  history travels as real chat turns, so {@code historyDepth} is 0 and the
+     *  engine's shared-context flag is forced fresh. */
+    private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation,
+                                       boolean continuingFlag, int historyDepth) {
         // Prompt assembly lives in the pure, unit-tested RoleplayPrompt; MainActivity only
         // resolves the Android-backed inputs (store lookups, prefs, engine context flag).
         boolean english = L10n.english;
@@ -4435,16 +4699,38 @@ public class MainActivity extends Activity {
                 group.characterIds,
                 id -> store.character(id),
                 store.messages(group.id),
-                LocalAiRuntime.INSTANCE.hasConversation(group.id),
+                continuingFlag,
                 continuation,
                 instructions,
                 aiThemeName(themeId),
                 aiThemeInstruction(themeId),
-                chatHistoryDepth(group.id),
+                historyDepth,
                 historyCharBudget(),
                 personaText,
                 english,
                 store.lore(group.id));
+    }
+
+    /** System prompt + transcript turns for the online provider (DeepSeek item 14/B). */
+    private List<OpenAiCompat.Turn> buildProviderTurns(Group group, CharacterProfile speaker, boolean continuation) {
+        boolean english = L10n.english;
+        List<Message> history = store.messages(group.id);
+        String continuationPrompt = english
+                ? "The scene continues; react naturally to this moment and speak as " + speaker.name + "."
+                : "Sahne devam ediyor; bu tur " + speaker.name + " olarak doğal bir tepki ver.";
+        String finalUserText;
+        if (!history.isEmpty() && history.get(history.size() - 1).user) {
+            Message trailing = history.get(history.size() - 1);
+            finalUserText = trailing.text;
+            if (finalUserText == null || finalUserText.isEmpty()) {
+                // Image-only trailing note keeps the same placeholder the transcript uses.
+                finalUserText = trailing.hasImage() ? "[görsel]" : continuationPrompt;
+            }
+        } else {
+            finalUserText = continuationPrompt;
+        }
+        return OpenAiCompat.assembleTurns(
+                buildRoleplayPrompt(group, speaker, continuation, false, 0), history, finalUserText, providerTurnDepth());
     }
 
     /** General AI instruction: shipped default (chosen by language) or the user's custom text. */

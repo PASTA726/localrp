@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -136,8 +137,10 @@ final class OpenAiCompat implements GenerationBackend {
         opened.setRequestProperty("Content-Type", "application/json");
         if (!apiKey.isEmpty()) opened.setRequestProperty("Authorization", "Bearer " + apiKey);
         byte[] body = requestBody(model, turns, maxTokens).getBytes(StandardCharsets.UTF_8);
+        // Streaming length must precede getOutputStream: it implicitly connects, and
+        // afterwards the streaming mode throws IllegalStateException (review finding).
+        opened.setFixedLengthStreamingMode(body.length);
         try (java.io.OutputStream output = opened.getOutputStream()) {
-            opened.setFixedLengthStreamingMode(body.length);
             output.write(body);
             output.flush();
         }
@@ -188,6 +191,30 @@ final class OpenAiCompat implements GenerationBackend {
     /** Absolutely https: the API key must never ride an unencrypted link. */
     static boolean allowsEndpoint(String endpoint) {
         return endpoint != null && endpoint.trim().startsWith("https://");
+    }
+
+    /**
+     * Turn list for one provider turn (DeepSeek item 14/B): the system prompt first,
+     * then the recent transcript as alternating user/assistant turns, then the final
+     * user text. A trailing user message is excluded from the middle turns — it is
+     * passed again as {@code finalUserText} so the request always ends with a user
+     * turn without duplicating it in the transcript body. Image-only records keep
+     * the same "[görsel]/[image]" placeholder the engine transcript uses.
+     */
+    static List<Turn> assembleTurns(String systemPrompt, List<Message> history, String finalUserText, int depth) {
+        List<Turn> turns = new ArrayList<>();
+        turns.add(new Turn("system", systemPrompt == null ? "" : systemPrompt));
+        int end = history == null ? 0 : history.size();
+        if (end > 0 && history.get(end - 1).user) end--;
+        int start = Math.max(0, end - Math.max(0, depth));
+        for (int i = start; i < end; i++) {
+            Message message = history.get(i);
+            String body = (message.text == null || message.text.isEmpty()) && message.hasImage()
+                    ? "[görsel]" : (message.text == null ? "" : message.text);
+            turns.add(new Turn(message.user ? "user" : "assistant", body));
+        }
+        turns.add(new Turn("user", finalUserText == null ? "" : finalUserText));
+        return turns;
     }
 
     /** Mid-stream error chunk detection (OpenAI error object shape). */

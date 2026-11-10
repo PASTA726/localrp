@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.12-alpha1 — 2026-11-10 (DeepSeek madde 14 / B: sağlayıcı ayarları + üretim yönlendirmesi)
+
+Faz 5'in ikinci alt turu: **çevrimiçi sağlayıcı artık Ayarlar'da yapılandırılıp, açık onayla yanıt üretebiliyor**. Çevrimdışı llama.cpp varsayılanı korundu: `provider_enabled` kapalıyken (varsayılan) hiçbir davranış değişmedi ve hiçbir veri gönderilmedi. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile iki turda gözden geçirildi.
+
+- **Ayarlar → Çevrimiçi sağlayıcı**: OpenAI-uyumlu **https** endpoint + model adı + geçmiş mesaj sayısı (2–20) kaydı; API anahtarı AndroidKeyStore'da AES/GCM ile kriptolu kaydet/sil; "Bağlantıyı test et" (birkaç tokenlık tek seferlik ping, açık kullanıcı eylemi). Sağlayıcı ancak yapılandırma eksiksizken etkinleştirilir.
+- **Üretim yönlendirmesi**: sağlayıcı etkin ve eksiksizken `beginGeneration` yanıtı çevrimiçiye yönlendirir; sistem promptu history-free RoleplayPrompt derlemesinden (identity/theme/lore bloklarını korur, geçmiş başlığı basmaz), sohbet geçmişi gerçek user/assistant turnleri olarak taşınır (sondaki kullanıcı mesajı final user turn olur). Yerel motor yolu (bağlam bütçesi, draft, zincir) hiç dokunulmadı.
+- **Ortak üretim kanalı**: eski büyük anonim dinleyici `GenerationPipe` iç sınıfına taşındı; iki motor da aynı balon/draft/kayıt/zincir/hata diyaloğu iş akışını kullanıyor. Sağlayıcı callback'leri main thread'e yönlendirilir; stop, çift-terminal guard'ı ve generation-sequence koruması var.
+- **Durum görünürlüğü**: sağlayıcı etkinken sohbet başlığı "Online sağlayıcı · veri açık onayınla gider" der — yanıtların nereden geldiği ekranda görünür.
+- **Bilinçli sınırlar**: yerel model yükleme/benchmark süreci küresel engel kalmaya devam eder (sağlayıcı açıkken de bekletir); etkinlik kapanırsa aktif tur, yerel motorla aynı şekilde kaydedilmeye çalışılır; geçmiş etiketi mesaj sayısını sayar (turn değil).
+- versionCode 41 / 0.19.12-alpha1.
+
 ## v0.19.11-alpha1 — 2026-11-10 (DeepSeek madde 14 / A: çevrimiçi sağlayıcı temeli)
 
 Faz 5'in ilk alt turu: **InferenceBackend soyutlaması** — çevrimdışı llama.cpp varsayılan kalır; çevrimiçi zemin bu turda üretime bağlanmaz (sıradaki tur: ayarlar arayüzü + üretim yönlendirmesi). Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile gözden geçirildi; iki tur yapıldı, tüm gerçek bulgular girmeden düzeltildi.

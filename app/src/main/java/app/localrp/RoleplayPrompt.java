@@ -132,7 +132,9 @@ final class RoleplayPrompt {
 
             appendPersona(prompt, persona, english);
 
-            if (history.size() > 1) {
+            if (historyDepth > 0 && history.size() > 1) {
+                // historyDepth 0 is the online provider's system prompt (DeepSeek item 14/B):
+                // history travels as real chat turns, so a bare header would dangle empty.
                 prompt.append(english ? "\nRecent scene history:\n" : "\nYakın sahne geçmişi:\n");
                 appendHistory(prompt, history, last != null && last.user, historyDepth, historyCharBudget, english);
             }
