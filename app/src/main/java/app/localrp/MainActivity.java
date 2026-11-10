@@ -256,6 +256,9 @@ public class MainActivity extends Activity {
         else if (LocalAiRuntime.INSTANCE.isModelLoading()) modelStatus = "Model yükleniyor…";
         else if (selectedModel != null) modelStatus = "Seçildi · yüklemeye hazır";
         showHome();
+        // Auto-load the pinned model a tick after the first frame so the UI is alive
+        // before any long JNI work starts (DeepSeek item 11).
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(this::maybeAutoLoadModelAtStartup);
     }
 
     private void reportIntegrityIssues() {
@@ -2374,14 +2377,27 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Fit verdict chip (GUI review item 16): downloaded size + RAM-based comfort.
+     * Fit verdict (DeepSeek item 11): 0 = comfortable (file + KV + runtime fit),
+     * 1 = borderline (tight but usually survivable), 2 = will not fit, -1 = unknown.
      * Loaded GGUF files occupy roughly their file size plus KV-cache/runtime overhead,
-     * so ~3× the file must fit in RAM. 0 total RAM (unknown) stays neutral.
+     * so ~3× the file should fit in RAM; up to ~2.4× counts as borderline.
+     */
+    private int fitVerdict(long bytes) {
+        long totalMemory = deviceTotalMemory();
+        if (bytes <= 0 || totalMemory <= 0) return -1;
+        if (totalMemory / 3 >= bytes) return 0;
+        if (totalMemory * 5 / 12 >= bytes) return 1;
+        return 2;
+    }
+
+    /**
+     * Fit verdict chip (GUI review item 16): downloaded size + RAM-based comfort.
+     * 0 total RAM (unknown) stays neutral.
      */
     private TextView catalogFitChip(long bytes) {
+        int verdict = fitVerdict(bytes);
         long totalMemory = deviceTotalMemory();
-        boolean known = bytes > 0 && totalMemory > 0;
-        boolean fits = known && totalMemory / 3 >= bytes;
+        boolean known = verdict >= 0;
         TextView chip = new TextView(this);
         chip.setTextSize(12);
         chip.setGravity(Gravity.CENTER);
@@ -2396,13 +2412,18 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         self.setMargins(dp(7), 0, 0, 0);
         chip.setLayoutParams(self);
-        if (fits) {
+        String size = L10n.s("İndirme ") + humanSize(bytes);
+        if (verdict == 0) {
             chip.setTextColor(Design.accent());
-            chip.setText(L10n.s("İndirme ") + humanSize(bytes) + L10n.s("  ·  bu cihazda rahat"));
+            chip.setText(size + L10n.s("  ·  bu cihazda rahat"));
+        } else if (verdict == 1) {
+            chip.setTextColor(Design.danger());
+            chip.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 10));
+            chip.setText(size + L10n.s("  ·  sınırda"));
         } else {
             chip.setTextColor(Design.danger());
             chip.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 10));
-            chip.setText(L10n.s("İndirme ") + humanSize(bytes) + L10n.s("  ·  RAM'e göre riskli"));
+            chip.setText(size + L10n.s("  ·  RAM'e göre riskli"));
         }
         return chip;
     }
@@ -4043,30 +4064,95 @@ public class MainActivity extends Activity {
         for (int i = 0; i < files.size(); i++) {
             File file = files.get(i);
             boolean loaded = file.getAbsolutePath().equals(loadedPath);
-            labels[i] = file.getName() + "  ·  " + humanSize(file.length()) +
-                    (loaded ? "  ·  yüklü" : "");
+            int verdict = fitVerdict(file.length());
+            String verdictTag = verdict < 0 ? ""
+                    : verdict == 0 ? L10n.s("  ·  sığar")
+                    : verdict == 1 ? L10n.s("  ·  sınırda")
+                    : L10n.s("  ·  zor");
+            labels[i] = file.getName() + "  ·  " + humanSize(file.length()) + verdictTag
+                    + (loaded ? L10n.s("  ·  yüklü") : "");
         }
         new AlertDialog.Builder(this).setTitle(L10n.s("Model kopyaları"))
-                .setItems(labels, (dialog, which) -> {
-                    File file = files.get(which);
-                    if (file.getAbsolutePath().equals(loadedPath)) {
-                        Toast.makeText(this, L10n.s("Bu model şu anda yüklü."), Toast.LENGTH_SHORT).show();
-                        return;
+                .setItems(labels, (dialog, which) -> showStoredModelProfile(files.get(which)))
+                .setNegativeButton(L10n.s("Kapat"), null).show();
+    }
+
+    /**
+     * Model profile (DeepSeek item 11): RAM verdict, load action and the
+     * launch-time auto-load pin for one stored model copy.
+     */
+    private void showStoredModelProfile(File file) {
+        SharedPreferences prefs = prefs();
+        int verdict = fitVerdict(file.length());
+        String verdictText = verdict < 0 ? L10n.s("RAM bilgisi okunamadı; gösterge bilinmiyor.")
+                : verdict == 0 ? L10n.s("Bu cihazda rahat sığar.")
+                : verdict == 1 ? L10n.s("Sınırda: çalışır ama bellek dar.")
+                : L10n.s("Bu cihazda zor; büyük ihtimalle açılmaz.");
+        String autoFile = prefs.getString("auto_load_file", null);
+        boolean auto = prefs.getBoolean("auto_load_model", false) && file.getName().equals(autoFile);
+        String detail = L10n.s("Boyut: ") + humanSize(file.length()) + "\n"
+                + L10n.s("Tahmini bellek kullanımı ~1,3× dosya.\n")
+                + verdictText;
+        new AlertDialog.Builder(this).setTitle(file.getName())
+                .setMessage(detail)
+                .setItems(new String[]{
+                        L10n.s("Modeli yükle"),
+                        auto ? L10n.s("Açılışta otomatik yükleme: AÇIK (kapat)")
+                                : L10n.s("Açılışta otomatik yükle"),
+                        L10n.s("Kopyayı sil")}, (d, choice) -> {
+                    if (choice == 0) {
+                        loadStoredModelFile(file);
+                    } else if (choice == 1) {
+                        if (auto) {
+                            prefs.edit().putBoolean("auto_load_model", false).apply();
+                            Toast.makeText(this, L10n.s("Açılışta otomatik yükleme kapatıldı."), Toast.LENGTH_SHORT).show();
+                        } else {
+                            prefs.edit().putString("auto_load_file", file.getName())
+                                    .putBoolean("auto_load_model", true).apply();
+                            Toast.makeText(this, file.getName() + L10n.s(" açılışta otomatik yüklenecek."), Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        confirm(file.getName() + " silinsin mi?", "Sil", () -> {
+                            if (LocalAiRuntime.INSTANCE.deleteStoredModel(this, file)) {
+                                // Only a successful deletion may drop the auto-load pin;
+                                // a failed delete keeps the file and the user's choice.
+                                if (file.getName().equals(prefs.getString("auto_load_file", null))) {
+                                    prefs.edit().putBoolean("auto_load_model", false).apply();
+                                }
+                                Toast.makeText(this, L10n.s("Model kopyası silindi."), Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(this, L10n.s("Model dosyası silinemedi."), Toast.LENGTH_SHORT).show();
+                            }
+                            showModels();
+                        });
                     }
-                    new AlertDialog.Builder(this).setTitle(file.getName())
-                            .setItems(new String[]{L10n.s("Modeli yükle"), L10n.s("Kopyayı sil")}, (d, choice) -> {
-                                if (choice == 0) loadStoredModelFile(file);
-                                else confirm(file.getName() + " silinsin mi?", "Sil", () -> {
-                                    if (LocalAiRuntime.INSTANCE.deleteStoredModel(this, file)) {
-                                        Toast.makeText(this, L10n.s("Model kopyası silindi."), Toast.LENGTH_SHORT).show();
-                                    } else {
-                                        Toast.makeText(this, L10n.s("Model dosyası silinemedi."), Toast.LENGTH_SHORT).show();
-                                    }
-                                    showModels();
-                                });
-                            }).show();
                 })
                 .setNegativeButton(L10n.s("Kapat"), null).show();
+    }
+
+    /** Launch-time auto-load (DeepSeek item 11): silently restores the pinned model. */
+    private void maybeAutoLoadModelAtStartup() {
+        if (isFinishing() || isDestroyed()) return;
+        SharedPreferences prefs = prefs();
+        if (!prefs.getBoolean("auto_load_model", false)) return;
+        String wanted = prefs.getString("auto_load_file", null);
+        if (wanted == null || wanted.isEmpty()) {
+            // A pin without a file cannot exist: drop the dangling flag.
+            prefs.edit().putBoolean("auto_load_model", false).apply();
+            return;
+        }
+        // Busy-by-state: leave the flag alone and retry on the next launch.
+        if (LocalAiRuntime.INSTANCE.isModelReady() || LocalAiRuntime.INSTANCE.isModelLoading() || modelLoading) return;
+        for (File file : LocalAiRuntime.INSTANCE.storedModels(this)) {
+            if (file.getName().equals(wanted)) {
+                Toast.makeText(this, L10n.s("Açılışta otomatik yükleniyor…"), Toast.LENGTH_SHORT).show();
+                modelStatus = L10n.s("Açılışta otomatik yükleniyor…");
+                loadStoredModelFile(file);
+                return;
+            }
+        }
+        // The pinned file is gone (deleted): stop promising an impossible load.
+        prefs.edit().putBoolean("auto_load_model", false).apply();
     }
 
     private String humanSize(long bytes) {

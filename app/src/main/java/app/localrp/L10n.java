@@ -514,6 +514,23 @@ public final class L10n {
                 "The profile cannot change while a reply is running; stop it first.");
         EN.put("Özel temayı Ayarlar → AI teması → Özel tema ile yaz.",
                 "Write the custom theme under Settings → AI theme → Custom theme.");
+
+        // ---- model profiles + feasibility + auto-load (DeepSeek item 11)
+        EN.put("  ·  sığar", "  ·  fits");
+        EN.put("  ·  sınırda", "  ·  borderline");
+        EN.put("  ·  zor", "  ·  heavy");
+        EN.put("Bu cihazda rahat sığar.", "Fits this device comfortably.");
+        EN.put("Sınırda: çalışır ama bellek dar.", "Borderline: it runs, but memory will be tight.");
+        EN.put("Bu cihazda zor; büyük ihtimalle açılmaz.", "Hard on this device; it will most likely not load.");
+        EN.put("RAM bilgisi okunamadı; gösterge bilinmiyor.", "RAM could not be read; the verdict is unknown.");
+        EN.put("Boyut: ", "Size: ");
+        EN.put("Tahmini bellek kullanımı ~1,3× dosya.\n",
+                "Estimated memory use is ~1.3× the file.\n");
+        EN.put("Açılışta otomatik yükle", "Load automatically at launch");
+        EN.put("Açılışta otomatik yükleme: AÇIK (kapat)", "Auto-load at launch: ON (tap to turn off)");
+        EN.put("Açılışta otomatik yükleme kapatıldı.", "Auto-load at launch turned off.");
+        EN.put(" açılışta otomatik yüklenecek.", " will load automatically at launch.");
+        EN.put("Açılışta otomatik yükleniyor…", "Auto-loading at launch…");
         EN.put(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.",
                 " delete from the device? Re-download to use it again.");
         EN.put("Dil Türkçe olarak ayarlandı.", "Language set to Turkish.");
