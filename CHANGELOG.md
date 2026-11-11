@@ -2,6 +2,19 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.13-alpha1 — 2026-11-11 (hata raporu taraması: titreme + çökme riskleri)
+
+Kullanıcı hata raporu ("her alan/gezinme değişiminde flaş etkisi, ara sıra çökme") üzerine iki harici salt-okunur inceleme (Codex CLI + Antigravity CLI) yapıldı; bulgular bağımsız doğrulanıp girmeden düzeltildi.
+
+- **Gezinme flaşı kaldırıldı**: her sayfa değişimindeki ~120 ms alpha fade çıkarıldı — yavaş telefonlarda her gezinme "flaş" gibi algılanıyordu.
+- **Akış titremesi giderildi**: üretim sırasında her token'da balon tam yeniden çiziliyordu (metin taraması + span kurulumu + kaydırma, saniyede onlarca kez). Artık ~11 fps'e throttle'lı: ara güncellemeler tek toplu çizime coalesce edilir, bitişte eksiksiz son çizim korunur; kuyrukta kalıntı bırakmaz.
+- **Geri yükleme çökme riski**: yedek geri yükleme iş parçacığı, kullanıcı uygulamayı kapatmışsa ölü activity üzerinde sayfa açıyordu → `uiAlive()` guard eklendi (veri zaten yazılmış; yalnızca ekran/Toast çökmesi önlenir).
+- **Sağlayıcı sızıntısı**: activity kapanırken devam eden çevrimiçi turn'un SSE akışı artık `onDestroy`'da kesiliyor (`providerClient.stop()`).
+- **Bozuk kayıt NPE koruması**: null konuşmacılı kayıtlar balon çizimini çökertemez.
+- **Arama ANR/dengeleme**: sohbette arama artık tuş başına değil, 250 ms debounce ile tarama yapıyor; dialog kapanınca kuyruk temizleniyor.
+- Bilinçli olarak bu turda değiştirilmeyenler: model durumu/lore sayfalarının yerinde güncellenmeye çevrilmesi (tam sayfa yeniden kurma davranışı korundu; ayrı bir turda değerlendirilir).
+- versionCode 42 / 0.19.13-alpha1.
+
 ## v0.19.12-alpha1 — 2026-11-10 (DeepSeek madde 14 / B: sağlayıcı ayarları + üretim yönlendirmesi)
 
 Faz 5'in ikinci alt turu: **çevrimiçi sağlayıcı artık Ayarlar'da yapılandırılıp, açık onayla yanıt üretebiliyor**. Çevrimdışı llama.cpp varsayılanı korundu: `provider_enabled` kapalıyken (varsayılan) hiçbir davranış değişmedi ve hiçbir veri gönderilmedi. Değişiklikler salt-okunur harici inceleme (Codex CLI, read-only sandbox) ile iki turda gözden geçirildi.

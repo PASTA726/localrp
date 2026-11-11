@@ -1833,6 +1833,11 @@ public class MainActivity extends Activity {
         private long lastDraftSave;
         /** The terminal callback ran already (double-finish guard). */
         private boolean finishedGeneration;
+        /** Draft-render throttle (~11 fps); see scheduleDraftRender. */
+        private long lastRenderAt;
+        private boolean renderScheduled;
+        /** The queued coalesced render, cancelable on teardown. */
+        private Runnable pendingRender;
 
         GenerationPipe(Group group, CharacterProfile speaker, long startedAt, long thisGeneration) {
             this.group = group;
@@ -1846,6 +1851,7 @@ public class MainActivity extends Activity {
                 // a late stop-race must never re-save or re-render the turn (review finding).
                 if (finishedGeneration) return;
                 finishedGeneration = true;
+                if (pendingRender != null) content.removeCallbacks(pendingRender); // no queued residue
                 String finalText = cleanResponse(response.toString(), speaker.name);
                 TextView displayedResponse = generationViews.remove(group.id);
                 clearGenerationDraft(group.id);
@@ -1915,10 +1921,39 @@ public class MainActivity extends Activity {
                     lastDraftSave = now;
                     saveGenerationDraft(group.id, speaker.name, response.toString());
                 }
+                scheduleDraftRender();
+            }
+
+            /**
+             * Draft rendering used to run per token (scan + span rebuild + scroll per
+             * token): on a fast stream this flashed the balloon and crowded the main
+             * thread. Coalesced to ~11 fps instead — a frame-lean refresh (chy bug report:
+             * streaming titremesi).
+             */
+            private void scheduleDraftRender() {
+                long now = System.currentTimeMillis();
+                if (now - lastRenderAt >= 90) {
+                    lastRenderAt = now;
+                    renderDraft();
+                    return;
+                }
+                if (renderScheduled) return;
+                renderScheduled = true;
+                pendingRender = () -> {
+                    renderScheduled = false;
+                    pendingRender = null;
+                    if (finishedGeneration) return;
+                    lastRenderAt = System.currentTimeMillis();
+                    renderDraft();
+                };
+                content.postDelayed(pendingRender, 60);
+            }
+
+            private void renderDraft() {
+                if (!group.id.equals(visibleChatId) || content == null) return;
                 // Streamed interim text uses the SAME cleanup as the final message, so the
                 // echoed "Name:" prefix and engine token residue never become visible.
                 String streamed = cleanResponse(response.toString(), speaker.name);
-                if (!group.id.equals(visibleChatId) || content == null) return;
                 TextView draft = generationViews.get(group.id);
                 if (!balloonInContent(draft)) {
                     draft = addMessage(content, speaker.name, streamed, false, startedAt);
@@ -2273,12 +2308,20 @@ public class MainActivity extends Activity {
                 results.addView(label(L10n.s("Eşleşme yok."), 13, Design.muted()));
             }
         };
+        final android.os.Handler searchDebounce = new android.os.Handler(android.os.Looper.getMainLooper());
         query.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
-            @Override public void afterTextChanged(android.text.Editable s) { refreshHolder[0].run(); }
+            // A per-keystroke full-transcript scan + up to 40 row rebuilds crowded the
+            // main thread on long chats; debounced to at most ~4 scans/second.
+            @Override public void afterTextChanged(android.text.Editable s) {
+                searchDebounce.removeCallbacks(refreshHolder[0]);
+                searchDebounce.postDelayed(refreshHolder[0], 250);
+            }
         });
         refreshHolder[0].run();
+        // Dismissed dialog must not leave a queued search running on a dead form.
+        dialog.setOnDismissListener(d -> searchDebounce.removeCallbacks(refreshHolder[0]));
         tintDialog(dialog);
         dialog.show();
     }
@@ -4349,6 +4392,9 @@ public class MainActivity extends Activity {
     private void applyImportedBundle(PersistenceCodec.Bundle bundle) {
         final boolean restored = store.restoreBundle(bundle.characters, bundle.groups, bundle.chats, bundle.lorebooks);
         runOnUiThread(() -> {
+            // The restore thread may finish after the user left the app; touching a
+            // dead activity's window crashes (chy bug report: geri yükleme çökmesi).
+            if (!uiAlive()) return;
             if (!restored) {
                 Toast.makeText(this, L10n.s("Geri yükleme yapılamadı: mevcut veriler okunamıyor."), Toast.LENGTH_LONG).show();
                 if (!store.integrityIssues().isEmpty()) reportIntegrityIssues();
@@ -4936,6 +4982,9 @@ public class MainActivity extends Activity {
                 LocalImageEngine.INSTANCE.stopGeneration();
             }
             LocalAiRuntime.INSTANCE.stopGeneration();
+            // An online turn must not keep its SSE reader running past teardown;
+            // its callbacks would resurrect this dead activity's views (chy bug report).
+            if (providerClient != null) providerClient.stop();
             LocalAiRuntime.INSTANCE.resetConversation(null);
             hideUndoBar(false); // teardown without firing the file-delete finalizer
         }
@@ -5121,10 +5170,8 @@ public class MainActivity extends Activity {
             pageRoot.addView(navWrap, fullWidth());
         }
         setContentView(pageRoot);
-        // Light page transition (GUI review item 18): ~120ms fade unifies navigation
-        // without inventing a new design language.
-        pageRoot.setAlpha(0f);
-        pageRoot.animate().alpha(1f).setDuration(120).start();
+        // The old 120ms fade (GUI review item 18) was removed: on slower phones every
+        // navigation read as a "flash", and in-place page rebuilds already look smooth.
         Design.applyBars(this);
     }
 
@@ -5751,7 +5798,7 @@ public class MainActivity extends Activity {
 
     /** Bold accent speaker name with a muted time — reused by text and image balloons. */
     private CharSequence balloonHeader(String speaker, long at) {
-        String display = L10n.speaker(speaker);
+        String display = speaker != null ? L10n.speaker(speaker) : "";
         String header = at > 0 ? display + "  ·  " + clock.format(new Date(at)) : display;
         SpannableString styled = new SpannableString(header);
         styled.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), 0, display.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -6164,7 +6211,9 @@ public class MainActivity extends Activity {
 
     private void renderMessage(TextView view, String speaker, String text, long at) {
         view.setTag(text);
-        String display = L10n.speaker(speaker);
+        // Corrupt/foreign records could carry a null speaker; L10n.speaker passes it
+        // through, so guard here instead of NPE-ing inside the span assembly.
+        String display = speaker != null ? L10n.speaker(speaker) : "";
         String header = at > 0 ? display + "  ·  " + clock.format(new Date(at)) : display;
         String value = header + "\n" + text;
         SpannableString styled = new SpannableString(value);
