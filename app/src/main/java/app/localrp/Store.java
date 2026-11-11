@@ -126,12 +126,15 @@ class Store {
         return true;
     }
 
-    /** Default persona: the one marked default, else the first, else null. */
+    /** Default persona: the one marked default, else the first, else null. A preferred
+     *  id that names a deleted persona is corrected on the spot (self-healing), so the
+     *  default tag and the effective default never drift apart. */
     Persona defaultPersona() {
         java.util.List<Persona> all = personas();
         if (all.isEmpty()) return null;
         String preferred = preferences.getString("default_persona_id", "");
         for (Persona p : all) if (p.id.equals(preferred)) return p;
+        setDefaultPersonaId(all.get(0).id);
         return all.get(0);
     }
 
@@ -353,7 +356,13 @@ class Store {
 
     boolean restoreBundle(List<CharacterProfile> characters, List<Group> groups,
                           java.util.Map<String, List<Message>> chats) {
-        return restoreBundle(characters, groups, chats, null);
+        return restoreBundle(characters, groups, chats, null, null, null, null);
+    }
+
+    boolean restoreBundle(List<CharacterProfile> characters, List<Group> groups,
+                          java.util.Map<String, List<Message>> chats,
+                          java.util.Map<String, List<Lorebook.Entry>> lorebooks) {
+        return restoreBundle(characters, groups, chats, lorebooks, null, null, null);
     }
 
     /**
@@ -362,10 +371,15 @@ class Store {
      * and replaces a transcript only when the imported copy is strictly longer.
      * Lorebook entries (DeepSeek item 12) travel with the bundle; non-empty
      * imported lore replaces this conversation's stored book, empty drops nothing.
+     * v0.19.18: personas merge by id; the imported default persona applies when it
+     * exists after the merge, otherwise the local default is kept; per-chat overrides
+     * apply only to restored chats whose referenced persona exists after the merge.
      */
     boolean restoreBundle(List<CharacterProfile> characters, List<Group> groups,
                           java.util.Map<String, List<Message>> chats,
-                          java.util.Map<String, List<Lorebook.Entry>> lorebooks) {
+                          java.util.Map<String, List<Lorebook.Entry>> lorebooks,
+                          List<Persona> personas, String importedDefaultPersonaId,
+                          java.util.Map<String, String> importedChatPersonas) {
         String rawChars = preferences.getString("characters", null);
         String rawGroups = preferences.getString("groups", null);
         if (!PersistenceCodec.overwriteAllowed(rawChars) || !PersistenceCodec.overwriteAllowed(rawGroups)) {
@@ -393,6 +407,40 @@ class Store {
         if (encodedChars.isEmpty() || encodedGroups.isEmpty()) return false;
         android.content.SharedPreferences.Editor editor = preferences.edit();
         editor.putString("characters", encodedChars).putString("groups", encodedGroups);
+        List<Persona> mergedPersonas = null;
+        if (personas != null && !personas.isEmpty()) {
+            mergedPersonas = PersistenceCodec.mergePersonas(personas(), personas);
+            String encodedPersonas = PersistenceCodec.encodePersonas(mergedPersonas);
+            if (encodedPersonas.isEmpty()) return false;
+            editor.putString("user_personas", encodedPersonas);
+            // Imported default wins only when it still names a persona after the merge;
+            // otherwise the local default preference is left untouched.
+            if (importedDefaultPersonaId != null && !importedDefaultPersonaId.isEmpty()) {
+                for (Persona p : mergedPersonas) {
+                    if (p.id.equals(importedDefaultPersonaId)) {
+                        editor.putString("default_persona_id", importedDefaultPersonaId);
+                        break;
+                    }
+                }
+            }
+        }
+        if (importedChatPersonas != null && !importedChatPersonas.isEmpty()) {
+            for (java.util.Map.Entry<String, String> entry : importedChatPersonas.entrySet()) {
+                if (!knownGroups.contains(entry.getKey())) continue;
+                String personaId = entry.getValue();
+                if (personaId == null || personaId.isEmpty()) continue;
+                // An override is applied only when its persona exists after the merge,
+                // so a restore can never point a chat at an identity that cannot resolve.
+                // The merged list (not the not-yet-applied store) is authoritative here.
+                boolean exists = false;
+                if (mergedPersonas != null) {
+                    for (Persona p : mergedPersonas) {
+                        if (p.id.equals(personaId)) { exists = true; break; }
+                    }
+                }
+                if (exists) editor.putString("chat_persona_" + entry.getKey(), personaId);
+            }
+        }
         for (java.util.Map.Entry<String, List<Message>> entry : mergedChats.entrySet()) {
             String encoded = PersistenceCodec.encodeMessages(entry.getValue());
             if (encoded.isEmpty()) return false;
