@@ -135,6 +135,11 @@ public class MainActivity extends Activity {
     private LinearLayout pageRoot;
     private TextView pageSubtitleView;
     private String currentTab = "home";
+    /** Same-page anchor for in-place refresh: rebuilt page headers/nav only on a real page change. */
+    private String pageTitle;
+    private String pageSubtitle;
+    private TextView pageBackButton;
+    private boolean pageHadBack;
     private Uri selectedModel;
     private String selectedModelName = "Henüz model seçilmedi";
     private String modelStatus = "Model seçilmedi";
@@ -2610,6 +2615,8 @@ public class MainActivity extends Activity {
         L10n.refresh(language);
         contextChars.clear();
         LocalAiRuntime.INSTANCE.resetConversation(null);
+        // All strings change: the header must be rebuilt, not refreshed in place.
+        resetPageAnchor();
         showSettings();
         Toast.makeText(this, language.equals(L10n.s("en"))
                 ? "Yanıt dili İngilizce olarak ayarlandı — model promptları artık İngilizce."
@@ -2820,6 +2827,9 @@ public class MainActivity extends Activity {
                 prefs().edit().putString("ui_theme", candidate.id).apply();
                 Design.refresh(this);
                 Design.applyBars(this);
+                // Palette change must repaint header + nav too: in-place refresh
+                // only rebuilds the content list, which would keep old colors.
+                resetPageAnchor();
                 Toast.makeText(this, candidate.name + L10n.s(" teması uygulandı."), Toast.LENGTH_SHORT).show();
                 showAppearance();
             });
@@ -5001,11 +5011,24 @@ public class MainActivity extends Activity {
     }
 
     private void setPage(String title, String subtitle, String tab) {
+        // Same-page re-render (lore save, settings toggle, model status refresh...):
+        // rebuild only the content list and keep header + nav + window. A full
+        // setContentView here re-created the whole view tree on every field change
+        // and read as a flash on slower phones (chy bug report, follow-up to the
+        // fade removal in v0.19.13).
+        if (pageRoot != null && content != null
+                && title.equals(pageTitle) && subtitle.equals(pageSubtitle)
+                && tab.equals(currentTab) && (backAction != null) == pageHadBack) {
+            if (pageBackButton != null) pageBackButton.setOnClickListener(v -> backAction.run());
+            content.removeAllViews();
+            return;
+        }
         setPage(title, subtitle, tab, false);
     }
 
     private void setPage(String title, String subtitle, String tab, boolean chat) {
         currentTab = tab;
+        if (chat) pageTitle = null; // chat pages always rebuild; never match a stale non-chat anchor
         dismissUndoBar(); // leaving a page finalizes any pending reversible deletion
         if (chatInput != null && chatInputChatId != null) {
             String draft = chatInput.getText().toString();
@@ -5076,6 +5099,7 @@ public class MainActivity extends Activity {
                 back.setOnClickListener(v -> backAction.run());
                 back.setContentDescription(L10n.s("Geri"));
                 header.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
+                pageBackButton = back;
                 LinearLayout headerTexts = new LinearLayout(this);
                 headerTexts.setOrientation(LinearLayout.VERTICAL);
                 headerTexts.setPadding(dp(14), 0, dp(4), 0);
@@ -5098,8 +5122,12 @@ public class MainActivity extends Activity {
                 sub.setPadding(0, dp(4), 0, 0);
                 header.addView(sub);
                 pageSubtitleView = sub;
+                pageBackButton = null;
             }
             pageRoot.addView(header, fullWidth());
+            pageTitle = title;
+            pageSubtitle = subtitle;
+            pageHadBack = backAction != null;
         }
 
         if (chat) {
@@ -5178,6 +5206,12 @@ public class MainActivity extends Activity {
     /** Dark palettes get the dark cold-start window theme (see onCreate). */
     private boolean isDarkThemeId(String themeId) {
         return "golge".equals(themeId) || "deniz-gecesi".equals(themeId) || "gun-batimi".equals(themeId);
+    }
+
+    /** Forces the next setPage call into a full window rebuild (theme / language changes). */
+    private void resetPageAnchor() {
+        pageTitle = null;
+        pageSubtitle = null;
     }
 
     private void addNavItem(LinearLayout nav, String icon, String title, boolean selected, Runnable action) {
