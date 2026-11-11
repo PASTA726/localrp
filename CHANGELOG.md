@@ -2,6 +2,15 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.17-alpha1 — 2026-11-11 (İngilizce mod kapsama düzeltmesi)
+
+"English (recommended: better RP)" modunda hâlâ Türkçe görünen yerler kapatıldı; arayüz artık İngilizce modda uçtan uca İngilizce.
+
+- **Kapsam taraması**: 742 benzersiz `L10n.s()` çağrı yeri dizesinin tamamı `EN` sözlüğüyle eşleştirildi; eksik ~100 girdi (kişilik sistemi, yedekleme, gizlilik, cihaz analizi, model ekranları, dünyaya giriş) çevrilerek eklendi. Sözlük artık 717+ girdi.
+- **Yeni sarmalanan çağrı yerleri**: bölüm başlıkları ("Son sohbetler", "Ayarlar", "Model", "Sahne teması", "Motor testi", "Karakter zinciri"…), dinamik sayacın dil parçaları (" karakter", " mesaj", " token", " sohbet"), ayraçlar (" · ", " / ", "  ·  "), model bilgi etiketleri ("Mimari:", "Nicemleme:"), indirme yüzdesi parçası ve "sen"/"Sen" gösterim yedekleri (arama, avatar baş harfleri).
+- **Bilinçli passthrough**: noktalama ayraçları, "en"/"tr" dil kodları, kullanıcı verisi etiketi `new Message("Sen", …)` (kalıcı veri; `L10n.speaker` zaten çevirir), İngilizce dalı ternary ile zaten çevrilmiş prompt dizeleri, hazır karakter metinleri ve tema veri tabloları (kullanım yerinde çevriliyor).
+- versionCode 46 / 0.19.17-alpha1.
+
 ## v0.19.16-alpha1 — 2026-11-11 (çoklu kullanıcı kişilik sistemi)
 
 Tekil "kullanıcı profili" artık **kişilik listesi**: birden fazla kimlik tanımla, sohbet başına seç.
