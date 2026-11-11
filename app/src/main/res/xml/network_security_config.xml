@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LocalRP security policy (v0.19.19): cleartext is denied network-wide. The app
+     only talks to https endpoints (model catalog downloads, OpenAI-compatible
+     provider); this config makes that intent explicit and fails closed even if a
+     future code path or manifest change would otherwise inherit platform defaults. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

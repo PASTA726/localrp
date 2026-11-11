@@ -89,6 +89,25 @@ public class OpenAiCompatTest {
     }
 
     @Test
+    public void endpointPolicy_judgesSchemeLikeTheConnectionWill() {
+        // v0.19.19: URL-parse based scheme check, consistent with the downloader.
+        assertTrue("uppercase scheme is still https (URL lowercases it)",
+                OpenAiCompat.allowsEndpoint("HTTPS://api.example.com/v1"));
+        assertTrue("whitespace around the endpoint is trimmed",
+                OpenAiCompat.allowsEndpoint("  https://api.example.com/v1  "));
+        // A space inside the path is accepted by java.net.URL (no exception) but the
+        // scheme and host stay untouched — no scheme downgrade is possible.
+        assertFalse("other schemes fail closed: ftp://",
+                OpenAiCompat.allowsEndpoint("ftp://api.example.com"));
+        assertFalse("file scheme fails closed",
+                OpenAiCompat.allowsEndpoint("file:///etc/passwd"));
+        assertFalse("javascript scheme fails closed",
+                OpenAiCompat.allowsEndpoint("javascript:alert(1)"));
+        assertFalse("gopher scheme fails closed",
+                OpenAiCompat.allowsEndpoint("gopher://host"));
+    }
+
+    @Test
     public void assembleTurns_systemFirst_historyAlternating_finalUserTurn() {
         List<Message> history = new ArrayList<>();
         history.add(new Message("Elif", "Selam", false, 1L));          // assistant (assistant turn)

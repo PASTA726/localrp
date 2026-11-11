@@ -188,9 +188,20 @@ final class OpenAiCompat implements GenerationBackend {
         return "[DONE]".equals(data);
     }
 
-    /** Absolutely https: the API key must never ride an unencrypted link. */
+    /**
+     * Absolutely https: the API key must never ride an unencrypted link. Parsed with
+     * {@link URL} (v0.19.19) instead of a string prefix check, so scheme casing
+     * ("HTTPS://") is judged the way the actual connection will be and any malformed
+     * or non-https address fails closed. {@link java.net.URL} lowercases the scheme,
+     * matching {@code DownloadPolicy.isHttps} on the download path.
+     */
     static boolean allowsEndpoint(String endpoint) {
-        return endpoint != null && endpoint.trim().startsWith("https://");
+        if (endpoint == null) return false;
+        try {
+            return new URL(endpoint.trim()).getProtocol().equals("https");
+        } catch (Exception failure) {
+            return false;
+        }
     }
 
     /**
