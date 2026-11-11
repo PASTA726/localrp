@@ -356,6 +356,12 @@ final class PersistenceCodec {
         final java.util.Map<String, List<Message>> chats = new java.util.HashMap<>();
         /** World book (DeepSeek item 12): per-group lore entries, optional in both versions. */
         final java.util.Map<String, List<Lorebook.Entry>> lorebooks = new java.util.HashMap<>();
+        /** v0.19.18: user personas (v0.19.16 feature) now travel in the bundle too. */
+        final List<Persona> personas = new ArrayList<>();
+        /** Id of the persona marked default; "" = none (restore then keeps the local default). */
+        String defaultPersonaId = "";
+        /** Per-chat persona override, only for chats that travel; "" entries are never exported. */
+        final java.util.Map<String, String> chatPersonas = new java.util.HashMap<>();
     }
 
     // ---- media markers (backup v2) ----
@@ -496,6 +502,30 @@ final class PersistenceCodec {
                 loreRoot.put(entry.getKey(), new JSONArray(Lorebook.encode(entry.getValue())));
             }
             root.put("lore", loreRoot);
+            JSONArray personaArray = new JSONArray();
+            for (Persona p : bundle.personas) {
+                JSONObject o = new JSONObject();
+                o.put("id", p.id == null ? "" : p.id);
+                o.put("name", p.name == null ? "" : p.name);
+                o.put("description", p.description == null ? "" : p.description);
+                if (bundle.version >= 2) {
+                    String avatar = toMediaRelative(p.avatarPath, bundle.avatarsRoot, bundle.imagesRoot);
+                    if (!avatar.isEmpty()) o.put("avatar", avatar);
+                }
+                personaArray.put(o);
+            }
+            if (personaArray.length() > 0) root.put("personas", personaArray);
+            if (bundle.defaultPersonaId != null && !bundle.defaultPersonaId.isEmpty()) {
+                root.put("defaultPersona", bundle.defaultPersonaId);
+            }
+            if (!bundle.chatPersonas.isEmpty()) {
+                JSONObject overrides = new JSONObject();
+                for (java.util.Map.Entry<String, String> entry : bundle.chatPersonas.entrySet()) {
+                    if (entry.getValue() == null || entry.getValue().isEmpty()) continue;
+                    overrides.put(entry.getKey(), entry.getValue());
+                }
+                if (overrides.length() > 0) root.put("chatPersonas", overrides);
+            }
             return root.toString();
         } catch (JSONException e) {
             return "";
@@ -571,6 +601,33 @@ final class PersistenceCodec {
                     bundle.lorebooks.put(groupId, Lorebook.decode(entries.toString()));
                 }
             }
+            // v0.19.18: personas + default id + per-chat overrides. Tolerant: records
+            // without an id are dropped, broken roots leave the bundle without personas.
+            JSONArray personaArray = root.optJSONArray("personas");
+            if (personaArray != null) {
+                for (int i = 0; i < personaArray.length(); i++) {
+                    try {
+                        JSONObject o = personaArray.getJSONObject(i);
+                        Persona p = new Persona();
+                        p.id = o.optString("id");
+                        p.name = o.optString("name");
+                        p.description = o.optString("description");
+                        p.avatarPath = o.optString("avatar");
+                        if (p.id.isEmpty()) continue;
+                        bundle.personas.add(p);
+                    } catch (JSONException badRecord) { }
+                }
+            }
+            bundle.defaultPersonaId = root.optString("defaultPersona", "");
+            JSONObject overrides = root.optJSONObject("chatPersonas");
+            if (overrides != null) {
+                java.util.Iterator<String> overrideKeys = overrides.keys();
+                while (overrideKeys.hasNext()) {
+                    String chatId = overrideKeys.next();
+                    String personaId = overrides.optString(chatId, "");
+                    if (!chatId.isEmpty() && !personaId.isEmpty()) bundle.chatPersonas.put(chatId, personaId);
+                }
+            }
             return bundle;
         } catch (JSONException broken) {
             return null;
@@ -602,7 +659,32 @@ final class PersistenceCodec {
         for (java.util.Map.Entry<String, List<Lorebook.Entry>> entry : source.lorebooks.entrySet()) {
             if (groupIds.contains(entry.getKey())) selected.lorebooks.put(entry.getKey(), entry.getValue());
         }
+        // Personas always travel whole (small, and the default choice must stay
+        // meaningful); per-chat overrides only for chats that survive the selection.
+        selected.personas.addAll(source.personas);
+        selected.defaultPersonaId = source.defaultPersonaId;
+        for (java.util.Map.Entry<String, String> entry : source.chatPersonas.entrySet()) {
+            if (groupIds.contains(entry.getKey())) selected.chatPersonas.put(entry.getKey(), entry.getValue());
+        }
         return selected;
+    }
+
+    /** Insert-or-update over a stored persona list, matching on the id field. */
+    static List<Persona> mergePersonas(List<Persona> stored, List<Persona> imported) {
+        List<Persona> merged = new ArrayList<>(stored);
+        for (Persona incoming : imported) {
+            if (incoming.id == null || incoming.id.isEmpty()) continue;
+            boolean replaced = false;
+            for (int i = 0; i < merged.size(); i++) {
+                if (merged.get(i).id.equals(incoming.id)) {
+                    merged.set(i, incoming);
+                    replaced = true;
+                    break;
+                }
+            }
+            if (!replaced) merged.add(incoming);
+        }
+        return merged;
     }
 
     /** Insert-or-update over a stored list, matching on the id field. */

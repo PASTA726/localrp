@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.18-alpha1 — 2026-11-11 (kişilikler yedeğe dahil)
+
+v0.19.16'da bilinçli olarak dışarıda bırakılan sınırlar kapatıldı: **kullanıcı kişilikleri artık `.json` / `.zip` yedeğine giriyor**.
+
+- **Yedek paketi** — `personas` dizisi (id, ad, açıklama; v2'de avatar `@avatars/…` işaretçisiyle), `defaultPersona` kimliği ve `chatPersonas` (sohbet başına seçim, yalnızca pakete giren sohbetler için) taşınır. Eski yedek dosyaları bu bölümler olmadan aynen okunur (ileriye/geriye uyumlu).
+- **ZIP medyası** — persona profil fotoğrafları `media/avatars/` altında paketlenir, sağlama özetine girer; geri yüklemede baytlar yerel dizine yazılır, eksik bayt güvenle boşa düşer (mevcut medya kuralı).
+- **Geri yükleme** — kişilikler id-bazlı birleştirilir (aynı id güncellenir, yenisi eklenir); içe aktarılan varsayılan yalnızca birleşme sonrası varsa uygulanır, aksi halde yerel varsayılan korunur; sohbet kişilik seçimi yalnızca geri yüklenen sohbete ve birleşme sonrası var olan kişiliğe uygulanır.
+- **Varsayılan öz-iyileştirme** — `default_persona_id` silinmiş bir kişiliğe işaret ederse ilk okunuşta ilk kişiliğe düzeltilir (önceden yalnızca tekil silme akışında düzeltiliyordu; harici inceleme bulgusuydu).
+- Seçmeli dışa aktarma: kişiliklerin tamamı gider (küçük ve varsayılan seçim anlamlı kalsın diye), sohbet kişilik seçimleri yalnızca seçilen sohbetler için filtrelenir.
+- versionCode 47 / 0.19.18-alpha1.
+
 ## v0.19.17-alpha1 — 2026-11-11 (İngilizce mod kapsama düzeltmesi)
 
 "English (recommended: better RP)" modunda hâlâ Türkçe görünen yerler kapatıldı; arayüz artık İngilizce modda uçtan uca İngilizce.

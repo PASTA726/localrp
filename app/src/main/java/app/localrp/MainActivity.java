@@ -4324,6 +4324,13 @@ public class MainActivity extends Activity {
         bundle.characters.addAll(store.characters());
         bundle.groups.addAll(groups);
         bundle.chats.putAll(chats);
+        bundle.personas.addAll(store.personas());
+        Persona defaultPersona = store.defaultPersona();
+        if (defaultPersona != null) bundle.defaultPersonaId = defaultPersona.id;
+        for (Group group : groups) {
+            String override = store.chatPersonaId(group.id);
+            if (override != null && !override.isEmpty()) bundle.chatPersonas.put(group.id, override);
+        }
         for (Group group : groups) {
             List<Lorebook.Entry> lore = store.lore(group.id);
             if (!lore.isEmpty()) bundle.lorebooks.put(group.id, lore);
@@ -4465,6 +4472,10 @@ public class MainActivity extends Activity {
                 String marker = PersistenceCodec.toMediaRelative(c.avatarPath, avatarRoot, imageRoot);
                 if (!marker.isEmpty()) markers.add(marker);
             }
+            for (Persona persona : bundle.personas) {
+                String marker = PersistenceCodec.toMediaRelative(persona.avatarPath, avatarRoot, imageRoot);
+                if (!marker.isEmpty()) markers.add(marker);
+            }
             for (List<Message> transcript : bundle.chats.values()) {
                 for (Message m : transcript) {
                     String marker = PersistenceCodec.toMediaRelative(m.image, avatarRoot, imageRoot);
@@ -4564,6 +4575,12 @@ public class MainActivity extends Activity {
                         c.avatarPath = "";
                     }
                 }
+                for (Persona persona : bundle.personas) {
+                    if (persona.avatarPath != null && !persona.avatarPath.isEmpty()
+                            && !new File(persona.avatarPath).getCanonicalPath().startsWith(filesRoot)) {
+                        persona.avatarPath = "";
+                    }
+                }
                 for (List<Message> transcript : bundle.chats.values()) {
                     for (Message m : transcript) {
                         if (m.hasImage()
@@ -4579,7 +4596,8 @@ public class MainActivity extends Activity {
 
     /** Restores a decoded bundle and reports the outcome on the UI thread (both import paths share this). */
     private void applyImportedBundle(PersistenceCodec.Bundle bundle) {
-        final boolean restored = store.restoreBundle(bundle.characters, bundle.groups, bundle.chats, bundle.lorebooks);
+        final boolean restored = store.restoreBundle(bundle.characters, bundle.groups, bundle.chats,
+                bundle.lorebooks, bundle.personas, bundle.defaultPersonaId, bundle.chatPersonas);
         runOnUiThread(() -> {
             // The restore thread may finish after the user left the app; touching a
             // dead activity's window crashes (chy bug report: geri yükleme çökmesi).
@@ -4660,6 +4678,11 @@ public class MainActivity extends Activity {
             for (CharacterProfile c : bundle.characters) {
                 if (c.avatarPath != null && c.avatarPath.startsWith("@")) {
                     c.avatarPath = placeBundleMedia(c.avatarPath, avatarRoot, imageRoot, media);
+                }
+            }
+            for (Persona persona : bundle.personas) {
+                if (persona.avatarPath != null && persona.avatarPath.startsWith("@")) {
+                    persona.avatarPath = placeBundleMedia(persona.avatarPath, avatarRoot, imageRoot, media);
                 }
             }
             for (List<Message> transcript : bundle.chats.values()) {

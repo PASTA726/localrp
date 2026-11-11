@@ -387,4 +387,104 @@ public class PersistenceBundleTest {
         assertEquals("", decoded.characters.get(0).avatarPath);
         assertEquals("", decoded.chats.get("g1").get(0).image);
     }
+
+    // ---- v0.19.18 personas in the bundle ----
+
+    @Test
+    public void bundle_roundTripsPersonasAndOverrides() {
+        PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
+        Group g = new Group();
+        g.id = "g1";
+        g.name = "RP";
+        bundle.groups.add(g);
+        bundle.chats.put("g1", new ArrayList<>());
+        bundle.personas.add(new Persona("p1", "Evren", "Sessiz bahçıvan", ""));
+        bundle.personas.add(new Persona("p2", "Denizci", "", ""));
+        bundle.defaultPersonaId = "p2";
+        bundle.chatPersonas.put("g1", "p1");
+
+        String encoded = PersistenceCodec.encodeBundle(bundle);
+        PersistenceCodec.Bundle decoded = PersistenceCodec.decodeBundle(encoded);
+        assertNotNull(decoded);
+        assertEquals(2, decoded.personas.size());
+        assertEquals("Evren", decoded.personas.get(0).name);
+        assertEquals("p2", decoded.defaultPersonaId);
+        assertEquals("p1", decoded.chatPersonas.get("g1"));
+    }
+
+    @Test
+    public void bundle_v2PersonaAvatarBecomesMarker() {
+        PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
+        bundle.version = 2;
+        bundle.avatarsRoot = "/data/local/files/avatars";
+        bundle.personas.add(new Persona("p1", "Evren", "", "/data/local/files/avatars/pic-9.png"));
+
+        String encoded = PersistenceCodec.encodeBundle(bundle);
+        assertTrue(encoded.contains("@avatars/pic-9.png"));
+        assertFalse(encoded.contains("/data/local/files/avatars"));
+        PersistenceCodec.Bundle decoded = PersistenceCodec.decodeBundle(encoded);
+        assertEquals("@avatars/pic-9.png", decoded.personas.get(0).avatarPath);
+        // Resolve back through the standard media resolver.
+        assertEquals("/data/local/files/avatars/pic-9.png",
+                PersistenceCodec.resolveMediaPath(decoded.personas.get(0).avatarPath,
+                        "/data/local/files/avatars", "/data/local/files/images"));
+    }
+
+    @Test
+    public void bundle_toleratesBrokenPersonaSections() {
+        PersistenceCodec.Bundle decoded = PersistenceCodec.decodeBundle(
+                "{\"version\":1,\"characters\":[],\"groups\":[],\"chats\":{},"
+                        + "\"personas\":[{\"name\":\"idsiz\"},{\"id\":\"p1\",\"name\":\"Tam\"},42],"
+                        + "\"chatPersonas\":{\"g1\":\"\"}}");
+        assertNotNull(decoded);
+        assertEquals(1, decoded.personas.size());
+        assertEquals("Tam", decoded.personas.get(0).name);
+        assertTrue(decoded.chatPersonas.isEmpty()); // empty values are never exported
+        // Missing persona sections (older backups) decode to empty, never null.
+        PersistenceCodec.Bundle legacy = PersistenceCodec.decodeBundle(
+                "{\"version\":1,\"characters\":[],\"groups\":[],\"chats\":{}}");
+        assertNotNull(legacy);
+        assertTrue(legacy.personas.isEmpty());
+        assertEquals("", legacy.defaultPersonaId);
+    }
+
+    @Test
+    public void selectBundle_keepsAllPersonas_filtersOverrides() {
+        PersistenceCodec.Bundle source = new PersistenceCodec.Bundle();
+        Group kept = new Group();
+        kept.id = "g1";
+        Group dropped = new Group();
+        dropped.id = "g2";
+        source.groups.add(kept);
+        source.groups.add(dropped);
+        source.chats.put("g1", new ArrayList<>());
+        source.chats.put("g2", new ArrayList<>());
+        source.personas.add(new Persona("p1", "Evren", "", ""));
+        source.defaultPersonaId = "p1";
+        source.chatPersonas.put("g1", "p1");
+        source.chatPersonas.put("g2", "p1");
+
+        PersistenceCodec.Bundle selected = PersistenceCodec.selectBundle(source,
+                new java.util.HashSet<>(), new java.util.HashSet<>(java.util.Collections.singletonList("g1")));
+        assertEquals(1, selected.personas.size());
+        assertEquals("p1", selected.defaultPersonaId);
+        assertTrue(selected.chatPersonas.containsKey("g1"));
+        assertFalse(selected.chatPersonas.containsKey("g2"));
+    }
+
+    @Test
+    public void mergePersonas_updatesById_andAppendsNew() {
+        List<Persona> stored = new ArrayList<>();
+        stored.add(new Persona("p1", "Eski ad", "", ""));
+        List<Persona> imported = new ArrayList<>();
+        imported.add(new Persona("p1", "Yeni ad", "yeni", ""));
+        imported.add(new Persona("p2", "Yeni kişi", "", ""));
+        imported.add(new Persona("", "idsiz reddedilir", "", ""));
+
+        List<Persona> merged = PersistenceCodec.mergePersonas(stored, imported);
+        assertEquals(2, merged.size());
+        assertEquals("Yeni ad", merged.get(0).name);
+        assertEquals("yeni", merged.get(0).description);
+        assertEquals("p2", merged.get(1).id);
+    }
 }
