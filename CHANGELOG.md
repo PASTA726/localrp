@@ -2,6 +2,12 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.15-alpha1 — 2026-11-11 (yeni başlatıcı ikonu: dram sahnesi)
+
+- **Yeni ikon** (kullanıcı seçimi): karanlık sahnede spot ışığı altında palyaço, elinde gözyaşlı tragedya (üzgün) maskesi — dram tiyatrosu teması. Dört konsept (maskeler / kitap / d20 zar / dram sahnesi) arasından kullanıcı bu sahneyi seçti.
+- Uygulama: adaptive icon foreground + background vektörleri (minSdk 33, eski PNG gerekmez); spot ışığı alfa degradesi aapt gradient ile, maske eğimi VectorDrawable `<group>` rotasyonuyla. 66dp güvenli alanına uyarlı; ışık huzmesi maske kenarında doğal kırpılır.
+- versionCode 44 / 0.19.15-alpha1.
+
 ## v0.19.14-alpha1 — 2026-11-11 (aynı sayfa yenilemesi artık yerinde çiziliyor)
 
 v0.19.13'te bilinçli olarak ertelenen kalem: sayfa içi yenilemeler (lore kaydı, ayar toggle'ları, model durumu) hâlâ tüm pencereyi `setContentView` ile yeniden kuruyordu — gezinme flaşı gidince kalan ikinci titreme kaynağı.
