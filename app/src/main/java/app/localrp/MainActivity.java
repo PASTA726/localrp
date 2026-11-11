@@ -69,30 +69,30 @@ public class MainActivity extends Activity {
     private static final String DEFAULT_AI_THEME = "serbest";
     private static final String[][] AI_THEMES = {
             {"serbest", "Serbest", ""},
-            {"karanlik-fantezi", "Karanlık fantezi",
-                    "Gotik atmosfer, tehlikeli büyü ve ahlaki belirsizlik kullan; umut ile karanlık arasında denge kur."},
+            {"karanlik-fantezi", L10n.s("Karanlık fantezi"),
+                    L10n.s("Gotik atmosfer, tehlikeli büyü ve ahlaki belirsizlik kullan; umut ile karanlık arasında denge kur.")},
             {"bilim-kurgu", "Bilim kurgu",
-                    "Teknoloji, uzay, yapay zekâ ve etik gerilim üzerinden somut, tutarlı bir gelecek kur."},
+                    L10n.s("Teknoloji, uzay, yapay zekâ ve etik gerilim üzerinden somut, tutarlı bir gelecek kur.")},
             {"romantik", "Romantik drama",
-                    "Duygusal yakınlık, kırılganlık ve gerilimi öne çıkar; duyguları abartmadan göster."},
+                    L10n.s("Duygusal yakınlık, kırılganlık ve gerilimi öne çıkar; duyguları abartmadan göster.")},
             {"gizem", "Gizem ve dedektiflik",
-                    "İpuçları, şüpheler ve yavaş açığa çıkan sırlar kullan; her yanıt yeni bir iz bıraksın."},
-            {"tarihi", "Tarihî dönem",
-                    "Dönemin dili, kıyafetleri ve toplumsal kurallarına sadık kal; modern ifadelerden kaçın."},
+                    L10n.s("İpuçları, şüpheler ve yavaş açığa çıkan sırlar kullan; her yanıt yeni bir iz bıraksın.")},
+            {"tarihi", L10n.s("Tarihî dönem"),
+                    L10n.s("Dönemin dili, kıyafetleri ve toplumsal kurallarına sadık kal; modern ifadelerden kaçın.")},
             {"anime", "Anime / hafif roman",
-                    "Canlı duygular, iç monolog ve komik zamanlama kullan; sahneyi abartısız sürdür."},
+                    L10n.s("Canlı duygular, iç monolog ve komik zamanlama kullan; sahneyi abartısız sürdür.")},
             {"korku", "Korku",
-                    "Gerilim, belirsizlik ve görünmeyen tehdit yarat; kan ve şiddeti ölçülü tut."},
+                    L10n.s("Gerilim, belirsizlik ve görünmeyen tehdit yarat; kan ve şiddeti ölçülü tut.")},
             {"buhar", "Buhar punk",
-                    "Pirinç, buhar ve mekanik ayrıntılar; endüstriyel devrim atmosferini abartmadan koru."},
-            {"sur-real", "Sürreal rüya",
-                    "Mantık yerine çağrışım kullan: kayan nesneler, değişen mekânlar, rüya mantığı."},
-            {"savas", "Savaş ve entrika",
-                    "Siyasal baskı, askerî zorunluluk ve güven bunalımı; kimseye sığınak sağlama."},
-            {"razo", "Sıcak slice of life",
-                    "Gündelik küçük anlar, sıcak davranışlar; dram yerine samimiyet taşı."},
-            {"macera", "Uzun yol macerası",
-                    "Bir hedefe giden gezi sahnesi: yol arkadaşları, bulmacalar ve zorlayıcı seçimler."}
+                    L10n.s("Pirinç, buhar ve mekanik ayrıntılar; endüstriyel devrim atmosferini abartmadan koru.")},
+            {"sur-real", L10n.s("Sürreal rüya"),
+                    L10n.s("Mantık yerine çağrışım kullan: kayan nesneler, değişen mekânlar, rüya mantığı.")},
+            {"savas", L10n.s("Savaş ve entrika"),
+                    L10n.s("Siyasal baskı, askerî zorunluluk ve güven bunalımı; kimseye sığınak sağlama.")},
+            {"razo", L10n.s("Sıcak slice of life"),
+                    L10n.s("Gündelik küçük anlar, sıcak davranışlar; dram yerine samimiyet taşı.")},
+            {"macera", L10n.s("Uzun yol macerası"),
+                    L10n.s("Bir hedefe giden gezi sahnesi: yol arkadaşları, bulmacalar ve zorlayıcı seçimler.")}
     };
     private static final int MAX_HISTORY_MESSAGES = 8;
     private static final int MAX_HISTORY_CHARS = 2600;
@@ -120,7 +120,7 @@ public class MainActivity extends Activity {
     /** Profile edits must not yank the engine context from under a live generation. */
     private boolean chatProfileBusy(Group group) {
         if (group.id.equals(generatingChatId)) {
-            Toast.makeText(this, L10n.s("Yanıt sürerken profil değiştirilemez; önce durdur."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Yanıt sürerken profil değiştirilemez; önce durdur.")), Toast.LENGTH_SHORT).show();
             return true;
         }
         return false;
@@ -141,8 +141,8 @@ public class MainActivity extends Activity {
     private TextView pageBackButton;
     private boolean pageHadBack;
     private Uri selectedModel;
-    private String selectedModelName = "Henüz model seçilmedi";
-    private String modelStatus = "Model seçilmedi";
+    private String selectedModelName = L10n.s("Henüz model seçilmedi");
+    private String modelStatus = L10n.s("Model seçilmedi");
     private String visibleChatId;
     private String generatingChatId;
     /** Active online provider client for the current turn (stop path); null offline. */
@@ -261,9 +261,9 @@ public class MainActivity extends Activity {
         String modelUri = prefs.getString("selected_model_uri", null);
         if (modelUri != null) selectedModel = Uri.parse(modelUri);
         selectedModelName = prefs.getString("selected_model_name", selectedModelName);
-        if (LocalAiRuntime.INSTANCE.isModelReady()) modelStatus = "Hazır · bu işlem için internet gerekmez";
-        else if (LocalAiRuntime.INSTANCE.isModelLoading()) modelStatus = "Model yükleniyor…";
-        else if (selectedModel != null) modelStatus = "Seçildi · yüklemeye hazır";
+        if (LocalAiRuntime.INSTANCE.isModelReady()) modelStatus = L10n.s("Hazır · bu işlem için internet gerekmez");
+        else if (LocalAiRuntime.INSTANCE.isModelLoading()) modelStatus = L10n.s("Model yükleniyor…");
+        else if (selectedModel != null) modelStatus = L10n.s("Seçildi · yüklemeye hazır");
         if (shouldShowOnboarding()) showOnboarding(); else showHome();
         // Auto-load the pinned model a tick after the first frame so the UI is alive
         // before any long JNI work starts (DeepSeek item 11).
@@ -275,35 +275,35 @@ public class MainActivity extends Activity {
         for (String key : store.integrityIssues()) {
             if ("characters".equals(key)) parts.add(L10n.s("karakter listesi"));
             else if ("groups".equals(key)) parts.add(L10n.s("sohbet listesi"));
-            else if (key.startsWith("chat_")) parts.add(L10n.s("bir sohbetin geçmişi"));
+            else if (key.startsWith("chat_")) parts.add(L10n.s(L10n.s("bir sohbetin geçmişi")));
         }
-        if (parts.isEmpty()) parts.add(L10n.s("bazı kayıtlar"));
+        if (parts.isEmpty()) parts.add(L10n.s(L10n.s("bazı kayıtlar")));
         String detail = String.join(", ", parts);
         new AlertDialog.Builder(this)
-                .setTitle(L10n.s("Veri okunamadı"))
+                .setTitle(L10n.s(L10n.s("Veri okunamadı")))
                 .setCancelable(false)
-                .setMessage(L10n.s("Saklı verilerde bozuk bölümler bulundu (") + detail + L10n.s("). ")
-                        + L10n.s("Koruma gereği bu bölümler okunana kadar yazmaya kapatıldı; hiçbir veri üzerine yazılmadı. ")
-                        + L10n.s("İlgili sohbeti temizleyerek o bölümü onarabilirsin."))
-                .setPositiveButton(L10n.s("Anlaşıldı"), null)
+                .setMessage(L10n.s(L10n.s("Saklı verilerde bozuk bölümler bulundu (")) + detail + L10n.s("). ")
+                        + L10n.s(L10n.s("Koruma gereği bu bölümler okunana kadar yazmaya kapatıldı; hiçbir veri üzerine yazılmadı. "))
+                        + L10n.s(L10n.s("İlgili sohbeti temizleyerek o bölümü onarabilirsin.")))
+                .setPositiveButton(L10n.s(L10n.s("Anlaşıldı")), null)
                 .show();
     }
 
     private void showHome() {
         visibleChatId = null;
         backAction = null;
-        setPage("LocalRP", "Yerel hikâyelerin, senin kontrolünde", "home");
+        setPage("LocalRP", L10n.s("Yerel hikâyelerin, senin kontrolünde"), "home");
         addHero();
         addHomeActions();
         List<Group> groups = store.groups();
-        if (groups.isEmpty()) addEmpty("Henüz bir RP yok", "Bir karakter seçerek bire bir hikâye başlat veya grup kur.", null, null);
+        if (groups.isEmpty()) addEmpty(L10n.s("Henüz bir RP yok"), L10n.s("Bir karakter seçerek bire bir hikâye başlat veya grup kur."), null, null);
         else {
-            addSection("Son sohbetler", "Tümünü gör", this::showChats);
+            addSection(L10n.s("Son sohbetler"), L10n.s("Tümünü gör"), this::showChats);
             for (Group group : recentChats(groups, 4)) addGroupCard(group, this::showHome);
         }
-        addSection("Karakterlerin", "Yönet", this::showCharacters);
+        addSection("Karakterlerin", L10n.s("Yönet"), this::showCharacters);
         List<CharacterProfile> characters = store.characters();
-        if (characters.isEmpty()) addEmpty("Hikâyene karakter ekle", "Kişiliğini ve konuşma tarzını birlikte tanımla.", "＋  Karakter oluştur", v -> showCharacterEditor(null));
+        if (characters.isEmpty()) addEmpty("Hikâyene karakter ekle", L10n.s("Kişiliğini ve konuşma tarzını birlikte tanımla."), L10n.s("＋  Karakter oluştur"), v -> showCharacterEditor(null));
         else addCharacterGrid(characters);
     }
 
@@ -334,17 +334,17 @@ public class MainActivity extends Activity {
         backAction = null;
         onboardingStep = "intro";
         SharedPreferences prefs = prefs();
-        setPage("LocalRP'ye hoş geldin", "Yerel, çevrimdışı yapay zekâ ile rol yapma", "home");
-        addInfoCard("Tamamen senin cihazında",
-                L10n.s("Karakterler, sohbetler ve model dosyaları yalnızca bu telefonda kalır; ")
-                        + L10n.s("hiçbir sohbet verisi otomatik olarak gönderilmez."), "Gizlilik");
-        addSection("Dil", "Uygulama ve yanıt dili", null);
-        addSecondary(L10n.s("Türkçe") + (prefs.getString("app_language", "tr").equals("tr") ? "  ✓" : ""),
+        setPage(L10n.s("LocalRP'ye hoş geldin"), L10n.s("Yerel, çevrimdışı yapay zekâ ile rol yapma"), "home");
+        addInfoCard(L10n.s("Tamamen senin cihazında"),
+                L10n.s(L10n.s("Karakterler, sohbetler ve model dosyaları yalnızca bu telefonda kalır; "))
+                        + L10n.s(L10n.s("hiçbir sohbet verisi otomatik olarak gönderilmez.")), L10n.s("Gizlilik"));
+        addSection("Dil", L10n.s("Uygulama ve yanıt dili"), null);
+        addSecondary(L10n.s(L10n.s("Türkçe")) + (prefs.getString("app_language", "tr").equals("tr") ? "  ✓" : ""),
                 v -> pickOnboardingLanguage("tr"));
         addSecondary("English (recommended: better RP)"
                 + (prefs.getString("app_language", "tr").equals("en") ? "  ✓" : ""),
                 v -> pickOnboardingLanguage("en"));
-        addPrimary(L10n.s("İleri: model seçimi"), v -> showOnboardingModel());
+        addPrimary(L10n.s(L10n.s("İleri: model seçimi")), v -> showOnboardingModel());
     }
 
     /** Language switch inside onboarding: must re-render the step, not the settings page. */
@@ -360,34 +360,34 @@ public class MainActivity extends Activity {
         visibleChatId = null;
         backAction = this::showOnboarding;
         onboardingStep = "model";
-        setPage("Model seçimi", "Yanıtlar, telefonda çalışan GGUF modeliyle üretilir", "home");
+        setPage(L10n.s("Model seçimi"), L10n.s("Yanıtlar, telefonda çalışan GGUF modeliyle üretilir"), "home");
         if (modelLoading) {
-            addInfoCard("Model yükleniyor…", modelStatus, "GGUF");
-            addBody(L10n.s("Yükleme bitince bu sayfa güncellenir; beklemek zorunda değilsin."));
+            addInfoCard(L10n.s("Model yükleniyor…"), modelStatus, "GGUF");
+            addBody(L10n.s(L10n.s("Yükleme bitince bu sayfa güncellenir; beklemek zorunda değilsin.")));
         } else if (LocalAiRuntime.INSTANCE.isModelReady()) {
-            addInfoCard("Model hazır", modelStatus, "GGUF");
-            addBody(L10n.s("Model yüklü; sohbetler internet olmadan da sürer."));
+            addInfoCard(L10n.s("Model hazır"), modelStatus, "GGUF");
+            addBody(L10n.s(L10n.s("Model yüklü; sohbetler internet olmadan da sürer.")));
         } else {
-            addInfoCard("Model yok (henüz)", modelStatus, "GGUF");
-            addBody(L10n.s("Model seçmezsen karakterler ve sohbetler yine kaydedilir; ")
-                    + L10n.s("ancak yanıt üretimi için bir model yüklemelisin."));
+            addInfoCard(L10n.s("Model yok (henüz)"), modelStatus, "GGUF");
+            addBody(L10n.s(L10n.s("Model seçmezsen karakterler ve sohbetler yine kaydedilir; "))
+                    + L10n.s(L10n.s("ancak yanıt üretimi için bir model yüklemelisin.")));
         }
         List<File> storedModels = LocalAiRuntime.INSTANCE.storedModels(this);
         if (!storedModels.isEmpty()) {
-            addSection("Cihazdaki model kopyaları", "Dokun: yükle", null);
+            addSection(L10n.s("Cihazdaki model kopyaları"), L10n.s("Dokun: yükle"), null);
             for (File file : storedModels) {
                 int verdict = fitVerdict(file.length());
                 String verdictTag = verdict < 0 ? ""
-                        : verdict == 0 ? L10n.s("  ·  sığar")
-                        : verdict == 1 ? L10n.s("  ·  sınırda")
+                        : verdict == 0 ? L10n.s(L10n.s("  ·  sığar"))
+                        : verdict == 1 ? L10n.s(L10n.s("  ·  sınırda"))
                         : L10n.s("  ·  zor");
-                addSecondary(file.getName() + "  ·  " + humanSize(file.length()) + verdictTag,
+                addSecondary(file.getName() + L10n.s("  ·  ") + humanSize(file.length()) + verdictTag,
                         v -> loadStoredModelFile(file));
             }
         }
-        addPrimary(L10n.s("Model önerilerini gör ve indir"), v -> showModelCatalog());
-        addSecondary(L10n.s("İleri: ilk karakter"), v -> showOnboardingCharacter());
-        addBody(L10n.s("Bu adımı istediğin zaman Ayarlar → Model yönetimi'nden tamamlayabilirsin."));
+        addPrimary(L10n.s(L10n.s("Model önerilerini gör ve indir")), v -> showModelCatalog());
+        addSecondary(L10n.s(L10n.s("İleri: ilk karakter")), v -> showOnboardingCharacter());
+        addBody(L10n.s(L10n.s("Bu adımı istediğin zaman Ayarlar → Model yönetimi'nden tamamlayabilirsin.")));
     }
 
     /** Step 3 — first character: a short form or a one-tap preset fill. */
@@ -395,13 +395,13 @@ public class MainActivity extends Activity {
         visibleChatId = null;
         backAction = this::showOnboardingModel;
         onboardingStep = "character";
-        setPage("İlk karakter", "Kimliği adı kadar kişiliği çizer", "home");
-        addBody(L10n.s("Karakterler, sohbetleri yönlendiren profillerdir; her şeyi sonra düzenleyebilirsin."));
-        EditText nameField = field("Adı", "", 1);
+        setPage(L10n.s("İlk karakter"), L10n.s("Kimliği adı kadar kişiliği çizer"), "home");
+        addBody(L10n.s(L10n.s("Karakterler, sohbetleri yönlendiren profillerdir; her şeyi sonra düzenleyebilirsin.")));
+        EditText nameField = field(L10n.s("Adı"), "", 1);
         nameField.setSingleLine(true);
-        EditText descriptionField = field("Kısa tanıtım (hikâyedeki yeri, dünyası)", "", 3);
-        EditText personalityField = field("Kişilik ve konuşma tarzı (isteğe bağlı)", "", 2);
-        addSection("Hazır karakterler", "Dokun: alanları doldurur", null);
+        EditText descriptionField = field(L10n.s("Kısa tanıtım (hikâyedeki yeri, dünyası)"), "", 3);
+        EditText personalityField = field(L10n.s("Kişilik ve konuşma tarzı (isteğe bağlı)"), "", 2);
+        addSection(L10n.s("Hazır karakterler"), L10n.s("Dokun: alanları doldurur"), null);
         for (PresetCharacters.Preset preset : PresetCharacters.PRESETS) {
             addSecondary(preset.name, v -> {
                 nameField.setText(preset.name);
@@ -409,10 +409,10 @@ public class MainActivity extends Activity {
                 personalityField.setText(preset.personality);
             });
         }
-        addPrimary(L10n.s("Karakteri oluştur ve başla"), v -> {
+        addPrimary(L10n.s(L10n.s("Karakteri oluştur ve başla")), v -> {
             String name = nameField.getText().toString().trim();
             if (name.isEmpty()) {
-                Toast.makeText(this, L10n.s("En az bir isim yaz veya hazır bir karakter seç."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("En az bir isim yaz veya hazır bir karakter seç.")), Toast.LENGTH_SHORT).show();
                 return;
             }
             CharacterProfile created = new CharacterProfile();
@@ -420,7 +420,7 @@ public class MainActivity extends Activity {
             created.description = descriptionField.getText().toString().trim();
             created.personality = personalityField.getText().toString().trim();
             if (!store.saveCharacter(created)) {
-                Toast.makeText(this, L10n.s("Karakter kaydedilemedi: verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, L10n.s(L10n.s("Karakter kaydedilemedi: verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                 return;
             }
             Toast.makeText(this, created.name + L10n.s(" eklendi."), Toast.LENGTH_SHORT).show();
@@ -439,14 +439,14 @@ public class MainActivity extends Activity {
     private void showCharacters() {
         visibleChatId = null;
         backAction = this::showHome;
-        setPage("Karakterler", "Hikâyendeki kişileri yönet", "characters");
+        setPage(L10n.s("Karakterler"), L10n.s("Hikâyendeki kişileri yönet"), "characters");
         addUserProfileCard();
         addPrimary("＋  Yeni karakter", v -> showCharacterEditor(null));
         List<CharacterProfile> characters = store.characters();
-        if (characters.isEmpty()) addEmpty("İlk karakterini oluştur", "Adını, kişiliğini ve hikâyedeki yerini belirle.", "Karakter oluştur", v -> showCharacterEditor(null));
+        if (characters.isEmpty()) addEmpty(L10n.s("İlk karakterini oluştur"), L10n.s("Adını, kişiliğini ve hikâyedeki yerini belirle."), L10n.s("Karakter oluştur"), v -> showCharacterEditor(null));
         else addCharacterGrid(characters);
-        addSection("Hazır karakterler", "Tek dokunuşla ekle", null);
-        addBody("Beğendiğin hazır karakter kopyalanıp tamamen düzenlenebilir bir karakter olarak listene geçer.");
+        addSection(L10n.s("Hazır karakterler"), L10n.s("Tek dokunuşla ekle"), null);
+        addBody(L10n.s("Beğendiğin hazır karakter kopyalanıp tamamen düzenlenebilir bir karakter olarak listene geçer."));
         addPresetGrid();
     }
 
@@ -462,21 +462,21 @@ public class MainActivity extends Activity {
         LinearLayout card = makeCard();
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        View face = Avatar.forIdentity(this, name.isEmpty() ? "Sen" : name, avatar, 44);
+        View face = Avatar.forIdentity(this, name.isEmpty() ? L10n.s("Sen") : name, avatar, 44);
         row.addView(face, new LinearLayout.LayoutParams(dp(44), dp(44)));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(dp(12), 0, 0, 0);
         TextView title = label(name.isEmpty()
-                ? L10n.s("Kullanıcı kişilikleri")
-                : name + L10n.s("  (varsayılan kişilik)"), 16, Design.text());
+                ? L10n.s(L10n.s("Kullanıcı kişilikleri"))
+                : name + L10n.s(L10n.s("  (varsayılan kişilik)")), 16, Design.text());
         title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         texts.addView(title);
         TextView detail = label(count == 0
-                ? "Henüz kişilik yok — dokunup kendini tanıt"
+                ? L10n.s("Henüz kişilik yok — dokunup kendini tanıt")
                 : (description.isEmpty()
-                        ? count + L10n.s(" kişilik · dokun: yönet")
-                        : count + L10n.s(" kişilik · ") + brief(description)), 12, Design.muted());
+                        ? count + L10n.s(L10n.s(" kişilik · dokun: yönet"))
+                        : count + L10n.s(L10n.s(" kişilik · ")) + brief(description)), 12, Design.muted());
         detail.setPadding(0, dp(3), 0, 0);
         detail.setSingleLine(true);
         detail.setEllipsize(TextUtils.TruncateAt.END);
@@ -491,16 +491,16 @@ public class MainActivity extends Activity {
     private void showPersonas() {
         visibleChatId = null;
         backAction = this::showCharacters;
-        setPage("Kullanıcı kişilikleri", "Sohbetlerde seni bu kimlikler taşır", "characters");
+        setPage(L10n.s("Kullanıcı kişilikleri"), L10n.s("Sohbetlerde seni bu kimlikler taşır"), "characters");
         java.util.List<Persona> personas = store.personas();
         if (personas.isEmpty()) {
-            addEmpty("Henüz kişilik yok",
-                    "Farklı roller için farklı kimlikler: gerçek adın, takma adın, karakterlerin karşıtı bir oyuncu…",
-                    "İlk kişiliği ekle", v -> showPersonaEditor(null));
+            addEmpty(L10n.s("Henüz kişilik yok"),
+                    L10n.s("Farklı roller için farklı kimlikler: gerçek adın, takma adın, karakterlerin karşıtı bir oyuncu…"),
+                    L10n.s("İlk kişiliği ekle"), v -> showPersonaEditor(null));
         } else {
-            addInfoCard("Nasıl çalışır?",
-                    "Sohbetler varsayılan olarak \"varsayılan\" etiketli kişiliği kullanır; "
-                            + "her sohbet kendi kişiliğini seçebilir (Sohbetler → sohbet → Üretim profili).", "Kişilik");
+            addInfoCard(L10n.s("Nasıl çalışır?"),
+                    L10n.s("Sohbetler varsayılan olarak \"varsayılan\" etiketli kişiliği kullanır; ")
+                            + L10n.s("her sohbet kendi kişiliğini seçebilir (Sohbetler → sohbet → Üretim profili)."), L10n.s("Kişilik"));
             for (Persona persona : personas) {
                 LinearLayout card = makeCard();
                 LinearLayout row = new LinearLayout(this);
@@ -512,10 +512,10 @@ public class MainActivity extends Activity {
                 texts.setOrientation(LinearLayout.VERTICAL);
                 texts.setPadding(dp(12), 0, 0, 0);
                 TextView title = label(persona.name.isEmpty()
-                        ? L10n.s("Adsız kişilik") : persona.name, 16, Design.text());
+                        ? L10n.s(L10n.s("Adsız kişilik")) : persona.name, 16, Design.text());
                 title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
                 texts.addView(title);
-                String tag = store.isDefaultPersona(persona.id) ? L10n.s("  ·  varsayılan") : "";
+                String tag = store.isDefaultPersona(persona.id) ? L10n.s(L10n.s("  ·  varsayılan")) : "";
                 TextView detail = label(brief(persona.description) + tag, 12, Design.muted());
                 detail.setPadding(0, dp(3), 0, 0);
                 detail.setSingleLine(true);
@@ -526,7 +526,7 @@ public class MainActivity extends Activity {
                 card.setOnClickListener(v -> showPersonaEditor(persona));
                 addCardToPage(card);
             }
-            addPrimary("＋  Yeni kişilik", v -> showPersonaEditor(null));
+            addPrimary(L10n.s("＋  Yeni kişilik"), v -> showPersonaEditor(null));
         }
     }
 
@@ -538,8 +538,8 @@ public class MainActivity extends Activity {
     private void showPersonaEditor(Persona editing) {
         visibleChatId = null;
         backAction = this::showPersonas;
-        setPage(editing == null ? "Yeni kişilik" : "Kişiliği düzenle",
-                "Yapay zekâ sana bu kimlikle davranır", "characters");
+        setPage(editing == null ? L10n.s("Yeni kişilik") : L10n.s("Kişiliği düzenle"),
+                L10n.s("Yapay zekâ sana bu kimlikle davranır"), "characters");
         List<Persona> personas = store.personas();
         // A draft belonging to ANY other identity (including one from a cancelled
         // "new persona" session) must not preview or persist into this editor.
@@ -562,15 +562,15 @@ public class MainActivity extends Activity {
                 personaAvatarDraft != null && !personaAvatarDraft.isEmpty() ? personaAvatarDraft : storedAvatar);
         addCardToPage(preview);
 
-        EditText nameField = field(L10n.s("Adın (boş bırakılırsa \"Sen\" sayılır)"), name, 1);
+        EditText nameField = field(L10n.s(L10n.s("Adın (boş bırakılırsa \"Sen\" sayılır)")), name, 1);
         nameField.setSingleLine(true);
         personaNameField = nameField;
-        EditText descriptionField = field(L10n.s("Kendini tanıt (davranışını ve sesini etkiler)"), description, 3);
-        addBody(L10n.s("RP sohbetlerinde mesajların \"Sen\" etiketiyle kalır; model sana \"Kullanıcı kimliği\" bloğunda burada yazdığın bilgilerle davranır."));
-        addPrimary(L10n.s("Profil fotoğrafı seç"), v -> pickAvatar(true));
+        EditText descriptionField = field(L10n.s(L10n.s("Kendini tanıt (davranışını ve sesini etkiler)")), description, 3);
+        addBody(L10n.s(L10n.s("RP sohbetlerinde mesajların \"Sen\" etiketiyle kalır; model sana \"Kullanıcı kimliği\" bloğunda burada yazdığın bilgilerle davranır.")));
+        addPrimary(L10n.s(L10n.s("Profil fotoğrafı seç")), v -> pickAvatar(true));
         if ((personaAvatarDraft != null && !personaAvatarDraft.isEmpty())
                 || !storedAvatar.isEmpty()) {
-            addDangerButton(L10n.s("Fotoğrafı kaldır"), v -> {
+            addDangerButton(L10n.s(L10n.s("Fotoğrafı kaldır")), v -> {
                 String path = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
                         ? personaAvatarDraft : storedAvatar;
                 deleteAvatarFile(path);
@@ -582,13 +582,13 @@ public class MainActivity extends Activity {
             });
         }
         if (editing != null && !store.isDefaultPersona(editing.id)) {
-            addSecondary(L10n.s("Varsayılan kişilik yap"), v -> {
+            addSecondary(L10n.s(L10n.s("Varsayılan kişilik yap")), v -> {
                 store.setDefaultPersonaId(editing.id);
-                Toast.makeText(this, L10n.s("Varsayılan kişilik güncellendi."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Varsayılan kişilik güncellendi.")), Toast.LENGTH_SHORT).show();
                 showPersonas();
             });
         }
-        addPrimary(L10n.s("Kişiliği kaydet"), v -> {
+        addPrimary(L10n.s(L10n.s("Kişiliği kaydet")), v -> {
             String savedName = nameField.getText().toString().trim();
             String savedDescription = descriptionField.getText().toString().trim();
             String savedAvatar = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
@@ -618,16 +618,16 @@ public class MainActivity extends Activity {
             personaAvatarDraft = null;
             personaDraftOwnerId = null;
             if (!store.savePersonas(updated)) {
-                Toast.makeText(this, L10n.s("Profil kayda geçemedi."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Profil kayda geçemedi.")), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (replacedAvatar != null) deleteAvatarFile(replacedAvatar);
-            Toast.makeText(this, L10n.s("Kullanıcı kişiliği kaydedildi."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Kullanıcı kişiliği kaydedildi.")), Toast.LENGTH_SHORT).show();
             showPersonas();
         });
         if (editing != null) {
-            addDangerButton(L10n.s("Kişiliği sil"), v -> confirm(
-                    (savedNameSafe(editing) ) + L10n.s(" kişiliği silinsin mi?"), L10n.s("Sil"), () -> {
+            addDangerButton(L10n.s(L10n.s("Kişiliği sil")), v -> confirm(
+                    (savedNameSafe(editing) ) + L10n.s(L10n.s(" kişiliği silinsin mi?")), L10n.s(L10n.s("Sil")), () -> {
                 List<Persona> remaining = new ArrayList<>(store.personas());
                 Persona doomed = null;
                 for (Persona p : remaining) if (p.id.equals(editing.id)) { doomed = p; remaining.remove(p); break; }
@@ -636,12 +636,12 @@ public class MainActivity extends Activity {
                     store.setDefaultPersonaId(remaining.get(0).id);
                 }
                 if (!store.savePersonas(remaining)) {
-                    Toast.makeText(this, L10n.s("Profil kayda geçemedi."), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, L10n.s(L10n.s("Profil kayda geçemedi.")), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 store.clearChatPersonaReferences(editing.id);
                 if (!doomed.avatarPath.isEmpty()) deleteAvatarFile(doomed.avatarPath);
-                Toast.makeText(this, L10n.s("Kişilik silindi."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Kişilik silindi.")), Toast.LENGTH_SHORT).show();
                 showPersonas();
             }));
         }
@@ -650,7 +650,7 @@ public class MainActivity extends Activity {
     /** Persona display name used in confirm dialogs; falls back to "Adsız kişilik". */
     private String savedNameSafe(Persona persona) {
         return persona.name == null || persona.name.trim().isEmpty()
-                ? L10n.s("Adsız kişilik") : persona.name;
+                ? L10n.s(L10n.s("Adsız kişilik")) : persona.name;
     }
 
     /** One-tap copies a preset into the user's own editable character list. */
@@ -702,7 +702,7 @@ public class MainActivity extends Activity {
         copyHint.setGravity(Gravity.CENTER);
         copyHint.setPadding(0, dp(7), 0, 0);
         card.addView(copyHint);
-        card.setOnClickListener(v -> confirm(preset.name + L10n.s(" karakter listene kopyalansın mı? Kopyalandıktan sonra tamamen düzenlenebilir."), () -> {
+        card.setOnClickListener(v -> confirm(preset.name + L10n.s(L10n.s(" karakter listene kopyalansın mı? Kopyalandıktan sonra tamamen düzenlenebilir.")), () -> {
             CharacterProfile copied = new CharacterProfile();
             copied.name = preset.name;
             copied.description = preset.description;
@@ -710,7 +710,7 @@ public class MainActivity extends Activity {
             copied.instructions = preset.instructions;
             copied.examples = preset.examples;
             if (!store.saveCharacter(copied)) {
-                Toast.makeText(this, L10n.s("Karakter kaydedilemedi: verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, L10n.s(L10n.s("Karakter kaydedilemedi: verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                 return;
             }
             Toast.makeText(this, preset.name + L10n.s(" eklendi."), Toast.LENGTH_SHORT).show();
@@ -735,33 +735,33 @@ public class MainActivity extends Activity {
         editorAfterSave = afterSave;
         editorOnBack = onBack;
         pickedAvatarPath = editing && existing.avatarPath != null ? existing.avatarPath : "";
-        setPage(editing ? "Karakteri düzenle" : "Yeni karakter", "Bilgiler bu telefonda saklanır", "characters");
-        EditText name = field("Karakter adı", editing ? existing.name : "");
+        setPage(editing ? L10n.s("Karakteri düzenle") : "Yeni karakter", L10n.s("Bilgiler bu telefonda saklanır"), "characters");
+        EditText name = field(L10n.s("Karakter adı"), editing ? existing.name : "");
         name.setSingleLine(true);
-        EditText description = field("Kısa tanım", editing ? existing.description : "", 3);
-        EditText personality = field("Kişilik ve konuşma tarzı", editing ? existing.personality : "", 3);
-        EditText instructions = field("Karakter talimatları", editing ? existing.instructions : "", 4);
-        EditText examples = field("Örnek diyalog", editing ? existing.examples : "", 3);
+        EditText description = field(L10n.s("Kısa tanım"), editing ? existing.description : "", 3);
+        EditText personality = field(L10n.s("Kişilik ve konuşma tarzı"), editing ? existing.personality : "", 3);
+        EditText instructions = field(L10n.s("Karakter talimatları"), editing ? existing.instructions : "", 4);
+        EditText examples = field(L10n.s("Örnek diyalog"), editing ? existing.examples : "", 3);
 
-        addSection("Profil fotoğrafı", null, null);
-        addBody("Fotoğraf gizli depoya küçük kopya olarak yazılır; seçtiğin kaynak dosya silinmez. Sohbetlerde karakterin avatarı bu foto olur ve Kaydet ile saklanır.");
+        addSection(L10n.s("Profil fotoğrafı"), null, null);
+        addBody(L10n.s("Fotoğraf gizli depoya küçük kopya olarak yazılır; seçtiğin kaynak dosya silinmez. Sohbetlerde karakterin avatarı bu foto olur ve Kaydet ile saklanır."));
         avatarStatusView = label(pickedAvatarPath.isEmpty()
-                ? "Fotoğraf: seçilmedi" : "Fotoğraf: ✓ hazır", 13, pickedAvatarPath.isEmpty() ? Design.muted() : Design.accent());
+                ? L10n.s("Fotoğraf: seçilmedi") : L10n.s("Fotoğraf: ✓ hazır"), 13, pickedAvatarPath.isEmpty() ? Design.muted() : Design.accent());
         avatarStatusView.setPadding(0, dp(0), 0, dp(6));
         content.addView(avatarStatusView, fullWidth());
-        addPrimary("Fotoğraf seç", v -> pickAvatar(false));
+        addPrimary(L10n.s("Fotoğraf seç"), v -> pickAvatar(false));
         if (!pickedAvatarPath.isEmpty()) {
-            addDangerButton("Fotoğrafı kaldır", v -> {
+            addDangerButton(L10n.s("Fotoğrafı kaldır"), v -> {
                 deleteAvatarFile(pickedAvatarPath);
                 pickedAvatarPath = "";
                 if (avatarStatusView != null) {
-                    avatarStatusView.setText(L10n.s("Fotoğraf: seçilmedi"));
+                    avatarStatusView.setText(L10n.s(L10n.s("Fotoğraf: seçilmedi")));
                     avatarStatusView.setTextColor(Design.muted());
                 }
             });
         }
 
-        addPrimary("Kaydet", v -> {
+        addPrimary(L10n.s("Kaydet"), v -> {
             if (name.getText().toString().trim().isEmpty()) { name.setError(L10n.s("Bir ad gerekli")); return; }
             CharacterProfile character = editing ? existing : new CharacterProfile();
             character.name = name.getText().toString().trim();
@@ -779,17 +779,17 @@ public class MainActivity extends Activity {
             editorCharacter = null;
             pickedAvatarPath = "";
             if (!store.saveCharacter(character)) {
-                Toast.makeText(this, L10n.s("Değişiklik kaydedilemedi: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, L10n.s(L10n.s("Değişiklik kaydedilemedi: karakter verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                 return;
             }
             if (replacedAvatar != null) deleteAvatarFile(replacedAvatar);
             if (afterSave != null) afterSave.run(); else showCharacters();
         });
         if (editing && !BUILTIN_ROLEPLAY_ID.equals(existing.id)) {
-            addDangerButton("Karakteri sil", v -> confirm(existing.name + " silinsin mi?", () -> {
+            addDangerButton(L10n.s("Karakteri sil"), v -> confirm(existing.name + " silinsin mi?", () -> {
                 CharacterProfile snapshot = store.character(existing.id); // fresh copy off the stored JSON
                 if (!store.deleteCharacter(existing.id)) {
-                    Toast.makeText(this, L10n.s("Silinemedi: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, L10n.s(L10n.s("Silinemedi: karakter verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                     return;
                 }
                 showCharacters();
@@ -798,7 +798,7 @@ public class MainActivity extends Activity {
                 if (snapshot != null) {
                     showUndoBar(existing.name + L10n.s(" silindi."), () -> {
                         if (!store.saveCharacter(snapshot)) {
-                            Toast.makeText(this, L10n.s("Geri alınamadı: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                            Toast.makeText(this, L10n.s(L10n.s("Geri alınamadı: karakter verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                             return;
                         }
                         Toast.makeText(this, existing.name + L10n.s(" geri getirildi."), Toast.LENGTH_SHORT).show();
@@ -817,10 +817,10 @@ public class MainActivity extends Activity {
         visibleChatId = null;
         backAction = onBack != null ? onBack : this::showHome;
         boolean editing = existing != null;
-        setPage(editing ? "Grubu düzenle" : "Yeni grup", "Hikâyene katılacak karakterleri seç", "home");
-        EditText name = field("Sohbet adı", editing ? existing.name : "");
+        setPage(editing ? L10n.s("Grubu düzenle") : "Yeni grup", L10n.s("Hikâyene katılacak karakterleri seç"), "home");
+        EditText name = field(L10n.s("Sohbet adı"), editing ? existing.name : "");
         name.setSingleLine(true);
-        addSection("Karakterler", "Bir veya daha fazla", null);
+        addSection(L10n.s("Karakterler"), L10n.s("Bir veya daha fazla"), null);
         List<CheckBox> choices = new ArrayList<>();
         List<CharacterProfile> characters = store.characters();
         for (CharacterProfile character : characters) {
@@ -834,27 +834,27 @@ public class MainActivity extends Activity {
         }
         if (characters.isEmpty()) {
             Runnable returnToEditor = () -> showGroupEditor(existing, onBack);
-            addEmpty("Önce karakter oluştur", "RP için en az bir karakter gerekli.", "Karakter oluştur",
+            addEmpty(L10n.s("Önce karakter oluştur"), L10n.s("RP için en az bir karakter gerekli."), L10n.s("Karakter oluştur"),
                     v -> showCharacterEditor(null, returnToEditor, returnToEditor));
         }
-        addPrimary(editing ? "Değişiklikleri kaydet" : "Sohbeti başlat", v -> {
-            if (name.getText().toString().trim().isEmpty()) { name.setError(L10n.s("Sohbet adı gerekli")); return; }
+        addPrimary(editing ? L10n.s("Değişiklikleri kaydet") : L10n.s("Sohbeti başlat"), v -> {
+            if (name.getText().toString().trim().isEmpty()) { name.setError(L10n.s(L10n.s("Sohbet adı gerekli"))); return; }
             Group group = editing ? existing : new Group();
             group.name = name.getText().toString().trim();
             group.characterIds.clear();
             for (int i = 0; i < choices.size(); i++) if (choices.get(i).isChecked()) group.characterIds.add(characters.get(i).id);
-            if (group.characterIds.isEmpty()) { name.setError(L10n.s("En az bir karakter seç")); return; }
+            if (group.characterIds.isEmpty()) { name.setError(L10n.s(L10n.s("En az bir karakter seç"))); return; }
             group.roleplay = true;
             if (!store.saveGroup(group)) {
-                Toast.makeText(this, L10n.s("Değişiklik kaydedilemedi: sohbet verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, L10n.s(L10n.s("Değişiklik kaydedilemedi: sohbet verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                 return;
             }
             showChat(group);
         });
         if (editing) {
-            addSection("Sohbet", null, null);
-            addDangerButton("Sohbet geçmişini temizle", v -> clearChat(existing));
-            addDangerButton("Grubu sil", v -> confirm(existing.name + " ve sohbeti silinsin mi?", "Sil", () -> {
+            addSection(L10n.s("Sohbet"), null, null);
+            addDangerButton(L10n.s("Sohbet geçmişini temizle"), v -> clearChat(existing));
+            addDangerButton("Grubu sil", v -> confirm(existing.name + " ve sohbeti silinsin mi?", L10n.s("Sil"), () -> {
                 LocalAiRuntime.INSTANCE.stopGeneration();
                 // Snapshots must come off the store BEFORE deleteGroup wipes the record;
                 // image files are kept until the undo window closes so restore can win.
@@ -866,7 +866,7 @@ public class MainActivity extends Activity {
                     showUndoBar(existing.name + L10n.s(" silindi."), () -> {
                         if (!store.saveGroup(snapshot) || !store.replaceMessages(snapshot.id, transcript)) {
                             store.deleteGroup(snapshot.id); // compensating: no half-restored chat stays visible
-                            Toast.makeText(this, L10n.s("Geri alınamadı: sohbet verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                            Toast.makeText(this, L10n.s(L10n.s("Geri alınamadı: sohbet verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                             return;
                         }
                         Toast.makeText(this, existing.name + L10n.s(" geri getirildi."), Toast.LENGTH_SHORT).show();
@@ -885,16 +885,16 @@ public class MainActivity extends Activity {
         }
         String[] names = new String[characters.size()];
         for (int i = 0; i < names.length; i++) names[i] = characters.get(i).name;
-        new AlertDialog.Builder(this).setTitle(L10n.s("RP karakterini seç"))
+        new AlertDialog.Builder(this).setTitle(L10n.s(L10n.s("RP karakterini seç")))
                 .setItems(names, (dialog, index) -> {
                     CharacterProfile character = characters.get(index);
                     Group chat = new Group();
-                    chat.name = character.name + " ile RP";
+                    chat.name = character.name + L10n.s(" ile RP");
                     chat.characterIds.add(character.id);
                     chat.roleplay = true;
                     store.saveGroup(chat);
                     showChat(chat);
-                }).setNegativeButton(L10n.s("Vazgeç"), null).show();
+                }).setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).show();
     }
 
     private CharacterProfile chooseSpeaker(Group group, String lastUserText) {
@@ -1002,7 +1002,7 @@ public class MainActivity extends Activity {
         chatOlderButton = null;
         chatEmptyState = null;
         if (chatHistory.isEmpty()) {
-            chatEmptyState = addEmpty("RP sahnesi burada başlıyor", "Mesajını yaz; seçili karakter otomatik yanıtlasın.", null, null);
+            chatEmptyState = addEmpty(L10n.s("RP sahnesi burada başlıyor"), L10n.s("Mesajını yaz; seçili karakter otomatik yanıtlasın."), null, null);
             addStarterChips(group);
         } else {
             addOlderMessagesButton();
@@ -1018,9 +1018,9 @@ public class MainActivity extends Activity {
      */
     private void addStarterChips(Group group) {
         String[][] starters = {
-                {L10n.s("İlk sahneyi kur"), L10n.s("*Kapıda durur, yorgun bir gülümseme.* Selam… buraya tam zamanında geldin.")},
-                {L10n.s("Kısa bir selam"), L10n.s("Selam! Burada seni tekrar görmek güzel.")},
-                {L10n.s("Arka planı sor"), L10n.s("Bu sahneyi nasıl kurdun? Baştan anlat.")},
+                {L10n.s(L10n.s("İlk sahneyi kur")), L10n.s(L10n.s("*Kapıda durur, yorgun bir gülümseme.* Selam… buraya tam zamanında geldin."))},
+                {L10n.s(L10n.s("Kısa bir selam")), L10n.s(L10n.s("Selam! Burada seni tekrar görmek güzel."))},
+                {L10n.s(L10n.s("Arka planı sor")), L10n.s(L10n.s("Bu sahneyi nasıl kurdun? Baştan anlat."))},
         };
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -1073,7 +1073,7 @@ public class MainActivity extends Activity {
     }
 
     private void updateOlderLabel(Button view) {
-        view.setText(L10n.english ? "Older messages (" + chatRenderStart + ")"
+        view.setText(L10n.english ? L10n.s("Older messages (") + chatRenderStart + ")"
                 : "Daha eski mesajlar (" + chatRenderStart + ")");
     }
 
@@ -1104,15 +1104,15 @@ public class MainActivity extends Activity {
         if (providerReady()) {
             // Provider-enabled routing always shows what the user opted into, even when
             // a local model also sits loaded (it wins nothing while the provider is on).
-            return L10n.s("Online sağlayıcı · veri açık onayınla gider");
+            return L10n.s(L10n.s("Online sağlayıcı · veri açık onayınla gider"));
         }
         if (!LocalAiRuntime.INSTANCE.isModelReady()) {
             if (LocalAiRuntime.INSTANCE.loadedModelPath() != null) {
-                return L10n.s("Model yeniden hazırlanacak · çevrimdışı");
+                return L10n.s(L10n.s("Model yeniden hazırlanacak · çevrimdışı"));
             }
-            return L10n.s("Çevrimdışı yanıtlar için önce AI ayarlarından model yükle");
+            return L10n.s(L10n.s("Çevrimdışı yanıtlar için önce AI ayarlarından model yükle"));
         }
-        return group.characterIds.size() == 1 ? L10n.s("Bire bir karakter RP · cihaz içinde") : L10n.s("Grup RP · cihaz içinde");
+        return group.characterIds.size() == 1 ? L10n.s(L10n.s("Bire bir karakter RP · cihaz içinde")) : L10n.s(L10n.s("Grup RP · cihaz içinde"));
     }
 
     private boolean modelCanRespond() {
@@ -1164,7 +1164,7 @@ public class MainActivity extends Activity {
         menu.setMinWidth(dp(44));
         menu.setMinHeight(dp(48));
         menu.setPadding(dp(12), 0, dp(12), 0);
-        menu.setContentDescription(L10n.s("Sohbet menüsü"));
+        menu.setContentDescription(L10n.s(L10n.s("Sohbet menüsü")));
         menu.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
         menu.setOnClickListener(v -> showChatMenu(group));
         LinearLayout.LayoutParams menuParams = new LinearLayout.LayoutParams(
@@ -1174,7 +1174,7 @@ public class MainActivity extends Activity {
         chatComposer.addView(tools, fullWidth());
 
         if (!modelCanRespond()) {
-            chatModelHint = label(selectedModel == null ? "Yanıtlar için GGUF modeli seç  ›" : "Modeli yükle  ›", 13, Design.accent());
+            chatModelHint = label(selectedModel == null ? L10n.s("Yanıtlar için GGUF modeli seç  ›") : L10n.s("Modeli yükle  ›"), 13, Design.accent());
             chatModelHint.setPadding(0, dp(8), 0, dp(2));
             chatModelHint.setOnClickListener(v -> openModels(() -> openChat(group.id)));
             chatComposer.addView(chatModelHint, fullWidth());
@@ -1193,7 +1193,7 @@ public class MainActivity extends Activity {
         chatComposer.addView(chatContinueButton, continueParams);
 
         EditText input = new EditText(this);
-        input.setHint(L10n.s("Hikâyeye bir şey yaz…"));
+        input.setHint(L10n.s(L10n.s("Hikâyeye bir şey yaz…")));
         input.setMinLines(1);
         input.setMaxLines(5);
         input.setGravity(Gravity.TOP);
@@ -1228,7 +1228,7 @@ public class MainActivity extends Activity {
         photo.setMinWidth(dp(44));
         photo.setMinHeight(dp(44));
         photo.setTextColor(Design.muted());
-        photo.setContentDescription(L10n.s("Fotoğraf ekle"));
+        photo.setContentDescription(L10n.s(L10n.s("Fotoğraf ekle")));
         photo.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
         photo.setOnClickListener(v -> {
             imageAttachGroup = group;
@@ -1237,9 +1237,9 @@ public class MainActivity extends Activity {
             pick.setType("image/*");
             try {
                 startActivityForResult(
-                        Intent.createChooser(pick, L10n.s("Fotoğraf seç")), CHAT_PHOTO_PICK);
+                        Intent.createChooser(pick, L10n.s(L10n.s("Fotoğraf seç"))), CHAT_PHOTO_PICK);
             } catch (android.content.ActivityNotFoundException noPicker) {
-                Toast.makeText(this, L10n.s("Bu cihazda fotoğraf seçici yok."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Bu cihazda fotoğraf seçici yok.")), Toast.LENGTH_SHORT).show();
             }
         });
         composerRow.addView(photo, new LinearLayout.LayoutParams(dp(44), dp(44)));
@@ -1250,7 +1250,7 @@ public class MainActivity extends Activity {
         paint.setMinWidth(dp(44));
         paint.setMinHeight(dp(44));
         paint.setTextColor(Design.accent());
-        paint.setContentDescription(L10n.s("Görsel üret"));
+        paint.setContentDescription(L10n.s(L10n.s("Görsel üret")));
         paint.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
         paint.setOnClickListener(v -> showImageGenerateDialog(group));
         LinearLayout.LayoutParams paintParams = new LinearLayout.LayoutParams(dp(44), dp(44));
@@ -1263,7 +1263,7 @@ public class MainActivity extends Activity {
         action.setPadding(0, 0, 0, 0);
         action.setMinWidth(dp(48));
         action.setMinHeight(dp(48));
-        action.setContentDescription(L10n.s("Gönder (veya üretimi durdur)"));
+        action.setContentDescription(L10n.s(L10n.s("Gönder (veya üretimi durdur)")));
         action.setTextColor(Design.onAccent());
         action.setBackground(rounded(Design.accent(), Design.accent(), 30));
         action.setOnClickListener(v -> {
@@ -1286,7 +1286,7 @@ public class MainActivity extends Activity {
             chip.setPadding(dp(12), 0, dp(12), 0);
             chip.setMinimumHeight(dp(38));
             chip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 20));
-            TextView chipLabel = label(L10n.s("📷 Fotoğraf eklendi · gönder ile birlikte gider"), 13, Design.text());
+            TextView chipLabel = label(L10n.s(L10n.s("📷 Fotoğraf eklendi · gönder ile birlikte gider")), 13, Design.text());
             TextView chipRemove = label("✕", 15, Design.muted());
             chipRemove.setPadding(dp(10), 0, 0, 0);
             chipRemove.setOnClickListener(v -> {
@@ -1348,56 +1348,56 @@ public class MainActivity extends Activity {
     private void showImageGenerateDialog(Group group) {
         if (!LocalImageEngine.INSTANCE.isModelReady()) {
             new AlertDialog.Builder(this)
-                    .setTitle(L10n.s("Görsel modeli yüklü değil"))
-                    .setMessage(L10n.s("Önce Ayarlar → Model önerileri → Görsel bölümünden bir görsel modeli indir ve yükle."))
-                    .setPositiveButton(L10n.s("Model önerilerini aç"), (d, w) -> openModels(null))
-                    .setNegativeButton(L10n.s("Vazgeç"), null)
+                    .setTitle(L10n.s(L10n.s("Görsel modeli yüklü değil")))
+                    .setMessage(L10n.s(L10n.s("Önce Ayarlar → Model önerileri → Görsel bölümünden bir görsel modeli indir ve yükle.")))
+                    .setPositiveButton(L10n.s(L10n.s("Model önerilerini aç")), (d, w) -> openModels(null))
+                    .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null)
                     .show();
             return;
         }
         if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) {
-            Toast.makeText(this, L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
         }
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(22), dp(16), dp(22), 0);
-        TextView note = label(L10n.s("Bu cihazda tek bir 512×512 görsel üretilir; CPU ile 1–3 dakika sürebilir. İptal etmek için duraklat düğmesine bas."), 12, Design.muted());
+        TextView note = label(L10n.s(L10n.s("Bu cihazda tek bir 512×512 görsel üretilir; CPU ile 1–3 dakika sürebilir. İptal etmek için duraklat düğmesine bas.")), 12, Design.muted());
         form.addView(note);
         // Dialog-scoped inputs: they must never enter the page's `content` tree, so
         // they are built with a detached helper instead of the page-bound field().
-        EditText promptInput = dialogField(L10n.s("Görsel fikri"));
-        promptInput.setHint(L10n.s("Örn: fırtınada duran deniz feneri"));
+        EditText promptInput = dialogField(L10n.s(L10n.s("Görsel fikri")));
+        promptInput.setHint(L10n.s(L10n.s("Örn: fırtınada duran deniz feneri")));
         form.addView(promptInput);
-        EditText negativeInput = dialogField(L10n.s("İstenmeyenler (boş kalabilir)"));
-        negativeInput.setHint(L10n.s("Örn: bulanık, düşük kalite"));
+        EditText negativeInput = dialogField(L10n.s(L10n.s("İstenmeyenler (boş kalabilir)")));
+        negativeInput.setHint(L10n.s(L10n.s("Örn: bulanık, düşük kalite")));
         form.addView(negativeInput);
         // Sampling control panel (DeepSeek item 8): steps / CFG / seed go with the
         // prompt and persist for the next run; empty inputs keep engine defaults.
         SharedPreferences prefs = prefs();
         int preferredSteps = prefs.getInt("img_steps", LocalImageEngine.INSTANCE.preparedStepCount());
         String preferredCfg = prefs.getString("img_cfg", "5");
-        EditText stepsInput = dialogField(L10n.s("Adım sayısı (10–50)"));
+        EditText stepsInput = dialogField(L10n.s(L10n.s("Adım sayısı (10–50)")));
         stepsInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         stepsInput.setText(String.valueOf(preferredSteps));
         stepsInput.setSingleLine(true);
         form.addView(stepsInput);
-        EditText cfgInput = dialogField(L10n.s("CFG ölçeği (1.5–15)"));
+        EditText cfgInput = dialogField(L10n.s(L10n.s("CFG ölçeği (1.5–15)")));
         cfgInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
         cfgInput.setText(preferredCfg);
         cfgInput.setSingleLine(true);
         form.addView(cfgInput);
-        EditText seedInput = dialogField(L10n.s("Tohum (boş = rastgele)"));
+        EditText seedInput = dialogField(L10n.s(L10n.s("Tohum (boş = rastgele)")));
         seedInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
         seedInput.setSingleLine(true);
         seedInput.setText(prefs.getString("img_seed", ""));
         form.addView(seedInput);
 
         final AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(L10n.s("Görsel üret (") + LocalImageEngine.INSTANCE.loadedModelName() + ")")
+                .setTitle(L10n.s(L10n.s("Görsel üret (")) + LocalImageEngine.INSTANCE.loadedModelName() + ")")
                 .setView(form)
-                .setPositiveButton(L10n.s("Üret"), null)
-                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .setPositiveButton(L10n.s(L10n.s("Üret")), null)
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null)
                 .create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String prompt = promptInput.getText().toString().trim();
@@ -1425,7 +1425,7 @@ public class MainActivity extends Activity {
     private void showGallery(Runnable back) {
         visibleChatId = null;
         backAction = back != null ? back : this::showSettings;
-        setPage("Görsel galerisi", "Üretilen ve sohbete eklenen görseller", "settings");
+        setPage(L10n.s("Görsel galerisi"), L10n.s("Üretilen ve sohbete eklenen görseller"), "settings");
         File directory = LocalImageEngine.INSTANCE.imagesDirectory(this);
         File[] files = directory.listFiles();
         List<File> images = new ArrayList<>();
@@ -1437,7 +1437,7 @@ public class MainActivity extends Activity {
         }
         images.sort((a, b) -> Long.compare(b.lastModified(), a.lastModified()));
         if (images.isEmpty()) {
-            addEmpty("Burada henüz görsel yok", "Sohbette ✨ ile üret ya da 📷 ile bir fotoğraf ekle.", null, null);
+            addEmpty(L10n.s("Burada henüz görsel yok"), L10n.s("Sohbette ✨ ile üret ya da 📷 ile bir fotoğraf ekle."), null, null);
             return;
         }
         for (File image : images) addGalleryRow(image);
@@ -1458,7 +1458,7 @@ public class MainActivity extends Activity {
         name.setSingleLine(true);
         name.setEllipsize(TextUtils.TruncateAt.MIDDLE);
         texts.addView(name);
-        TextView meta = label(new Date(image.lastModified()) + "  ·  " + humanSize(image.length()), 12, Design.muted());
+        TextView meta = label(new Date(image.lastModified()) + L10n.s("  ·  ") + humanSize(image.length()), 12, Design.muted());
         meta.setPadding(0, dp(3), 0, 0);
         texts.addView(meta);
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
@@ -1486,23 +1486,23 @@ public class MainActivity extends Activity {
 
     /** Long-press gallery actions: character avatar, re-attach to a chat, delete. */
     private void showGalleryActions(File image) {
-        String[] items = {L10n.s("Karakter avatarı yap"), L10n.s("Sohbete ekle"), L10n.s("Sil")};
+        String[] items = {L10n.s(L10n.s("Karakter avatarı yap")), L10n.s("Sohbete ekle"), L10n.s(L10n.s("Sil"))};
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle(image.getName())
                 .setItems(items, (d, which) -> {
                     if (which == 0) makeAvatarFrom(image);
                     else if (which == 1) attachGalleryImage(image);
                     else if (galleryImageInUse(image)) {
-                        Toast.makeText(this, L10n.s("Bu görsel bir sohbette veya karakter avatarında kullanılıyor; önce o kaydı sil."), Toast.LENGTH_LONG).show();
-                    } else confirm(L10n.s("Bu görsel silinsin mi?"), L10n.s("Sil"), () -> {
+                        Toast.makeText(this, L10n.s(L10n.s("Bu görsel bir sohbette veya karakter avatarında kullanılıyor; önce o kaydı sil.")), Toast.LENGTH_LONG).show();
+                    } else confirm(L10n.s(L10n.s("Bu görsel silinsin mi?")), L10n.s(L10n.s("Sil")), () -> {
                         if (image.delete()) {
-                            Toast.makeText(this, L10n.s("Görsel silindi."), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, L10n.s(L10n.s("Görsel silindi.")), Toast.LENGTH_SHORT).show();
                             showGallery(this::showSettings);
                         } else {
-                            Toast.makeText(this, L10n.s("Silinemedi: dosya yazılabilir değil."), Toast.LENGTH_LONG).show();
+                            Toast.makeText(this, L10n.s(L10n.s("Silinemedi: dosya yazılabilir değil.")), Toast.LENGTH_LONG).show();
                         }
                     });
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).create();
         tintDialog(dialog);
         dialog.show();
     }
@@ -1525,7 +1525,7 @@ public class MainActivity extends Activity {
     private void makeAvatarFrom(File image) {
         List<CharacterProfile> characters = store.characters();
         if (characters.isEmpty()) {
-            Toast.makeText(this, L10n.s("Önce bir karakter oluştur."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Önce bir karakter oluştur.")), Toast.LENGTH_SHORT).show();
             return;
         }
         String[] names = new String[characters.size()];
@@ -1535,7 +1535,7 @@ public class MainActivity extends Activity {
                     CharacterProfile character = characters.get(which);
                     File avatarDirectory = new File(getFilesDir(), "avatars");
                     if (!avatarDirectory.exists() && !avatarDirectory.mkdirs()) {
-                        Toast.makeText(this, L10n.s("Avatar kopyası yazılamadı."), Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Avatar kopyası yazılamadı.")), Toast.LENGTH_LONG).show();
                         return;
                     }
                     File target = new File(avatarDirectory,
@@ -1552,18 +1552,18 @@ public class MainActivity extends Activity {
                         // copied stays false; reported below
                     }
                     if (!copied) {
-                        Toast.makeText(this, L10n.s("Avatar kopyası yazılamadı."), Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Avatar kopyası yazılamadı.")), Toast.LENGTH_LONG).show();
                         return;
                     }
                     character.avatarPath = target.getPath();
                     if (!store.saveCharacter(character)) {
                         target.delete(); // an unsaved copy must not pile up in storage
-                        Toast.makeText(this, L10n.s("Avatar kaydedilemedi: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Avatar kaydedilemedi: karakter verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                         return;
                     }
-                    Toast.makeText(this, character.name + L10n.s(" için avatar güncellendi."), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, character.name + L10n.s(L10n.s(" için avatar güncellendi.")), Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).create();
         tintDialog(dialog);
         dialog.show();
     }
@@ -1572,7 +1572,7 @@ public class MainActivity extends Activity {
     private void attachGalleryImage(File image) {
         List<Group> groups = store.groups();
         if (groups.isEmpty()) {
-            Toast.makeText(this, L10n.s("Önce bir sohbet oluştur."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Önce bir sohbet oluştur.")), Toast.LENGTH_SHORT).show();
             return;
         }
         String[] names = new String[groups.size()];
@@ -1585,7 +1585,7 @@ public class MainActivity extends Activity {
                     Toast.makeText(this, group.name + L10n.s(" sohbetine eklendi."), Toast.LENGTH_SHORT).show();
                     if (group.id.equals(visibleChatId)) showChat(group);
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).create();
         tintDialog(dialog);
         dialog.show();
     }
@@ -1646,11 +1646,11 @@ public class MainActivity extends Activity {
     private void startChatImageGeneration(Group group, String prompt, String negative,
                                           int steps, float cfg, long seed) {
         if (generatingChatId != null) {
-            Toast.makeText(this, L10n.s("Önce yürüyen yanıtı bekleyin."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Önce yürüyen yanıtı bekleyin.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (chatStatusView != null) {
-            chatStatusView.setText(LocalImageEngine.INSTANCE.loadedModelName() + L10n.s(" · görsel üretiliyor…"));
+            chatStatusView.setText(LocalImageEngine.INSTANCE.loadedModelName() + L10n.s(L10n.s(" · görsel üretiliyor…")));
         }
 
         boolean accepted = LocalImageEngine.INSTANCE.generate(
@@ -1691,7 +1691,7 @@ public class MainActivity extends Activity {
         CharacterProfile speakerProfile = chooseSpeaker(group, "");
         String speaker = speakerProfile != null
                 ? speakerProfile.name
-                : L10n.s("Anlatıcı");
+                : L10n.s(L10n.s("Anlatıcı"));
         Message message = new Message(speaker, "", false, System.currentTimeMillis());
         message.image = path;
         store.addMessage(group.id, message);
@@ -1716,7 +1716,7 @@ public class MainActivity extends Activity {
                 if (group.id.equals(visibleChatId) && chatStatusView != null) {
                     String step = LocalImageEngine.INSTANCE.statusText();
                     String progress = step == null ? "" : "  " + step;
-                    chatStatusView.setText(L10n.s("Görsel üretiliyor · model bu cihazda çalışıyor") + progress);
+                    chatStatusView.setText(L10n.s(L10n.s("Görsel üretiliyor · model bu cihazda çalışıyor")) + progress);
                 }
                 handler.postDelayed(this, 400);
             }
@@ -1739,15 +1739,15 @@ public class MainActivity extends Activity {
         boolean attachedHere = pendingComposerImage != null && group.id.equals(pendingComposerImageChatId);
         if ((text.isEmpty() && !attachedHere) || generatingChatId != null) return;
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading()) {
-            Toast.makeText(this, L10n.s("Model yükleniyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Model yükleniyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (LocalAiRuntime.INSTANCE.isBenchmarking()) {
-            Toast.makeText(this, L10n.s("Motor testi sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Motor testi sürüyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) {
-            Toast.makeText(this, L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
         }
         forgetAutoAttempts(group.id);
@@ -1768,7 +1768,7 @@ public class MainActivity extends Activity {
         if (withImage) {
             // Honesty guard: the bundled text engine cannot see images. Say so once
             // instead of letting the user expect a visual description later.
-            Toast.makeText(this, L10n.s("Motor fotoğrafları göremez; görsel yalnızca sohbet kaydında saklanır."), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L10n.s(L10n.s("Motor fotoğrafları göremez; görsel yalnızca sohbet kaydında saklanır.")), Toast.LENGTH_LONG).show();
         }
         input.setText("");
         chatDrafts.remove(group.id);
@@ -1784,10 +1784,10 @@ public class MainActivity extends Activity {
         }
         if (!modelCanRespond()) {
             new AlertDialog.Builder(this)
-                    .setTitle(L10n.s("Önce model gerekli"))
-                    .setMessage(L10n.s("Yanıt üretmek için AI ayarlarından bir GGUF modeli seçip yükle. Mesajın kaydedildi; model hazır olunca yanıtlanacak."))
-                    .setPositiveButton(L10n.s("AI ayarları"), (dialog, which) -> openModels(() -> openChat(group.id)))
-                    .setNegativeButton(L10n.s("Tamam"), null).show();
+                    .setTitle(L10n.s(L10n.s("Önce model gerekli")))
+                    .setMessage(L10n.s(L10n.s("Yanıt üretmek için AI ayarlarından bir GGUF modeli seçip yükle. Mesajın kaydedildi; model hazır olunca yanıtlanacak.")))
+                    .setPositiveButton(L10n.s(L10n.s("AI ayarları")), (dialog, which) -> openModels(() -> openChat(group.id)))
+                    .setNegativeButton(L10n.s(L10n.s("Tamam")), null).show();
             return;
         }
         CharacterProfile speaker = chooseSpeaker(group, text);
@@ -1797,15 +1797,15 @@ public class MainActivity extends Activity {
     private void continueOrRetry(Group group) {
         if (generatingChatId != null) return;
         if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) {
-            Toast.makeText(this, L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading()) {
-            Toast.makeText(this, L10n.s("Model yükleniyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Model yükleniyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (LocalAiRuntime.INSTANCE.isBenchmarking()) {
-            Toast.makeText(this, L10n.s("Motor testi sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Motor testi sürüyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (!modelCanRespond()) {
@@ -1998,20 +1998,20 @@ public class MainActivity extends Activity {
                 Group visible = visibleChatId == null ? null : store.group(visibleChatId);
                 if (visible != null) updateChatControls(visible);
                 if (group.id.equals(visibleChatId) && chatStatusView != null) {
-                    if (error != null) chatStatusView.setText(finalText.isEmpty() ? L10n.s("Yanıt üretilemedi") : L10n.s("Yanıt yarıda kesildi"));
-                    else if (finalText.isEmpty()) chatStatusView.setText(L10n.s("Model boş yanıt döndürdü"));
-                    else if (stopped) chatStatusView.setText(L10n.s("Yanıt durduruldu."));
+                    if (error != null) chatStatusView.setText(finalText.isEmpty() ? L10n.s(L10n.s("Yanıt üretilemedi")) : L10n.s(L10n.s("Yanıt yarıda kesildi")));
+                    else if (finalText.isEmpty()) chatStatusView.setText(L10n.s(L10n.s("Model boş yanıt döndürdü")));
+                    else if (stopped) chatStatusView.setText(L10n.s(L10n.s("Yanıt durduruldu.")));
                 }
                 if (error != null && finalText.isEmpty() && group.id.equals(visibleChatId) && uiAlive()) {
                     AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this)
-                            .setTitle(L10n.s("Yanıt üretilemedi"))
+                            .setTitle(L10n.s(L10n.s("Yanıt üretilemedi")))
                             .setMessage(error);
                     if (modelCanRespond()) {
                         dialog.setPositiveButton(L10n.s("Yeniden dene"), (d, w) -> continueOrRetry(group))
-                                .setNegativeButton(L10n.s("Kapat"), null);
+                                .setNegativeButton(L10n.s(L10n.s("Kapat")), null);
                     } else {
-                        dialog.setPositiveButton(L10n.s("AI ayarları"), (d, w) -> openModels(() -> openChat(group.id)))
-                                .setNegativeButton(L10n.s("Kapat"), null);
+                        dialog.setPositiveButton(L10n.s(L10n.s("AI ayarları")), (d, w) -> openModels(() -> openChat(group.id)))
+                                .setNegativeButton(L10n.s(L10n.s("Kapat")), null);
                     }
                     AlertDialog errorDialog = dialog.create();
                     tintDialog(errorDialog);
@@ -2024,7 +2024,7 @@ public class MainActivity extends Activity {
 
             @Override public void onStatus(String message) {
                 if (group.id.equals(visibleChatId) && chatStatusView != null) {
-                    chatStatusView.setText(speaker.name + " · " + message);
+                    chatStatusView.setText(speaker.name + L10n.s(" · ") + message);
                 }
             }
 
@@ -2122,7 +2122,7 @@ public class MainActivity extends Activity {
         }
         if (chatSpeakerView != null) {
             CharacterProfile manual = manualSpeaker(group);
-            chatSpeakerView.setText(L10n.s("Sıra: ") + (manual == null ? L10n.s("Otomatik") : manual.name) + "  ▾");
+            chatSpeakerView.setText(L10n.s(L10n.s("Sıra: ")) + (manual == null ? L10n.s("Otomatik") : manual.name) + "  ▾");
         }
         if (chatStatusView != null) chatStatusView.setText(chatStatusText(group));
         if (chatModelHint != null) chatModelHint.setVisibility(modelCanRespond() ? View.GONE : View.VISIBLE);
@@ -2141,8 +2141,8 @@ public class MainActivity extends Activity {
         }
         chatContinueButton.setVisibility(View.VISIBLE);
         chatContinueButton.setText(last.user
-                ? L10n.s("↻  ") + speaker.name + L10n.s(" yanıtlasın")
-                : L10n.s("▶  Sıradaki: ") + speaker.name + L10n.s(" konuşsun"));
+                ? L10n.s("↻  ") + speaker.name + L10n.s(L10n.s(" yanıtlasın"))
+                : L10n.s(L10n.s("▶  Sıradaki: ")) + speaker.name + L10n.s(L10n.s(" konuşsun")));
     }
 
     private void showSpeakerPicker(Group group) {
@@ -2152,22 +2152,22 @@ public class MainActivity extends Activity {
             if (character != null) characters.add(character);
         }
         String[] labels = new String[characters.size() + 1];
-        labels[0] = L10n.s("Otomatik (sırayla)");
+        labels[0] = L10n.s(L10n.s("Otomatik (sırayla)"));
         for (int i = 0; i < characters.size(); i++) labels[i + 1] = characters.get(i).name;
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(L10n.s("Sıradaki konuşmacı"))
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(L10n.s(L10n.s("Sıradaki konuşmacı")))
                 .setItems(labels, (d, which) -> {
                     if (which == 0) clearManualSpeaker(group.id);
                     else setManualSpeaker(group.id, characters.get(which - 1).id);
                     updateChatControls(group);
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).create();
         tintDialog(dialog);
         dialog.show();
     }
 
     private void showChatMenu(Group group) {
-        String[] items = {L10n.s("RP ayarları"), L10n.s("AI ayarları"), L10n.s("Sohbette ara"),
-                L10n.s("Üretim profili"), L10n.s("Dünya kitabı"), L10n.s("Sohbet geçmişini temizle"), L10n.s("Sohbet listesine dön")};
+        String[] items = {L10n.s(L10n.s("RP ayarları")), L10n.s(L10n.s("AI ayarları")), L10n.s("Sohbette ara"),
+                L10n.s(L10n.s("Üretim profili")), L10n.s(L10n.s("Dünya kitabı")), L10n.s(L10n.s("Sohbet geçmişini temizle")), L10n.s(L10n.s("Sohbet listesine dön"))};
         AlertDialog dialog = new AlertDialog.Builder(this).setItems(items, (d, which) -> {
             if (which == 0) showGroupEditor(group, () -> openChat(group.id));
             else if (which == 1) openModels(() -> openChat(group.id));
@@ -2187,15 +2187,15 @@ public class MainActivity extends Activity {
      */
     private void showLorebook(Group group) {
         backAction = () -> openChat(group.id);
-        setPage("Dünya kitabı", group.name, "chat");
-        addInfoCard("Nasıl çalışır?",
-                L10n.s("Her kayıt anahtar kelime(ler) ve bir olgudur. Son 3 mesajda bir anahtar geçerse olgu prompta yazılır; ")
-                        + L10n.s("blok en fazla 900 karakter tutar, anahtar hiç geçmezse yer kaplamaz."), "Lore");
+        setPage(L10n.s("Dünya kitabı"), group.name, "chat");
+        addInfoCard(L10n.s("Nasıl çalışır?"),
+                L10n.s(L10n.s("Her kayıt anahtar kelime(ler) ve bir olgudur. Son 3 mesajda bir anahtar geçerse olgu prompta yazılır; "))
+                        + L10n.s(L10n.s("blok en fazla 900 karakter tutar, anahtar hiç geçmezse yer kaplamaz.")), "Lore");
         List<Lorebook.Entry> entries = store.lore(group.id);
         if (entries.isEmpty()) {
-            addEmpty("Henüz bilgi yok",
-                    "Dünyanın kalıcı bilgileri: yerler, kurallar, geçmiş olaylar, karakterler.",
-                    "İlk bilgiyi ekle", v -> editLoreEntry(group, -1));
+            addEmpty(L10n.s("Henüz bilgi yok"),
+                    L10n.s("Dünyanın kalıcı bilgileri: yerler, kurallar, geçmiş olaylar, karakterler."),
+                    L10n.s("İlk bilgiyi ekle"), v -> editLoreEntry(group, -1));
         } else {
             addPrimary("＋  Yeni bilgi", v -> editLoreEntry(group, -1));
             for (int i = 0; i < entries.size(); i++) {
@@ -2211,8 +2211,8 @@ public class MainActivity extends Activity {
                 card.addView(fact);
                 addCardToPage(card);
             }
-            addDangerButton("Dünya kitabını temizle", v -> confirm(
-                    group.name + L10n.s(" dünya kitabı girdilerini silinsin mi?"), L10n.s("Sil"), () -> {
+            addDangerButton(L10n.s("Dünya kitabını temizle"), v -> confirm(
+                    group.name + L10n.s(L10n.s(" dünya kitabı girdilerini silinsin mi?")), L10n.s(L10n.s("Sil")), () -> {
                         store.saveLore(group.id, new ArrayList<>());
                         showLorebook(group);
                     }));
@@ -2226,7 +2226,7 @@ public class MainActivity extends Activity {
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(22), 0, dp(22), 0);
-        EditText keysField = dialogField(L10n.s("Anahtar kelimeler (virgülle ayır)"));
+        EditText keysField = dialogField(L10n.s(L10n.s("Anahtar kelimeler (virgülle ayır)")));
         if (editing != null) keysField.setText(editing.keys);
         form.addView(keysField);
         EditText textField = dialogField(L10n.s("Olgu (modelin bilmesi gereken bilgi)"));
@@ -2234,32 +2234,32 @@ public class MainActivity extends Activity {
         textField.setMinLines(3);
         form.addView(textField);
         new AlertDialog.Builder(this)
-                .setTitle(editing != null ? L10n.s("Bilgiyi düzenle") : L10n.s("Yeni bilgi"))
+                .setTitle(editing != null ? L10n.s(L10n.s("Bilgiyi düzenle")) : L10n.s(L10n.s("Yeni bilgi")))
                 .setView(form)
-                .setPositiveButton(L10n.s("Kaydet"), (d, w) -> {
+                .setPositiveButton(L10n.s(L10n.s("Kaydet")), (d, w) -> {
                     Lorebook.Entry entry = new Lorebook.Entry(
                             keysField.getText().toString(), textField.getText().toString());
                     if (entry.keys.isEmpty() || entry.text.isEmpty()) {
-                        Toast.makeText(this, L10n.s("Anahtar kelime ve olgu alanları dolu olmalı."), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Anahtar kelime ve olgu alanları dolu olmalı.")), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     if (editing != null) entries.set(index, entry);
                     else entries.add(entry);
                     if (!store.saveLore(group.id, entries)) {
-                        Toast.makeText(this, L10n.s("Kaydedilemedi: dünya kitabı verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Kaydedilemedi: dünya kitabı verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                         return;
                     }
                     showLorebook(group);
                 })
-                .setNeutralButton(editing != null ? L10n.s("Sil") : null, (d, w) -> {
+                .setNeutralButton(editing != null ? L10n.s(L10n.s("Sil")) : null, (d, w) -> {
                     entries.remove(index);
                     if (!store.saveLore(group.id, entries)) {
-                        Toast.makeText(this, L10n.s("Kaydedilemedi: dünya kitabı verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Kaydedilemedi: dünya kitabı verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                         return;
                     }
                     showLorebook(group);
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null)
                 .show();
     }
 
@@ -2270,43 +2270,43 @@ public class MainActivity extends Activity {
      */
     private void showChatProfile(Group group) {
         backAction = () -> openChat(group.id);
-        setPage("Üretim profili", group.name, "chat");
+        setPage(L10n.s("Üretim profili"), group.name, "chat");
         SharedPreferences prefs = prefs();
         String id = group.id;
-        addInfoCard("Sohbet profili", L10n.s("Bu sayfadaki ayarlar yalnızca bu sohbet için geçerlidir. ")
-                + L10n.s("Genel ayarı izleyen öğeler Ayarlar'daki değeri kullanır."), "AI");
+        addInfoCard("Sohbet profili", L10n.s(L10n.s("Bu sayfadaki ayarlar yalnızca bu sohbet için geçerlidir. "))
+                + L10n.s(L10n.s("Genel ayarı izleyen öğeler Ayarlar'daki değeri kullanır.")), "AI");
 
-        addSection("Yanıt uzunluğu", null, null);
+        addSection(L10n.s("Yanıt uzunluğu"), null, null);
         boolean tokensOverride = prefs.getInt("profile_tokens_" + id, -1) != -1;
-        addBody((tokensOverride ? L10n.s("Bu sohbet: ") : L10n.s("Genel ayarı izler: "))
+        addBody((tokensOverride ? L10n.s("Bu sohbet: ") : L10n.s(L10n.s("Genel ayarı izler: ")))
                 + chatTokenBudget(id) + L10n.s(" token"));
-        addSlider("Üst sınır (token)", chatTokenBudget(id), 64, 1024, 32,
+        addSlider(L10n.s("Üst sınır (token)"), chatTokenBudget(id), 64, 1024, 32,
                 value -> prefs.edit().putInt("profile_tokens_" + id, value).apply(),
-                value -> value + " token");
-        addSecondary("Uzunluğu genel ayara döndür", v -> {
+                value -> value + L10n.s(" token"));
+        addSecondary(L10n.s("Uzunluğu genel ayara döndür"), v -> {
             prefs.edit().remove("profile_tokens_" + id).apply();
             showChatProfile(group);
         });
 
-        addSection("Geçmiş derinliği", null, null);
+        addSection(L10n.s("Geçmiş derinliği"), null, null);
         boolean depthOverride = prefs.getInt("profile_depth_" + id, -1) != -1;
-        addBody((depthOverride ? L10n.s("Bu sohbet: ") : L10n.s("Genel ayarı izler: "))
+        addBody((depthOverride ? L10n.s("Bu sohbet: ") : L10n.s(L10n.s("Genel ayarı izler: ")))
                 + chatHistoryDepth(id) + L10n.s(" mesaj"));
-        addSlider("Geçmiş mesaj sayısı", chatHistoryDepth(id), 2, 14, 1,
+        addSlider(L10n.s("Geçmiş mesaj sayısı"), chatHistoryDepth(id), 2, 14, 1,
                 value -> prefs.edit().putInt("profile_depth_" + id, value).apply(),
-                value -> value + " mesaj");
-        addSecondary("Derinliği genel ayara döndür", v -> {
+                value -> value + L10n.s(" mesaj"));
+        addSecondary(L10n.s("Derinliği genel ayara döndür"), v -> {
             prefs.edit().remove("profile_depth_" + id).apply();
             showChatProfile(group);
         });
 
-        addSection("Sahne teması", null, null);
+        addSection(L10n.s("Sahne teması"), null, null);
         boolean themeOverride = prefs.getString("profile_theme_" + id, null) != null;
-        addBody((themeOverride ? L10n.s("Bu sohbet: ") : L10n.s("Genel ayarı izler: "))
+        addBody((themeOverride ? L10n.s("Bu sohbet: ") : L10n.s(L10n.s("Genel ayarı izler: ")))
                 + aiThemeName(chatThemeId(id)));
-        addSecondary("Bu sohbet için tema seç", v -> showChatThemePicker(group));
+        addSecondary(L10n.s("Bu sohbet için tema seç"), v -> showChatThemePicker(group));
         if (themeOverride) {
-            addSecondary("Temayı genel ayara döndür", v -> {
+            addSecondary(L10n.s("Temayı genel ayara döndür"), v -> {
                 if (chatProfileBusy(group)) return;
                 prefs.edit().remove("profile_theme_" + id).apply();
                 contextChars.remove(id);
@@ -2317,37 +2317,37 @@ public class MainActivity extends Activity {
         }
 
         // v0.19.16: which user identity plays "Sen" in this conversation.
-        addSection("Bu sohbetin kişiliği", null, null);
+        addSection(L10n.s("Bu sohbetin kişiliği"), null, null);
         Persona effective = store.personaForChat(id);
         String overrideId = store.chatPersonaId(id);
         addBody(overrideId == null || overrideId.isEmpty()
                 ? (effective != null
-                        ? L10n.s("Genel varsayılanı izler: ") + (effective.name.isEmpty() ? L10n.s("Adsız kişilik") : effective.name)
-                        : L10n.s("Henüz bir kişilik tanımlı."))
-                : L10n.s("Bu sohbet: ") + (effective != null && !effective.name.isEmpty() ? effective.name : L10n.s("Adsız kişilik")) + L10n.s(" (kişisel seçim)"));
-        addSecondary("Kişilik seç", v -> showChatPersonaPicker(group));
+                        ? L10n.s(L10n.s("Genel varsayılanı izler: ")) + (effective.name.isEmpty() ? L10n.s(L10n.s("Adsız kişilik")) : effective.name)
+                        : L10n.s(L10n.s("Henüz bir kişilik tanımlı.")))
+                : L10n.s("Bu sohbet: ") + (effective != null && !effective.name.isEmpty() ? effective.name : L10n.s(L10n.s("Adsız kişilik"))) + L10n.s(L10n.s(" (kişisel seçim)")));
+        addSecondary(L10n.s("Kişilik seç"), v -> showChatPersonaPicker(group));
         if (overrideId != null && !overrideId.isEmpty()) {
-            addSecondary("Kişiliği genel varsayılana döndür", v -> {
+            addSecondary(L10n.s("Kişiliği genel varsayılana döndür"), v -> {
                 if (chatProfileBusy(group)) return;
                 store.setChatPersona(id, "");
                 contextChars.remove(id);
                 chatMetrics.remove(id);
                 LocalAiRuntime.INSTANCE.resetConversation(id);
-                Toast.makeText(this, L10n.s("Bu sohbet genel varsayılan kişiliği izliyor."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Bu sohbet genel varsayılan kişiliği izliyor.")), Toast.LENGTH_SHORT).show();
                 showChatProfile(group);
             });
         }
 
-        addSection("Profili sıfırla", null, null);
-        addDangerButton("Tüm profili genel ayara döndür", v -> confirm(
-                L10n.s("Bu sohbetin üretim profili sıfırlansın mı?"), L10n.s("Sıfırla"), () -> {
+        addSection(L10n.s("Profili sıfırla"), null, null);
+        addDangerButton(L10n.s("Tüm profili genel ayara döndür"), v -> confirm(
+                L10n.s(L10n.s("Bu sohbetin üretim profili sıfırlansın mı?")), L10n.s(L10n.s("Sıfırla")), () -> {
                     if (chatProfileBusy(group)) return;
                     prefs.edit().remove("profile_tokens_" + id)
                             .remove("profile_depth_" + id).remove("profile_theme_" + id).apply();
                     contextChars.remove(id);
                     chatMetrics.remove(id);
                     LocalAiRuntime.INSTANCE.resetConversation(id);
-                    Toast.makeText(this, L10n.s("Profil genel ayara döndü."), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, L10n.s(L10n.s("Profil genel ayara döndü.")), Toast.LENGTH_SHORT).show();
                     showChatProfile(group);
                 }));
     }
@@ -2356,31 +2356,31 @@ public class MainActivity extends Activity {
     private void showChatPersonaPicker(Group group) {
         List<Persona> personas = store.personas();
         if (personas.isEmpty()) {
-            Toast.makeText(this, L10n.s("Önce karakterler ekranından bir kullanıcı kişiliği tanımla."), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L10n.s(L10n.s("Önce karakterler ekranından bir kullanıcı kişiliği tanımla.")), Toast.LENGTH_LONG).show();
             return;
         }
         String current = store.chatPersonaId(group.id);
         String[] labels = new String[personas.size() + 1];
-        labels[0] = L10n.s("Genel varsayılanı izle") + ((current == null || current.isEmpty()) ? "  ✓" : "");
+        labels[0] = L10n.s(L10n.s("Genel varsayılanı izle")) + ((current == null || current.isEmpty()) ? "  ✓" : "");
         for (int i = 0; i < personas.size(); i++) {
             Persona p = personas.get(i);
-            labels[i + 1] = (p.name.isEmpty() ? L10n.s("Adsız kişilik") : p.name)
-                    + (store.isDefaultPersona(p.id) ? L10n.s("  ·  varsayılan") : "")
+            labels[i + 1] = (p.name.isEmpty() ? L10n.s(L10n.s("Adsız kişilik")) : p.name)
+                    + (store.isDefaultPersona(p.id) ? L10n.s(L10n.s("  ·  varsayılan")) : "")
                     + (p.id.equals(current) ? "  ✓" : "");
         }
         new AlertDialog.Builder(this)
-                .setTitle(L10n.s("Bu sohbetin kişiliği"))
+                .setTitle(L10n.s(L10n.s("Bu sohbetin kişiliği")))
                 .setItems(labels, (d, which) -> {
                     if (chatProfileBusy(group)) return; // a running turn must finish on its own prompt
                     if (which == 0) {
                         store.setChatPersona(group.id, "");
-                        Toast.makeText(this, L10n.s("Bu sohbet genel varsayılan kişiliği izliyor."), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Bu sohbet genel varsayılan kişiliği izliyor.")), Toast.LENGTH_SHORT).show();
                     } else {
                         Persona chosen = personas.get(which - 1);
                         store.setChatPersona(group.id, chosen.id);
                         Toast.makeText(this, chosen.name.isEmpty()
-                                ? L10n.s("Bu sohbet artık adsız kişilik ile oynanıyor.")
-                                : L10n.s("Bu sohbet artık ") + chosen.name + L10n.s(" ile oynanıyor."), Toast.LENGTH_SHORT).show();
+                                ? L10n.s(L10n.s("Bu sohbet artık adsız kişilik ile oynanıyor."))
+                                : L10n.s(L10n.s("Bu sohbet artık ")) + chosen.name + L10n.s(L10n.s(" ile oynanıyor.")), Toast.LENGTH_SHORT).show();
                     }
                     // The engine's shared context holds the previous identity; a persona
                     // switch must not let the model keep roleplaying the old "Sen".
@@ -2389,7 +2389,7 @@ public class MainActivity extends Activity {
                     LocalAiRuntime.INSTANCE.resetConversation(group.id);
                     showChatProfile(group);
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null)
                 .show();
     }
 
@@ -2401,13 +2401,13 @@ public class MainActivity extends Activity {
         boolean following = prefs.getString(overrideKey, null) == null;
         String current = chatThemeId(id);
         String[] labels = new String[AI_THEMES.length + 2];
-        labels[0] = L10n.s("Genel ayarı izler") + " (" + aiThemeName(prefs.getString("ai_theme", DEFAULT_AI_THEME)) + ")"
+        labels[0] = L10n.s(L10n.s("Genel ayarı izler")) + " (" + aiThemeName(prefs.getString("ai_theme", DEFAULT_AI_THEME)) + ")"
                 + (following ? "  ✓" : "");
         for (int i = 0; i < AI_THEMES.length; i++) {
             labels[i + 1] = L10n.s(AI_THEMES[i][1]) + (!following && AI_THEMES[i][0].equals(current) ? "  ✓" : "");
         }
-        labels[AI_THEMES.length + 1] = L10n.s("Özel tema") + ("custom".equals(current) && !following ? "  ✓" : "");
-        new AlertDialog.Builder(this).setTitle(L10n.s("AI sahne teması"))
+        labels[AI_THEMES.length + 1] = L10n.s(L10n.s("Özel tema")) + ("custom".equals(current) && !following ? "  ✓" : "");
+        new AlertDialog.Builder(this).setTitle(L10n.s(L10n.s("AI sahne teması")))
                 .setItems(labels, (dialog, which) -> {
                     if (chatProfileBusy(group)) return;
                     if (which == 0) {
@@ -2416,14 +2416,14 @@ public class MainActivity extends Activity {
                     } else if (which == AI_THEMES.length + 1) {
                         if (prefs.getString("ai_theme_custom_instruction", "").isEmpty()) {
                             // Choosing custom with nothing written behaves like an empty tone hint.
-                            Toast.makeText(this, L10n.s("Özel temayı Ayarlar → AI teması → Özel tema ile yaz."), Toast.LENGTH_LONG).show();
+                            Toast.makeText(this, L10n.s(L10n.s("Özel temayı Ayarlar → AI teması → Özel tema ile yaz.")), Toast.LENGTH_LONG).show();
                         }
                         prefs.edit().putString(overrideKey, "custom").apply();
                     } else {
                         String selectedId = AI_THEMES[which - 1][0];
                         if (!following && selectedId.equals(current)) return;
                         prefs.edit().putString(overrideKey, selectedId).apply();
-                        Toast.makeText(this, AI_THEMES[which - 1][1] + L10n.s(" teması seçildi."), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, AI_THEMES[which - 1][1] + L10n.s(L10n.s(" teması seçildi.")), Toast.LENGTH_SHORT).show();
                     }
                     // A prompt-style change deserves a clean continuation context.
                     contextChars.remove(id);
@@ -2431,7 +2431,7 @@ public class MainActivity extends Activity {
                     LocalAiRuntime.INSTANCE.resetConversation(id);
                     showChatProfile(group);
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).show();
     }
 
     /**
@@ -2454,7 +2454,7 @@ public class MainActivity extends Activity {
         final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(group.name)
                 .setView(form)
-                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null)
                 .create();
 
         Runnable[] refreshHolder = new Runnable[1];
@@ -2462,7 +2462,7 @@ public class MainActivity extends Activity {
             results.removeAllViews();
             String term = query.getText().toString().trim();
             if (term.length() < 2) {
-                results.addView(label(L10n.s("En az iki harf yaz; tüm sohbet geçmişinde aranır."), 13, Design.muted()));
+                results.addView(label(L10n.s(L10n.s("En az iki harf yaz; tüm sohbet geçmişinde aranır.")), 13, Design.muted()));
                 return;
             }
             String haystack = searchText(term);
@@ -2471,8 +2471,8 @@ public class MainActivity extends Activity {
             for (int i = 0; i < history.size() && found < 40; i++) {
                 Message message = history.get(i);
                 String body = (message.text == null || message.text.isEmpty()) && message.hasImage()
-                        ? L10n.s("[görsel]") : message.text;
-                String rendered = searchText(body + " " + (message.user ? "sen" : message.speaker));
+                        ? L10n.s(L10n.s("[görsel]")) : message.text;
+                String rendered = searchText(body + " " + (message.user ? L10n.s("sen") : message.speaker));
                 if (!rendered.contains(haystack)) continue;
                 found++;
                 String who = message.user ? L10n.speaker("Sen") : message.speaker;
@@ -2489,7 +2489,7 @@ public class MainActivity extends Activity {
                 results.addView(row, fullWidth());
             }
             if (found == 0) {
-                results.addView(label(L10n.s("Eşleşme yok."), 13, Design.muted()));
+                results.addView(label(L10n.s(L10n.s("Eşleşme yok.")), 13, Design.muted()));
             }
         };
         final android.os.Handler searchDebounce = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -2536,11 +2536,11 @@ public class MainActivity extends Activity {
 
     private void clearChat(Group group) {
         if (group.id.equals(generatingChatId)) {
-            new AlertDialog.Builder(this).setMessage(L10n.s("Yanıt üretilirken sohbet temizlenemez. Önce yanıtı durdur."))
-                    .setPositiveButton(L10n.s("Tamam"), null).show();
+            new AlertDialog.Builder(this).setMessage(L10n.s(L10n.s("Yanıt üretilirken sohbet temizlenemez. Önce yanıtı durdur.")))
+                    .setPositiveButton(L10n.s(L10n.s("Tamam")), null).show();
             return;
         }
-        confirm(L10n.s("Bu sohbetin tüm mesajları silinsin mi?"), L10n.s("Temizle"), () -> {
+        confirm(L10n.s(L10n.s("Bu sohbetin tüm mesajları silinsin mi?")), L10n.s(L10n.s("Temizle")), () -> {
             deleteMessageImages(group.id);
             store.clearMessages(group.id);
             forgetAutoAttempts(group.id);
@@ -2580,21 +2580,21 @@ public class MainActivity extends Activity {
 
     private String chatStatusText(Group group) {
         if (group.id.equals(generatingChatId)) {
-            return L10n.speaker(generatingSpeaker == null ? L10n.s("Bir karakter") : generatingSpeaker) + L10n.s("yanıt yazıyor…");
+            return L10n.speaker(generatingSpeaker == null ? L10n.s("Bir karakter") : generatingSpeaker) + L10n.s(L10n.s("yanıt yazıyor…"));
         }
-        if (generatingChatId != null) return L10n.s("Başka bir sohbette AI yanıt üretiyor…");
-        if (LocalAiRuntime.INSTANCE.isModelLoading()) return L10n.s("Model yükleniyor…");
-        if (LocalAiRuntime.INSTANCE.isBenchmarking()) return L10n.s("Motor testi sürüyor…");
+        if (generatingChatId != null) return L10n.s(L10n.s("Başka bir sohbette AI yanıt üretiyor…"));
+        if (LocalAiRuntime.INSTANCE.isModelLoading()) return L10n.s(L10n.s("Model yükleniyor…"));
+        if (LocalAiRuntime.INSTANCE.isBenchmarking()) return L10n.s(L10n.s("Motor testi sürüyor…"));
         if (LocalAiRuntime.INSTANCE.isModelReady()) {
             int percent = contextPercent(group);
             String metrics = chatMetrics.get(group.id);
-            if (metrics != null) return L10n.s("Son yanıt: ") + metrics + L10n.s(" · bağlam %") + percent;
-            return L10n.s("Sahne hazır · bağlam %") + percent + L10n.s(" · çevrimdışı");
+            if (metrics != null) return L10n.s(L10n.s("Son yanıt: ")) + metrics + L10n.s(L10n.s(" · bağlam %")) + percent;
+            return L10n.s(L10n.s("Sahne hazır · bağlam %")) + percent + L10n.s(L10n.s(" · çevrimdışı"));
         }
         if (LocalAiRuntime.INSTANCE.loadedModelPath() != null) {
-            return L10n.s("Model yeniden hazırlanacak · yanıt biraz sürebilir");
+            return L10n.s(L10n.s("Model yeniden hazırlanacak · yanıt biraz sürebilir"));
         }
-        return selectedModel == null ? L10n.s("Yanıtlar için bir GGUF modeli seç") : L10n.s("Model seçildi · yüklemek için AI ayarları");
+        return selectedModel == null ? L10n.s(L10n.s("Yanıtlar için bir GGUF modeli seç")) : L10n.s(L10n.s("Model seçildi · yüklemek için AI ayarları"));
     }
 
     private int contextPercent(Group group) {
@@ -2609,7 +2609,7 @@ public class MainActivity extends Activity {
         setPage("RP Sohbetleri", "Bire bir ve grup hikâyelerin", "chats");
         addHomeActions();
         List<Group> groups = store.groups();
-        if (groups.isEmpty()) addEmpty("Burada henüz RP yok", "Bire bir hikâye başlat veya grup kur.", null, null);
+        if (groups.isEmpty()) addEmpty(L10n.s("Burada henüz RP yok"), L10n.s("Bire bir hikâye başlat veya grup kur."), null, null);
         for (Group group : recentChats(groups, Integer.MAX_VALUE)) addGroupCard(group, this::showChats);
     }
 
@@ -2639,39 +2639,39 @@ public class MainActivity extends Activity {
     private void showSettings() {
         visibleChatId = null;
         backAction = null;
-        setPage("Ayarlar", "Dil · model · yanıt tarzı · görünüm · veri", "settings");
+        setPage(L10n.s("Ayarlar"), L10n.s("Dil · model · yanıt tarzı · görünüm · veri"), "settings");
 
-        addSection("Dil / Language", null, null);
-        addBody("Uygulama arayüzü ile AI rol yapma dilini birlikte değiştirir. English mode: better RP with English-tuned models.");
-        addSecondary(L10n.s("Türkçe") + (prefs().getString("app_language", "tr").equals("tr") ? "  ✓" : ""), v -> switchAppLanguage("tr"));
+        addSection(L10n.s("Dil / Language"), null, null);
+        addBody(L10n.s("Uygulama arayüzü ile AI rol yapma dilini birlikte değiştirir. English mode: better RP with English-tuned models."));
+        addSecondary(L10n.s(L10n.s("Türkçe")) + (prefs().getString("app_language", "tr").equals("tr") ? "  ✓" : ""), v -> switchAppLanguage("tr"));
         addSecondary("English (recommended: better RP)" + (prefs().getString("app_language", "tr").equals("en") ? "  ✓" : ""), v -> switchAppLanguage("en"));
 
-        addSection("Model", null, null);
+        addSection(L10n.s("Model"), null, null);
         addInfoCard(selectedModelName, modelStatus, "GGUF");
-        addSecondary("Modeli yükle ve yönet", v -> openModels(this::showSettings));
-        addSecondary("Model önerilerini gör ve indir", v -> showModelCatalog());
+        addSecondary(L10n.s("Modeli yükle ve yönet"), v -> openModels(this::showSettings));
+        addSecondary(L10n.s("Model önerilerini gör ve indir"), v -> showModelCatalog());
 
-        addSection(L10n.s("Çevrimiçi sağlayıcı") + " (Faz 5)", null, null);
+        addSection(L10n.s(L10n.s("Çevrimiçi sağlayıcı")) + " (Faz 5)", null, null);
         boolean providerOn = prefs().getBoolean("provider_enabled", false);
-        addBody(L10n.s("Opsiyonel ve kapalı başlar: açık değilken hiçbir veri gönderilmez, çevrimdışı model varsayılandır. ")
-                + L10n.s("Sağlayıcı açıkken yanıtlar https üzerinden gider: sohbetler yalnızca sizin onayınızla dışarı çıkar."));
-        addSecondary(L10n.s("Online AI sağlayıcı") + (providerOn ? "  ✓" : ""), v -> showProvider());
+        addBody(L10n.s(L10n.s("Opsiyonel ve kapalı başlar: açık değilken hiçbir veri gönderilmez, çevrimdışı model varsayılandır. "))
+                + L10n.s(L10n.s("Sağlayıcı açıkken yanıtlar https üzerinden gider: sohbetler yalnızca sizin onayınızla dışarı çıkar.")));
+        addSecondary(L10n.s(L10n.s("Online AI sağlayıcı")) + (providerOn ? "  ✓" : ""), v -> showProvider());
 
-        addSection("Yanıt tarzı", null, null);
+        addSection(L10n.s("Yanıt tarzı"), null, null);
         String themeId = prefs().getString("ai_theme", DEFAULT_AI_THEME);
-        addInfoCard(aiThemeName(themeId), aiThemeDescription(themeId), "Sahne atmosferi");
+        addInfoCard(aiThemeName(themeId), aiThemeDescription(themeId), L10n.s("Sahne atmosferi"));
         addSecondary("Prompt dilleri ve talimatlar", v -> showPromptStyle());
-        addSecondary("AI temasını değiştir", v -> showThemePicker());
-        addSecondary("Sahne hafızası ve zincir", v -> showAiAdvanced());
+        addSecondary(L10n.s("AI temasını değiştir"), v -> showThemePicker());
+        addSecondary(L10n.s("Sahne hafızası ve zincir"), v -> showAiAdvanced());
 
-        addSection("Görünüm", null, null);
-        addSecondary("GUI temasını değiştir", v -> showAppearance());
-        addSecondary("Görsel galerisi", v -> showGallery(this::showSettings));
+        addSection(L10n.s("Görünüm"), null, null);
+        addSecondary(L10n.s("GUI temasını değiştir"), v -> showAppearance());
+        addSecondary(L10n.s("Görsel galerisi"), v -> showGallery(this::showSettings));
 
-        addSection("Veri yedeği", null, null);
-        addInfoCard("Yedekleme", L10n.s("Karakterler, sohbetler ve geçmişler tek bir .json dosyasına yazılır. ")
-                + L10n.s("Dosya tamamen senin kontrolündedir: uygulama hiçbir veriyi otomatik göndermez."), "Yerel");
-        addPrimary("Yedeği dışa aktar", v -> {
+        addSection(L10n.s("Veri yedeği"), null, null);
+        addInfoCard(L10n.s("Yedekleme"), L10n.s(L10n.s("Karakterler, sohbetler ve geçmişler tek bir .json dosyasına yazılır. "))
+                + L10n.s(L10n.s("Dosya tamamen senin kontrolündedir: uygulama hiçbir veriyi otomatik göndermez.")), "Yerel");
+        addPrimary(L10n.s("Yedeği dışa aktar"), v -> {
             clearPendingSelection();
             String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -2680,7 +2680,7 @@ public class MainActivity extends Activity {
             intent.putExtra(Intent.EXTRA_TITLE, "localrp-yedek-" + stamp + ".json");
             startActivityForResult(intent, BACKUP_EXPORT);
         });
-        addSecondary("Yedeği dışa aktar (medya dahil)", v -> {
+        addSecondary(L10n.s("Yedeği dışa aktar (medya dahil)"), v -> {
             clearPendingSelection();
             String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -2689,10 +2689,10 @@ public class MainActivity extends Activity {
             intent.putExtra(Intent.EXTRA_TITLE, "localrp-yedek-" + stamp + ".zip");
             startActivityForResult(intent, BACKUP_EXPORT_MEDIA);
         });
-        addSecondary("Seçmeli dışa aktar", v -> showSelectiveExport());
-        addSecondary("Yedeği geri yükle", v -> confirm(
-                L10n.s("Geri yükleme aynı kimlikli karakter/sohbetleri günceller, yeni olanları ekler. ") +
-                        L10n.s("Geçmişler yalnızca yedekteki kopya daha uzunsa değiştirilir. Devam edilsin mi?"),
+        addSecondary(L10n.s("Seçmeli dışa aktar"), v -> showSelectiveExport());
+        addSecondary(L10n.s("Yedeği geri yükle"), v -> confirm(
+                L10n.s(L10n.s("Geri yükleme aynı kimlikli karakter/sohbetleri günceller, yeni olanları ekler. ")) +
+                        L10n.s(L10n.s("Geçmişler yalnızca yedekteki kopya daha uzunsa değiştirilir. Devam edilsin mi?")),
                 () -> {
                     Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -2703,7 +2703,7 @@ public class MainActivity extends Activity {
 
     private void showModels() {
         backAction = modelsBackAction != null ? modelsBackAction : this::showSettings;
-        setPage("Model yönetimi", "GGUF seç, yükle ve belleği izle", "settings");
+        setPage(L10n.s("Model yönetimi"), L10n.s("GGUF seç, yükle ve belleği izle"), "settings");
         addModelCard();
         boolean loading = modelLoading || LocalAiRuntime.INSTANCE.isModelLoading();
         boolean benchmarking = LocalAiRuntime.INSTANCE.isBenchmarking();
@@ -2718,15 +2718,15 @@ public class MainActivity extends Activity {
             modelProgress = null;
         }
 
-        addSection("Çalışma durumu", null, null);
-        addInfoCard("Cihaz içi AI", "GGUF modeli llama.cpp ile bu telefonda çalışır. Modeli yükledikten sonra sohbet internet olmadan da sürer.", "Çevrimdışı");
-        addSection("Model dosyası", null, null);
+        addSection(L10n.s("Çalışma durumu"), null, null);
+        addInfoCard(L10n.s("Cihaz içi AI"), L10n.s("GGUF modeli llama.cpp ile bu telefonda çalışır. Modeli yükledikten sonra sohbet internet olmadan da sürer."), L10n.s("Çevrimdışı"));
+        addSection(L10n.s("Model dosyası"), null, null);
         modelStatusView = addInfoCard(selectedModelName, modelStatus, "GGUF modeli");
         LocalAiRuntime.ModelInfo info = LocalAiRuntime.INSTANCE.getModelInfo();
         if (info != null) {
             addInfoCard(modelInfoTitle(info), modelInfoText(info), "GGUF bilgisi");
         }
-        addPrimary("Telefondan GGUF seç", v -> {
+        addPrimary(L10n.s("Telefondan GGUF seç"), v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("*/*");
@@ -2734,8 +2734,8 @@ public class MainActivity extends Activity {
         }).setEnabled(!busy);
         if (selectedModel != null) {
             boolean ready = LocalAiRuntime.INSTANCE.isModelReady();
-            String label = busy ? (benchmarking ? "Motor testi sürüyor…" : "Model yükleniyor…")
-                    : (ready ? "Modeli bellekten kaldır" : "Seçili modeli yükle");
+            String label = busy ? (benchmarking ? L10n.s("Motor testi sürüyor…") : L10n.s("Model yükleniyor…"))
+                    : (ready ? L10n.s("Modeli bellekten kaldır") : L10n.s("Seçili modeli yükle"));
             Button modelButton = addPrimary(label, v -> {
                 if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading() ||
                         LocalAiRuntime.INSTANCE.isBenchmarking()) return;
@@ -2747,17 +2747,17 @@ public class MainActivity extends Activity {
         if (!busy && !storedModels.isEmpty()) {
             long totalBytes = 0;
             for (File file : storedModels) totalBytes += file.length();
-            addBody(L10n.s("Cihazdaki model kopyaları: ") + storedModels.size() + L10n.s(" dosya · ") + humanSize(totalBytes));
-            addSecondary("Model kopyalarını yönet", v -> showStoredModels());
+            addBody(L10n.s(L10n.s("Cihazdaki model kopyaları: ")) + storedModels.size() + L10n.s(" dosya · ") + humanSize(totalBytes));
+            addSecondary(L10n.s("Model kopyalarını yönet"), v -> showStoredModels());
         }
-        addBody("Model dosyası uygulamanın özel alanına kopyalanır; seçtiğin kaynak dosya silinmez.");
+        addBody(L10n.s("Model dosyası uygulamanın özel alanına kopyalanır; seçtiğin kaynak dosya silinmez."));
 
         SharedPreferences prefs = prefs();
 
-        addSection("Yanıt biçimi", null, null);
-        addBody("Yanıt uzunluğu");
+        addSection(L10n.s("Yanıt biçimi"), null, null);
+        addBody(L10n.s("Yanıt uzunluğu"));
         int savedLength = prefs.getInt("max_output_tokens", 320);
-        TextView lengthLabel = label(savedLength + " token", 14, Design.text());
+        TextView lengthLabel = label(savedLength + L10n.s(" token"), 14, Design.text());
         content.addView(lengthLabel);
         SeekBar length = new SeekBar(this);
         length.setMax(30);
@@ -2765,24 +2765,24 @@ public class MainActivity extends Activity {
         length.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
                 int tokens = 64 + progress * 32;
-                lengthLabel.setText(tokens + " token");
+                lengthLabel.setText(tokens + L10n.s(" token"));
                 if (fromUser) prefs.edit().putInt("max_output_tokens", tokens).apply();
             }
             @Override public void onStartTrackingTouch(SeekBar bar) { }
             @Override public void onStopTrackingTouch(SeekBar bar) { }
         });
         content.addView(length, fullWidth());
-        addBody("Düşük değer daha kısa yanıt verir. Bu motor sürümü temperature/top-p ayarlarını dışa açmıyor; yanıt uzunluğu ve sahne temasıyla yönlendirme yapılabilir.");
-        addBody("Sohbet değiştirildiğinde model bağlamı sıfırlanır; o sohbetteki ilk yanıt biraz daha uzun sürebilir.");
+        addBody(L10n.s("Düşük değer daha kısa yanıt verir. Bu motor sürümü temperature/top-p ayarlarını dışa açmıyor; yanıt uzunluğu ve sahne temasıyla yönlendirme yapılabilir."));
+        addBody(L10n.s("Sohbet değiştirildiğinde model bağlamı sıfırlanır; o sohbetteki ilk yanıt biraz daha uzun sürebilir."));
 
-        addSection("Motor testi", null, null);
+        addSection(L10n.s("Motor testi"), null, null);
         if (benchmarking) {
-            addBody("Cihaz hızı ölçülüyor. Test bitince sonuç burada gösterilecek.");
+            addBody(L10n.s("Cihaz hızı ölçülüyor. Test bitince sonuç burada gösterilecek."));
         } else if (LocalAiRuntime.INSTANCE.isModelReady()) {
-            addSecondary("Hız testini başlat", v -> runBenchmark());
-            addBody("Küçük bir prompt işleme ve 16 token üretme testi çalıştırır; cihazın yaklaşık hızını gösterir.");
+            addSecondary(L10n.s("Hız testini başlat"), v -> runBenchmark());
+            addBody(L10n.s("Küçük bir prompt işleme ve 16 token üretme testi çalıştırır; cihazın yaklaşık hızını gösterir."));
         } else {
-            addBody("Hız testi için önce modeli yükle.");
+            addBody(L10n.s("Hız testi için önce modeli yükle."));
         }
     }
 
@@ -2797,9 +2797,9 @@ public class MainActivity extends Activity {
         // All strings change: the header must be rebuilt, not refreshed in place.
         resetPageAnchor();
         showSettings();
-        Toast.makeText(this, language.equals(L10n.s("en"))
-                ? "Yanıt dili İngilizce olarak ayarlandı — model promptları artık İngilizce."
-                : "Dil Türkçe olarak ayarlandı.", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, language.equals("en")
+                ? L10n.s("Yanıt dili İngilizce olarak ayarlandı — model promptları artık İngilizce.")
+                : L10n.s("Dil Türkçe olarak ayarlandı."), Toast.LENGTH_SHORT).show();
     }
 
     /** Online provider settings (DeepSeek item 14/B): strictly opt-in, https-only. */
@@ -2807,61 +2807,61 @@ public class MainActivity extends Activity {
         visibleChatId = null;
         backAction = this::showSettings;
         SharedPreferences prefs = prefs();
-        setPage(L10n.s("Çevrimiçi sağlayıcı"), L10n.s("Faz 5 · opsiyonel · çevrimdışı varsayılan kalır"), "settings");
-        addInfoCard(L10n.s("Veri dışarı çıkarır"),
-                L10n.s("Bu ayar açıkken ve eksiksizken yanıtlar, seçtiğin OpenAI-uyumlu https adresine gider; ")
-                        + L10n.s("sohbet içerik cihazdan çıkmış olur. Kapalıyken hiçbir şey gönderilmez."), "Gizlilik");
+        setPage(L10n.s(L10n.s("Çevrimiçi sağlayıcı")), L10n.s(L10n.s("Faz 5 · opsiyonel · çevrimdışı varsayılan kalır")), "settings");
+        addInfoCard(L10n.s(L10n.s("Veri dışarı çıkarır")),
+                L10n.s(L10n.s("Bu ayar açıkken ve eksiksizken yanıtlar, seçtiğin OpenAI-uyumlu https adresine gider; "))
+                        + L10n.s(L10n.s("sohbet içerik cihazdan çıkmış olur. Kapalıyken hiçbir şey gönderilmez.")), L10n.s("Gizlilik"));
 
         boolean enabled = prefs.getBoolean("provider_enabled", false);
-        addPrimary(enabled ? L10n.s("Sağlayıcı açık — kapata geç") : L10n.s("Sağlayıcıyı etkinleştir"), v -> {
+        addPrimary(enabled ? L10n.s(L10n.s("Sağlayıcı açık — kapata geç")) : L10n.s(L10n.s("Sağlayıcıyı etkinleştir")), v -> {
             boolean turningOn = !prefs.getBoolean("provider_enabled", false);
             if (turningOn && !providerConfigured(prefs)) {
-                Toast.makeText(this, L10n.s("Önce adres, model adı ve API anahtarını eksiksiz doldur."), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, L10n.s(L10n.s("Önce adres, model adı ve API anahtarını eksiksiz doldur.")), Toast.LENGTH_LONG).show();
                 return;
             }
             prefs.edit().putBoolean("provider_enabled", turningOn).apply();
             Toast.makeText(this, turningOn
-                    ? L10n.s("Sağlayıcı etkin: yanıtlar artık seçtiğin servisten gelecek.")
-                    : L10n.s("Sağlayıcı kapalı: çevrimdışı model varsayana döndü."), Toast.LENGTH_SHORT).show();
+                    ? L10n.s(L10n.s("Sağlayıcı etkin: yanıtlar artık seçtiğin servisten gelecek."))
+                    : L10n.s(L10n.s("Sağlayıcı kapalı: çevrimdışı model varsayana döndü.")), Toast.LENGTH_SHORT).show();
             showProvider();
         });
         addBody(enabled
-                ? L10n.s("Durum: ") + (providerReady() ? L10n.s("hazır") : L10n.s("eksiksiz değil"))
-                : L10n.s("Durum: kapalı"));
+                ? L10n.s("Durum: ") + (providerReady() ? L10n.s(L10n.s("hazır")) : L10n.s(L10n.s("eksiksiz değil")))
+                : L10n.s(L10n.s("Durum: kapalı")));
 
-        addSection(L10n.s("Bağlantı"), null, null);
-        addBody(L10n.s("OpenAI uyumlu sohbet tamamlama adresi. Yalnızca https kabul edilir; örnek: https://api.example.com/v1/chat/completions"));
+        addSection(L10n.s(L10n.s("Bağlantı")), null, null);
+        addBody(L10n.s(L10n.s("OpenAI uyumlu sohbet tamamlama adresi. Yalnızca https kabul edilir; örnek: https://api.example.com/v1/chat/completions")));
         EditText endpointField = field(L10n.s("https endpoint"), prefs.getString("provider_endpoint", ""));
         endpointField.setSingleLine(true);
         content.addView(endpointField, fullWidth());
-        EditText modelField = field(L10n.s("Model adı"), prefs.getString("provider_model", ""));
+        EditText modelField = field(L10n.s(L10n.s("Model adı")), prefs.getString("provider_model", ""));
         modelField.setSingleLine(true);
         content.addView(modelField, fullWidth());
         int turnDepth = prefs.getInt("provider_history_depth", 8);
-        addBody(L10n.s("Prompta kaç mesajlık sohbet geçmişi taşınır (2–20): telefonla ayardan değil, bu sayıdan düzenlenir."));
-        EditText depthField = field(L10n.s("Geçmiş mesaj sayısı"), String.valueOf(turnDepth));
+        addBody(L10n.s(L10n.s("Prompta kaç mesajlık sohbet geçmişi taşınır (2–20): telefonla ayardan değil, bu sayıdan düzenlenir.")));
+        EditText depthField = field(L10n.s(L10n.s("Geçmiş mesaj sayısı")), String.valueOf(turnDepth));
         depthField.setSingleLine(true);
         content.addView(depthField, fullWidth());
-        addPrimary(L10n.s("Bağlantı bilgilerini kaydet"), v -> {
+        addPrimary(L10n.s(L10n.s("Bağlantı bilgilerini kaydet")), v -> {
             String endpoint = endpointField.getText().toString().trim();
             String model = modelField.getText().toString().trim();
             int depth;
             try {
                 depth = Integer.parseInt(depthField.getText().toString().trim());
             } catch (NumberFormatException bad) {
-                Toast.makeText(this, L10n.s("Geçmiş mesaj sayısı bir sayı olmalı."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Geçmiş mesaj sayısı bir sayı olmalı.")), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (!OpenAiCompat.allowsEndpoint(endpoint)) {
-                Toast.makeText(this, L10n.s("Adres https ile başlamalı; API anahtarı düz bağlantıda sızabilir."), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, L10n.s(L10n.s("Adres https ile başlamalı; API anahtarı düz bağlantıda sızabilir.")), Toast.LENGTH_LONG).show();
                 return;
             }
             if (model.isEmpty()) {
-                Toast.makeText(this, L10n.s("Model adı boş olamaz."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Model adı boş olamaz.")), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (depth < 2 || depth > 20) {
-                Toast.makeText(this, L10n.s("Geçmiş mesaj sayısı 2 ile 20 arasında olmalı."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Geçmiş mesaj sayısı 2 ile 20 arasında olmalı.")), Toast.LENGTH_SHORT).show();
                 return;
             }
             prefs.edit().putString("provider_endpoint", endpoint)
@@ -2871,24 +2871,24 @@ public class MainActivity extends Activity {
             showProvider();
         });
 
-        addSection(L10n.s("API anahtarı"), null, null);
+        addSection(L10n.s(L10n.s("API anahtarı")), null, null);
         boolean keySet = ApiKeyStore.INSTANCE.isConfigured(this);
         addBody(keySet
-                ? L10n.s("Anahtar kayıtlı: cihazdaki anahtarla kriptolu tutulur (AndroidKeyStore AES/GCM); düz metin diskte durmaz.")
-                : L10n.s("Anahtar yok. Anahtar yalnızca bu cihazda kriptolu saklanır ve hiçbir yedekte taşınmaz."));
-        final EditText keyField = field(keySet ? L10n.s("Yeni anahtar (kaydetmek için doldur)") : L10n.s("API anahtarı"), "");
+                ? L10n.s(L10n.s("Anahtar kayıtlı: cihazdaki anahtarla kriptolu tutulur (AndroidKeyStore AES/GCM); düz metin diskte durmaz."))
+                : L10n.s(L10n.s("Anahtar yok. Anahtar yalnızca bu cihazda kriptolu saklanır ve hiçbir yedekte taşınmaz.")));
+        final EditText keyField = field(keySet ? L10n.s(L10n.s("Yeni anahtar (kaydetmek için doldur)")) : L10n.s(L10n.s("API anahtarı")), "");
         keyField.setSingleLine(true);
         keyField.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
         content.addView(keyField, fullWidth());
-        addSecondary(L10n.s("Anahtarı kaydet"), v -> {
+        addSecondary(L10n.s(L10n.s("Anahtarı kaydet")), v -> {
             String plain = keyField.getText().toString().trim();
             if (plain.isEmpty()) {
-                Toast.makeText(this, L10n.s("Anahtar alanı boş olamaz."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Anahtar alanı boş olamaz.")), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (!ApiKeyStore.INSTANCE.save(this, plain)) {
-                Toast.makeText(this, L10n.s("Anahtar kaydedilemedi: cihaz güvenlik deposu kullanılamıyor."), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, L10n.s(L10n.s("Anahtar kaydedilemedi: cihaz güvenlik deposu kullanılamıyor.")), Toast.LENGTH_LONG).show();
                 return;
             }
             keyField.setText("");
@@ -2896,7 +2896,7 @@ public class MainActivity extends Activity {
             showProvider();
         });
         if (keySet) {
-            addDangerButton(L10n.s("Anahtarı sil"), v -> confirm(L10n.s("Kayıtlı API anahtarı silinsin mi? Uygulama anahtarı yeniden soracak."), L10n.s("Sil"), () -> {
+            addDangerButton(L10n.s(L10n.s("Anahtarı sil")), v -> confirm(L10n.s(L10n.s("Kayıtlı API anahtarı silinsin mi? Uygulama anahtarı yeniden soracak.")), L10n.s(L10n.s("Sil")), () -> {
                 ApiKeyStore.INSTANCE.erase(this);
                 Toast.makeText(this, L10n.s("Anahtar silindi."), Toast.LENGTH_SHORT).show();
                 if (prefs().getBoolean("provider_enabled", false)) {
@@ -2906,9 +2906,9 @@ public class MainActivity extends Activity {
             }));
         }
 
-        addSection(L10n.s("Bağlantı testi"), null, null);
-        addBody(L10n.s("Kısa bir deneme isteği gönderir (birkaç token); bu, açık bir kullanıcı eylemidir."));
-        addPrimary(L10n.s("Bağlantıyı test et"), v -> testProviderConnection(
+        addSection(L10n.s(L10n.s("Bağlantı testi")), null, null);
+        addBody(L10n.s(L10n.s("Kısa bir deneme isteği gönderir (birkaç token); bu, açık bir kullanıcı eylemidir.")));
+        addPrimary(L10n.s(L10n.s("Bağlantıyı test et")), v -> testProviderConnection(
                 endpointField.getText().toString().trim(),
                 modelField.getText().toString().trim()));
     }
@@ -2923,11 +2923,11 @@ public class MainActivity extends Activity {
     /** One-shot opt-in ping: a few tokens from the configured endpoint; no auto-retry. */
     private void testProviderConnection(String endpoint, String model) {
         if (!OpenAiCompat.allowsEndpoint(endpoint) || model.isEmpty()) {
-            Toast.makeText(this, L10n.s("Önce geçerli bir https adresi ve model adı yaz."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Önce geçerli bir https adresi ve model adı yaz.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (!ApiKeyStore.INSTANCE.isConfigured(this)) {
-            Toast.makeText(this, L10n.s("Önce API anahtarını gir."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Önce API anahtarını gir.")), Toast.LENGTH_SHORT).show();
             return;
         }
         Toast.makeText(this, L10n.s("Test ediliyor…"), Toast.LENGTH_SHORT).show();
@@ -2940,7 +2940,7 @@ public class MainActivity extends Activity {
                         if (reported) return;
                         reported = true;
                         runOnUiThread(() -> Toast.makeText(MainActivity.this,
-                                L10n.s("Test başarılı: bağlantı ve anahtar çalışıyor."), Toast.LENGTH_LONG).show());
+                                L10n.s(L10n.s("Test başarılı: bağlantı ve anahtar çalışıyor.")), Toast.LENGTH_LONG).show());
                     }
 
                     @Override public void onToken(String token) {
@@ -2951,7 +2951,7 @@ public class MainActivity extends Activity {
                     @Override public void onStopped() { ok(); }
                     @Override public void onError(String message) {
                         runOnUiThread(() -> Toast.makeText(MainActivity.this,
-                                L10n.s("Test başarısız: ") + message, Toast.LENGTH_LONG).show());
+                                L10n.s(L10n.s("Test başarısız: ")) + message, Toast.LENGTH_LONG).show());
                     }
                 });
     }
@@ -2959,9 +2959,9 @@ public class MainActivity extends Activity {
     private void showAppearance() {
         visibleChatId = null;
         backAction = this::showSettings;
-        setPage("Görünüm", "Uygulamanın temasını seç", "settings");
-        addInfoCard("Tema sistemi", "Her tema kartları, sohbet balonlarını, gezinmeyi ve sistem çubuklarını tek seferde boyar.", "GUI");
-        addBody("Seçim anında uygulanır; model bağlamı etkilenmez.");
+        setPage(L10n.s("Görünüm"), L10n.s("Uygulamanın temasını seç"), "settings");
+        addInfoCard("Tema sistemi", L10n.s("Her tema kartları, sohbet balonlarını, gezinmeyi ve sistem çubuklarını tek seferde boyar."), "GUI");
+        addBody(L10n.s("Seçim anında uygulanır; model bağlamı etkilenmez."));
         for (AppTheme candidate : AppTheme.ALL) {
             final boolean selected = Design.theme.id.equals(candidate.id);
             LinearLayout card = makeCard();
@@ -2973,12 +2973,12 @@ public class MainActivity extends Activity {
             TextView name = label(candidate.name, 17, Design.text());
             name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
             texts.addView(name);
-            TextView kind = label(candidate.dark ? "Koyu palet" : "Açık palet", 12, Design.muted());
+            TextView kind = label(candidate.dark ? "Koyu palet" : L10n.s("Açık palet"), 12, Design.muted());
             kind.setPadding(0, dp(2), 0, 0);
             texts.addView(kind);
             top.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
             if (selected) {
-                TextView badge = label("GÜNCEL", 10, Design.accent());
+                TextView badge = label(L10n.s("GÜNCEL"), 10, Design.accent());
                 badge.setLetterSpacing(.08f);
                 badge.setGravity(Gravity.CENTER);
                 badge.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 10));
@@ -2995,7 +2995,7 @@ public class MainActivity extends Activity {
                 params.setMargins(0, 0, dp(6), 0);
                 swatches.addView(dot, params);
             }
-            TextView hero = label("Sahne", 11, Design.heroSub());
+            TextView hero = label(L10n.s("Sahne"), 11, Design.heroSub());
             hero.setGravity(Gravity.CENTER);
             hero.setBackground(rounded(Design.heroA(), Design.heroA(), 14));
             hero.setPadding(dp(10), dp(4), dp(10), dp(4));
@@ -3009,7 +3009,7 @@ public class MainActivity extends Activity {
                 // Palette change must repaint header + nav too: in-place refresh
                 // only rebuilds the content list, which would keep old colors.
                 resetPageAnchor();
-                Toast.makeText(this, candidate.name + L10n.s(" teması uygulandı."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, candidate.name + L10n.s(L10n.s(" teması uygulandı.")), Toast.LENGTH_SHORT).show();
                 showAppearance();
             });
             addCardToPage(card);
@@ -3030,7 +3030,7 @@ public class MainActivity extends Activity {
                 new int[]{theme.heroA, theme.heroB});
         heroBg.setCornerRadius(dp(12));
         TextView heroText = new TextView(this);
-        heroText.setText(L10n.s("Hikâyen burada başlıyor."));
+        heroText.setText(L10n.s(L10n.s("Hikâyen burada başlıyor.")));
         heroText.setTextSize(12);
         heroText.setTextColor(theme.heroText);
         heroText.setPadding(dp(10), dp(7), dp(10), dp(7));
@@ -3038,7 +3038,7 @@ public class MainActivity extends Activity {
         preview.addView(heroText, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        TextView heroSub = label("Konuşma balonları · sahneler", 11, theme.heroSub);
+        TextView heroSub = label(L10n.s("Konuşma balonları · sahneler"), 11, theme.heroSub);
         heroSub.setPadding(dp(2), dp(5), 0, 0);
         preview.addView(heroSub);
 
@@ -3047,7 +3047,7 @@ public class MainActivity extends Activity {
         charBalloon.setTextColor(theme.text);
         charBalloon.setPadding(dp(10), dp(7), dp(10), dp(7));
         charBalloon.setBackground(rounded(theme.cardBg, theme.cardBg, 12));
-        SpannableString charText = new SpannableString("Nova · 20:41\nGüzel bir gece…");
+        SpannableString charText = new SpannableString(L10n.s("Nova · 20:41\nGüzel bir gece…"));
         charText.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, 4, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         charText.setSpan(new android.text.style.ForegroundColorSpan(theme.accent), 0, 4, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         charBalloon.setText(charText);
@@ -3104,25 +3104,25 @@ public class MainActivity extends Activity {
         chip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 10));
         if (!known) {
             chip.setTextColor(Design.muted());
-            chip.setText(L10n.s("İndirme ") + humanSize(bytes));
+            chip.setText(L10n.s(L10n.s("İndirme ")) + humanSize(bytes));
             return chip;
         }
         LinearLayout.LayoutParams self = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         self.setMargins(dp(7), 0, 0, 0);
         chip.setLayoutParams(self);
-        String size = L10n.s("İndirme ") + humanSize(bytes);
+        String size = L10n.s(L10n.s("İndirme ")) + humanSize(bytes);
         if (verdict == 0) {
             chip.setTextColor(Design.accent());
             chip.setText(size + L10n.s("  ·  bu cihazda rahat"));
         } else if (verdict == 1) {
             chip.setTextColor(Design.danger());
             chip.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 10));
-            chip.setText(size + L10n.s("  ·  sınırda"));
+            chip.setText(size + L10n.s(L10n.s("  ·  sınırda")));
         } else {
             chip.setTextColor(Design.danger());
             chip.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 10));
-            chip.setText(size + L10n.s("  ·  RAM'e göre riskli"));
+            chip.setText(size + L10n.s(L10n.s("  ·  RAM'e göre riskli")));
         }
         return chip;
     }
@@ -3132,7 +3132,7 @@ public class MainActivity extends Activity {
         // During the guided first-launch flow the catalog must step back into it
         // instead of dropping the user onto the settings page (DeepSeek item 13).
         backAction = onboardingActive ? this::showOnboardingModel : this::showModels;
-        setPage("Model önerileri", "CPU ve GPU dengelerine göre GGUF seç ve indir", "settings");
+        setPage(L10n.s("Model önerileri"), L10n.s("CPU ve GPU dengelerine göre GGUF seç ve indir"), "settings");
         addDeviceCard();
         addSegmentedCatalog();
         if (catalogFilter == 0) {
@@ -3144,19 +3144,19 @@ public class MainActivity extends Activity {
             addCatalogCard(pick, true);
             for (ModelCatalog.Model model : ModelCatalog.GPU_MODELS) if (model != pick) addCatalogCard(model, false);
         } else if (catalogFilter == 2) {
-            addBody(L10n.s("Görsel modeller bu cihazda çalışır: model yüklendikten sonra sohbette ✨ düğmesiyle resim üretebilirsin. Her şey çevrimdışı işler."));
+            addBody(L10n.s(L10n.s("Görsel modeller bu cihazda çalışır: model yüklendikten sonra sohbette ✨ düğmesiyle resim üretebilirsin. Her şey çevrimdışı işler.")));
             ModelCatalog.ImageModel pick = ModelCatalog.IMAGE_MODELS[0];
             addImageCatalogCard(pick, true, false);
             for (ModelCatalog.ImageModel model : ModelCatalog.IMAGE_MODELS) if (model != pick) addImageCatalogCard(model, false, false);
         } else {
-            TextView warning = label(L10n.s("Sansürsüz modeller abliterated (filtre katmanı çıkarılmış) eğitimlidir; 18 yaş üstü içindir."), 13, Design.danger());
+            TextView warning = label(L10n.s(L10n.s("Sansürsüz modeller abliterated (filtre katmanı çıkarılmış) eğitimlidir; 18 yaş üstü içindir.")), 13, Design.danger());
             warning.setPadding(0, dp(4), 0, dp(8));
             content.addView(warning);
-            addBody(L10n.s("Uygulama hiçbir sohbet verisini genel ağa göndermez; çıktı işleme tamamen bu cihazda çalışır. Sorumluluk kullanıcıya aittir."));
+            addBody(L10n.s(L10n.s("Uygulama hiçbir sohbet verisini genel ağa göndermez; çıktı işleme tamamen bu cihazda çalışır. Sorumluluk kullanıcıya aittir.")));
             ModelCatalog.Model pick = ModelCatalog.UNCENSORED_MODELS[0];
             addCatalogCard(pick, true);
             for (ModelCatalog.Model model : ModelCatalog.UNCENSORED_MODELS) if (model != pick) addCatalogCard(model, false);
-            TextView imageHeader = label(L10n.s("Görsel modeller (18+)"), 13, Design.text());
+            TextView imageHeader = label(L10n.s(L10n.s("Görsel modeller (18+)")), 13, Design.text());
             imageHeader.setPadding(0, dp(14), 0, dp(8));
             imageHeader.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
             content.addView(imageHeader);
@@ -3164,8 +3164,8 @@ public class MainActivity extends Activity {
             addImageCatalogCard(imagePick, true, true);
             for (ModelCatalog.ImageModel model : ModelCatalog.UNCENSORED_IMAGE_MODELS) if (model != imagePick) addImageCatalogCard(model, false, true);
         }
-        addBody("İndirmeler Hugging Face'den doğrudan olur ve uygulamanın özel alanına kaydedilir. Parola veya hesap gerekmez.");
-        addBody("GPU hızları * Vulkan/MLC tabanlı motorlar içindir; bu sürümün motoru llama.cpp CPU ile çalışır.");
+        addBody(L10n.s("İndirmeler Hugging Face'den doğrudan olur ve uygulamanın özel alanına kaydedilir. Parola veya hesap gerekmez."));
+        addBody(L10n.s("GPU hızları * Vulkan/MLC tabanlı motorlar içindir; bu sürümün motoru llama.cpp CPU ile çalışır."));
     }
 
     private void addDeviceCard() {
@@ -3175,18 +3175,18 @@ public class MainActivity extends Activity {
         long totalMb = memory.totalMem / 1_048_576L;
         long freeMb = memory.availMem / 1_048_576L;
         int cores = Runtime.getRuntime().availableProcessors();
-        addInfoCard("Cihaz analizi",
-                L10n.s("Bellek: ") + humanSize(totalMb * 1_048_576L) + L10n.s(" · boş: ") + humanSize(freeMb * 1_048_576L)
-                        + "\n" + L10n.s("CPU çekirdeği: ") + cores,
+        addInfoCard(L10n.s("Cihaz analizi"),
+                L10n.s("Bellek: ") + humanSize(totalMb * 1_048_576L) + L10n.s(L10n.s(" · boş: ")) + humanSize(freeMb * 1_048_576L)
+                        + "\n" + L10n.s(L10n.s("CPU çekirdeği: ")) + cores,
                 "Bu cihaz");
     }
 
     private void addSegmentedCatalog() {
         LinearLayout row = new LinearLayout(this);
         row.setPadding(0, dp(2), 0, dp(8));
-        String[] labels = {"CPU önerileri", "GPU önerileri",
-                L10n.s("Görsel"),
-                L10n.s("Sansürsüz") + (uncensoredUnlocked() ? "" : "  🔒")};
+        String[] labels = {L10n.s("CPU önerileri"), L10n.s("GPU önerileri"),
+                L10n.s(L10n.s("Görsel")),
+                L10n.s(L10n.s("Sansürsüz")) + (uncensoredUnlocked() ? "" : "  🔒")};
         for (int i = 0; i < labels.length; i++) {
             final int index = i;
             TextView chip = label(labels[i], 14, i == catalogFilter ? Design.onAccent() : Design.muted());
@@ -3228,26 +3228,26 @@ public class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(22), dp(18), dp(22), 0);
-        TextView warning = label(L10n.s("UYARI: Bu modellerde güvenlik filtresi yoktur; 18 yaş altına uygun içerik koruması içermez."), 13, Design.danger());
+        TextView warning = label(L10n.s(L10n.s("UYARI: Bu modellerde güvenlik filtresi yoktur; 18 yaş altına uygun içerik koruması içermez.")), 13, Design.danger());
         warning.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         box.addView(warning);
-        TextView notice = label(L10n.s("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir."),
+        TextView notice = label(L10n.s(L10n.s("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir.")),
                 14, Design.text());
         notice.setPadding(0, dp(10), 0, 0);
         box.addView(notice);
         final CheckBox acknowledged = new CheckBox(this);
-        acknowledged.setText(L10n.s("Uyarıyı okudum; 18 yaş üstü olduğumu onaylıyorum."));
+        acknowledged.setText(L10n.s(L10n.s("Uyarıyı okudum; 18 yaş üstü olduğumu onaylıyorum.")));
         acknowledged.setTextSize(13);
         acknowledged.setTextColor(Design.text());
         box.addView(acknowledged);
         final EditText ageInput = new EditText(this);
-        ageInput.setHint(L10n.s("Yaşın"));
+        ageInput.setHint(L10n.s(L10n.s("Yaşın")));
         ageInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         ageInput.setTextSize(15);
         ageInput.setTextColor(Design.text());
         box.addView(ageInput);
-        final String phrase = L10n.s("onaylıyorum");
-        TextView phraseHint = label(L10n.s("Onaylamak için kelimeyi yaz: ") + phrase, 13, Design.text());
+        final String phrase = L10n.s(L10n.s("onaylıyorum"));
+        TextView phraseHint = label(L10n.s(L10n.s("Onaylamak için kelimeyi yaz: ")) + phrase, 13, Design.text());
         phraseHint.setPadding(0, dp(12), 0, dp(4));
         box.addView(phraseHint);
         final EditText phraseInput = new EditText(this);
@@ -3256,29 +3256,29 @@ public class MainActivity extends Activity {
         phraseInput.setTextColor(Design.text());
         phraseInput.setHintTextColor(Design.muted());
         box.addView(phraseInput);
-        TextView sessionNote = label(L10n.s("Açılma bu oturum için geçerlidir; uygulama kapandığında yeniden sorulur."), 12, Design.muted());
+        TextView sessionNote = label(L10n.s(L10n.s("Açılma bu oturum için geçerlidir; uygulama kapandığında yeniden sorulur.")), 12, Design.muted());
         sessionNote.setPadding(0, dp(10), 0, 0);
         box.addView(sessionNote);
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(L10n.s("Sansürsüz modeller (18+)"))
+                .setTitle(L10n.s(L10n.s("Sansürsüz modeller (18+)")))
                 .setView(box)
-                .setPositiveButton(L10n.s("Onayla"), null)
-                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .setPositiveButton(L10n.s(L10n.s("Onayla")), null)
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null)
                 .create();
         final android.os.Handler countdown = new android.os.Handler();
         dialog.setOnShowListener(d -> {
             final Button confirm = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
             final int[] secondsLeft = {10};
             confirm.setEnabled(false);
-            confirm.setText(L10n.s("Onayla") + " (" + secondsLeft[0] + ")");
+            confirm.setText(L10n.s(L10n.s("Onayla")) + " (" + secondsLeft[0] + ")");
             final Runnable tick = new Runnable() {
                 @Override public void run() {
                     secondsLeft[0]--;
                     if (secondsLeft[0] <= 0) {
                         confirm.setEnabled(true);
-                        confirm.setText(L10n.s("Onayla"));
+                        confirm.setText(L10n.s(L10n.s("Onayla")));
                     } else {
-                        confirm.setText(L10n.s("Onayla") + " (" + secondsLeft[0] + ")");
+                        confirm.setText(L10n.s(L10n.s("Onayla")) + " (" + secondsLeft[0] + ")");
                         countdown.postDelayed(this, 1000);
                     }
                 }
@@ -3286,7 +3286,7 @@ public class MainActivity extends Activity {
             countdown.postDelayed(tick, 1000);
             confirm.setOnClickListener(v -> {
                 if (!acknowledged.isChecked()) {
-                    Toast.makeText(this, L10n.s("Önce uyarıyı onaylaman gerekli."), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, L10n.s(L10n.s("Önce uyarıyı onaylaman gerekli.")), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 int age = -1;
@@ -3295,11 +3295,11 @@ public class MainActivity extends Activity {
                     if (!value.isEmpty()) age = Integer.parseInt(value);
                 } catch (NumberFormatException ignored) {}
                 if (age < 18) {
-                    Toast.makeText(this, L10n.s("Bu bölüm yalnızca 18 yaş üstüne açık."), Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, L10n.s(L10n.s("Bu bölüm yalnızca 18 yaş üstüne açık.")), Toast.LENGTH_LONG).show();
                     return;
                 }
                 if (!phraseInput.getText().toString().trim().equalsIgnoreCase(phrase)) {
-                    Toast.makeText(this, L10n.s("Onay kelimesini tam yazmalısın."), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, L10n.s(L10n.s("Onay kelimesini tam yazmalısın.")), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 uncensoredSessionUnlock = true;
@@ -3307,7 +3307,7 @@ public class MainActivity extends Activity {
                 pendingCatalogFilter = -1;
                 dialog.dismiss();
                 showModelCatalog();
-                Toast.makeText(this, L10n.s("Sansürsüz bölümü bu oturum için açıldı."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Sansürsüz bölümü bu oturum için açıldı.")), Toast.LENGTH_SHORT).show();
             });
         });
         dialog.setOnDismissListener(d -> countdown.removeCallbacksAndMessages(null));
@@ -3348,12 +3348,12 @@ public class MainActivity extends Activity {
         card.setBackground(rounded(Design.cardBg(), highlight ? Design.accent() : Design.cardStroke(), 18));
         boolean uncensored = isUncensoredCard(model);
         if (uncensored) {
-            TextView badge = label(L10n.s("SANSÜRSÜZ  ·  18+"), 10, Design.danger());
+            TextView badge = label(L10n.s(L10n.s("SANSÜRSÜZ  ·  18+")), 10, Design.danger());
             badge.setLetterSpacing(.09f);
             card.addView(badge);
         }
         if (highlight) {
-            TextView badge = label("BU CİHAZ İÇİN ÖNERİ", 10, Design.accent());
+            TextView badge = label(L10n.s("BU CİHAZ İÇİN ÖNERİ"), 10, Design.accent());
             badge.setLetterSpacing(.09f);
             card.addView(badge);
         }
@@ -3361,16 +3361,16 @@ public class MainActivity extends Activity {
         name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         name.setPadding(0, highlight || uncensored ? dp(5) : dp(2), 0, 0);
         card.addView(name);
-        TextView meta = label(model.family + "  ·  " + model.quant + "  ·  " + humanSize(model.bytes)
-                + L10n.s("  ·  bağlam ") + (model.contextTokens >= 1024 ? (model.contextTokens / 1024) + "K" : String.valueOf(model.contextTokens)) + " token"
-                + "  ·  " + model.lang, 12, Design.muted());
+        TextView meta = label(model.family + L10n.s("  ·  ") + model.quant + L10n.s("  ·  ") + humanSize(model.bytes)
+                + L10n.s(L10n.s("  ·  bağlam ")) + (model.contextTokens >= 1024 ? (model.contextTokens / 1024) + "K" : String.valueOf(model.contextTokens)) + " token"
+                + L10n.s("  ·  ") + model.lang, 12, Design.muted());
         meta.setPadding(0, dp(3), 0, 0);
         card.addView(meta);
         boolean gpuOnly = isGpuOnlyCard(model);
         if (gpuOnly) {
             // Task G5: the bundled closed engine has no Vulkan/GPU backend; these cards
             // must not pretend otherwise. Warning + disabled download/load below.
-            TextView warning = label("⚠ Bu motorda çalışmaz — paketli motor yalnızca CPU; Vulkan/MLC motoru gerekir.", 12, Design.danger());
+            TextView warning = label(L10n.s("⚠ Bu motorda çalışmaz — paketli motor yalnızca CPU; Vulkan/MLC motoru gerekir."), 12, Design.danger());
             warning.setPadding(0, dp(6), 0, 0);
             card.addView(warning);
         }
@@ -3401,7 +3401,7 @@ public class MainActivity extends Activity {
         File partial = catalogPartialFile(model);
         if (downloading) {
             downloadProgressView = addBodyWithin(card, downloadProgressText(model));
-            Button cancel = button("İndirmeyi durdur");
+            Button cancel = button(L10n.s("İndirmeyi durdur"));
             cancel.setAllCaps(false);
             cancel.setTextColor(Design.danger());
             cancel.setTextSize(14);
@@ -3416,10 +3416,10 @@ public class MainActivity extends Activity {
             cancelParams.setMargins(0, dp(8), 0, 0);
             card.addView(cancel, cancelParams);
         } else if (stored != null) {
-            TextView ready = label(L10n.s("İndirildi  ·  ") + humanSize(stored.length()) + L10n.s(" hazır"), 12, Design.accent());
+            TextView ready = label(L10n.s(L10n.s("İndirildi  ·  ")) + humanSize(stored.length()) + L10n.s(L10n.s(" hazır")), 12, Design.accent());
             ready.setPadding(0, dp(7), 0, dp(2));
             card.addView(ready);
-            Button load = button("Modeli yükle");
+            Button load = button(L10n.s("Modeli yükle"));
             load.setAllCaps(false);
             load.setTextSize(15);
             load.setTextColor(Design.onAccent());
@@ -3435,7 +3435,7 @@ public class MainActivity extends Activity {
             loadParams.setMargins(0, dp(10), 0, 0);
             card.addView(load, loadParams);
         } else {
-            Button download = button(gpuOnly ? L10n.s("İndirme kapalı  ·  ") + humanSize(model.bytes) : L10n.s("İndir  ·  ") + humanSize(model.bytes));
+            Button download = button(gpuOnly ? L10n.s(L10n.s("İndirme kapalı  ·  ")) + humanSize(model.bytes) : L10n.s(L10n.s("İndir  ·  ")) + humanSize(model.bytes));
             download.setAllCaps(false);
             download.setTextSize(15);
             download.setTextColor(Design.onAccent());
@@ -3446,8 +3446,8 @@ public class MainActivity extends Activity {
             } else {
                 download.setOnClickListener(v -> {
                     if (partial != null) {
-                        confirm(L10n.s("Yarı kalan bir indirme var (") + humanSize(partial.length())
-                                + L10n.s("). İndirme kaldığı yerden devam etsin mi?"), "Kaldığı yerden devam", () -> startCatalogDownload(model));
+                        confirm(L10n.s(L10n.s("Yarı kalan bir indirme var (")) + humanSize(partial.length())
+                                + L10n.s(L10n.s("). İndirme kaldığı yerden devam etsin mi?")), L10n.s("Kaldığı yerden devam"), () -> startCatalogDownload(model));
                     } else {
                         startCatalogDownload(model);
                     }
@@ -3459,7 +3459,7 @@ public class MainActivity extends Activity {
             card.addView(download, downloadParams);
         }
         if (partial != null && !downloading) {
-            addBodyWithin(card, L10n.s("Kaydedilen parça: ") + humanSize(partial.length()) + L10n.s(" · devam edince indirilmiş sayılır"));
+            addBodyWithin(card, L10n.s(L10n.s("Kaydedilen parça: ")) + humanSize(partial.length()) + L10n.s(L10n.s(" · devam edince indirilmiş sayılır")));
         }
         addCardToPage(card);
     }
@@ -3475,8 +3475,8 @@ public class MainActivity extends Activity {
     private String downloadProgressText(ModelCatalog.Model model) {
         StringBuilder text = new StringBuilder(model.name).append(" · indiriliyor…");
         if (downloadTotal > 0) {
-            text.append("  %").append(Math.round(downloadBytes * 100.0 / downloadTotal))
-                    .append("  (").append(humanSize(downloadBytes)).append(" / ").append(humanSize(downloadTotal)).append(")");
+            text.append(L10n.s("  %")).append(Math.round(downloadBytes * 100.0 / downloadTotal))
+                    .append(L10n.s("  (")).append(humanSize(downloadBytes)).append(L10n.s(" / ")).append(humanSize(downloadTotal)).append(")");
         } else if (downloadBytes > 0) {
             text.append("  ").append(humanSize(downloadBytes));
         }
@@ -3492,10 +3492,10 @@ public class MainActivity extends Activity {
         Runnable start = () -> {
             File directory = LocalAiRuntime.INSTANCE.modelsDirectory(this);
             if (!directory.exists() && !directory.mkdirs()) {
-                Toast.makeText(this, L10n.s("Model klasörü açılamadı."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Model klasörü açılamadı.")), Toast.LENGTH_SHORT).show();
                 return;
             }
-            modelStatus = L10n.s("İndiriliyor: ") + model.name;
+            modelStatus = L10n.s(L10n.s("İndiriliyor: ")) + model.name;
             boolean accepted = ModelDownload.INSTANCE.start(this, model.url, model.fileHint, new ModelDownload.Listener() {
                 @Override public void onProgress(int percent, long downloadedBytes, long totalBytes) {
                     if (!uiAlive()) return;
@@ -3521,12 +3521,12 @@ public class MainActivity extends Activity {
                 @Override public void onError(String message) {
                     if (!uiAlive()) return;
                     downloadProgressView = null;
-                    Toast.makeText(MainActivity.this, L10n.s("İndirme hatası: ") + message, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, L10n.s(L10n.s("İndirme hatası: ")) + message, Toast.LENGTH_SHORT).show();
                     if ("settings".equals(currentTab)) showModelCatalog();
                 }
             }, model.bytes, model.sha256, null);
             if (!accepted) {
-                Toast.makeText(this, L10n.s("Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene.")), Toast.LENGTH_SHORT).show();
             } else {
                 if ("settings".equals(currentTab)) {
                     // Swap the card into its downloading state right away
@@ -3536,10 +3536,10 @@ public class MainActivity extends Activity {
             }
         };
         if (metered) {
-            new AlertDialog.Builder(this).setTitle(L10n.s("Mobil veri uyarısı"))
-                    .setMessage(model.name + L10n.s(" (") + humanSize(model.bytes) + L10n.s(") mobil veriyle indirilecek. Wi-Fi önerilir."))
-                    .setPositiveButton(L10n.s("İndir"), (d, w) -> start.run())
-                    .setNegativeButton(L10n.s("Vazgeç"), null).show();
+            new AlertDialog.Builder(this).setTitle(L10n.s(L10n.s("Mobil veri uyarısı")))
+                    .setMessage(model.name + L10n.s(" (") + humanSize(model.bytes) + L10n.s(L10n.s(") mobil veriyle indirilecek. Wi-Fi önerilir.")))
+                    .setPositiveButton(L10n.s(L10n.s("İndir")), (d, w) -> start.run())
+                    .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).show();
         } else {
             start.run();
         }
@@ -3566,12 +3566,12 @@ public class MainActivity extends Activity {
         LinearLayout card = makeCard();
         card.setBackground(rounded(Design.cardBg(), highlight ? Design.accent() : Design.cardStroke(), 18));
         if (uncensored) {
-            TextView badge = label(L10n.s("SANSÜRSÜZ  ·  18+"), 10, Design.danger());
+            TextView badge = label(L10n.s(L10n.s("SANSÜRSÜZ  ·  18+")), 10, Design.danger());
             badge.setLetterSpacing(.09f);
             card.addView(badge);
         }
         if (highlight) {
-            TextView badge = label(L10n.s("BU CİHAZ İÇİN ÖNERİ"), 10, Design.accent());
+            TextView badge = label(L10n.s(L10n.s("BU CİHAZ İÇİN ÖNERİ")), 10, Design.accent());
             badge.setLetterSpacing(.09f);
             card.addView(badge);
         }
@@ -3579,8 +3579,8 @@ public class MainActivity extends Activity {
         name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         name.setPadding(0, highlight || uncensored ? dp(5) : dp(2), 0, 0);
         card.addView(name);
-        TextView meta = label(model.style + "  ·  " + humanSize(model.bytes)
-                + "  ·  ~" + model.steps + " adım", 12, Design.muted());
+        TextView meta = label(model.style + L10n.s("  ·  ") + humanSize(model.bytes)
+                + "  ·  ~" + model.steps + L10n.s(" adım"), 12, Design.muted());
         meta.setPadding(0, dp(3), 0, 0);
         card.addView(meta);
         TextView why = label(model.why, 13, Design.muted());
@@ -3597,7 +3597,7 @@ public class MainActivity extends Activity {
         final File partialFile = partial.isFile() ? partial : null;
         if (downloading) {
             downloadProgressView = addBodyWithin(card, imageDownloadProgressText(model));
-            Button cancel = button(L10n.s("İndirmeyi durdur"));
+            Button cancel = button(L10n.s(L10n.s("İndirmeyi durdur")));
             cancel.setTextColor(Design.danger());
             cancel.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 12));
             cancel.setOnClickListener(v -> {
@@ -3610,10 +3610,10 @@ public class MainActivity extends Activity {
             cancelParams.setMargins(0, dp(8), 0, 0);
             card.addView(cancel, cancelParams);
         } else if (stored != null) {
-            TextView ready = label(L10n.s("İndirildi  ·  ") + humanSize(stored.length()) + L10n.s(" hazır"), 12, Design.accent());
+            TextView ready = label(L10n.s(L10n.s("İndirildi  ·  ")) + humanSize(stored.length()) + L10n.s(L10n.s(" hazır")), 12, Design.accent());
             ready.setPadding(0, dp(7), 0, dp(2));
             card.addView(ready);
-            Button load = button(L10n.s("Görsel modelini yükle"));
+            Button load = button(L10n.s(L10n.s("Görsel modelini yükle")));
             load.setTextColor(Design.onAccent());
             load.setBackground(rounded(Design.accent(), Design.accent(), 14));
             boolean active = LocalImageEngine.INSTANCE.isModelLoading()
@@ -3628,7 +3628,7 @@ public class MainActivity extends Activity {
                 load.setOnClickListener(v -> startImageModelLoad(model, stored));
             }
             if (loadedThis) {
-                TextView loaded = label(L10n.s("Yüklü  ·  sohbette ✨ ile üret"), 12, Design.accent());
+                TextView loaded = label(L10n.s(L10n.s("Yüklü  ·  sohbette ✨ ile üret")), 12, Design.accent());
                 loaded.setPadding(0, dp(6), 0, 0);
                 card.addView(loaded);
             }
@@ -3636,7 +3636,7 @@ public class MainActivity extends Activity {
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             loadParams.setMargins(0, dp(10), 0, 0);
             card.addView(load, loadParams);
-            Button delete = button(L10n.s("Sil"));
+            Button delete = button(L10n.s(L10n.s("Sil")));
             delete.setTextColor(Design.danger());
             delete.setBackground(rounded(Design.dangerSoft(), Design.dangerStroke(), 12));
             if (active || loadedThis) {
@@ -3645,14 +3645,14 @@ public class MainActivity extends Activity {
                 delete.setAlpha(.55f);
             } else {
                 delete.setOnClickListener(v -> confirm(
-                        model.name + L10n.s(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir."),
-                        L10n.s("Sil"), () -> {
+                        model.name + L10n.s(L10n.s(" cihazdan silinsin mi? Tekrar kullanmak için yeniden indirilir.")),
+                        L10n.s(L10n.s("Sil")), () -> {
                             if (LocalImageEngine.INSTANCE.deleteStoredModel(this, stored)) {
                                 Toast.makeText(this, model.name + L10n.s(" silindi."), Toast.LENGTH_SHORT).show();
                                 if (imageLoadStatus != null) imageLoadStatus = null;
                                 showModelCatalog();
                             } else {
-                                Toast.makeText(this, L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(this, L10n.s(L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
                             }
                         }));
             }
@@ -3661,13 +3661,13 @@ public class MainActivity extends Activity {
             deleteParams.setMargins(0, dp(8), 0, 0);
             card.addView(delete, deleteParams);
         } else {
-            Button download = button(L10n.s("İndir  ·  ") + humanSize(model.bytes));
+            Button download = button(L10n.s(L10n.s("İndir  ·  ")) + humanSize(model.bytes));
             download.setTextColor(Design.onAccent());
             download.setBackground(rounded(Design.accent(), Design.accent(), 14));
             download.setOnClickListener(v -> {
                 if (partialFile != null) {
-                    confirm(L10n.s("Yarı kalan bir indirme var (") + humanSize(partialFile.length())
-                            + L10n.s("). İndirme kaldığı yerden devam etsin mi?"), L10n.s("Kaldığı yerden devam"),
+                    confirm(L10n.s(L10n.s("Yarı kalan bir indirme var (")) + humanSize(partialFile.length())
+                            + L10n.s(L10n.s("). İndirme kaldığı yerden devam etsin mi?")), L10n.s(L10n.s("Kaldığı yerden devam")),
                             () -> startCatalogImageDownload(model));
                 } else {
                     startCatalogImageDownload(model);
@@ -3682,7 +3682,7 @@ public class MainActivity extends Activity {
             addBodyWithin(card, imageLoadStatus);
         }
         if (partialFile != null && !downloading) {
-            addBodyWithin(card, L10n.s("Kaydedilen parça: ") + humanSize(partialFile.length()) + L10n.s(" · devam edince indirilmiş sayılır"));
+            addBodyWithin(card, L10n.s(L10n.s("Kaydedilen parça: ")) + humanSize(partialFile.length()) + L10n.s(L10n.s(" · devam edince indirilmiş sayılır")));
         }
         addCardToPage(card);
     }
@@ -3690,8 +3690,8 @@ public class MainActivity extends Activity {
     private String imageDownloadProgressText(ModelCatalog.ImageModel model) {
         StringBuilder text = new StringBuilder(model.name).append(L10n.s(" · indiriliyor…"));
         if (downloadTotal > 0) {
-            text.append("  %").append(Math.round(downloadBytes * 100.0 / downloadTotal))
-                    .append("  (").append(humanSize(downloadBytes)).append(" / ").append(humanSize(downloadTotal)).append(")");
+            text.append(L10n.s("  %")).append(Math.round(downloadBytes * 100.0 / downloadTotal))
+                    .append(L10n.s("  (")).append(humanSize(downloadBytes)).append(L10n.s(" / ")).append(humanSize(downloadTotal)).append(")");
         } else if (downloadBytes > 0) {
             text.append("  ").append(humanSize(downloadBytes));
         }
@@ -3706,7 +3706,7 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {}
         Runnable start = () -> {
             LocalImageEngine.INSTANCE.imagesDirectory(this);
-            modelStatus = L10n.s("İndiriliyor: ") + model.name;
+            modelStatus = L10n.s(L10n.s("İndiriliyor: ")) + model.name;
             boolean accepted = ModelDownload.INSTANCE.start(this, model.url, model.fileHint, new ModelDownload.Listener() {
                 @Override public void onProgress(int percent, long downloadedBytes, long totalBytes) {
                     if (!uiAlive()) return;
@@ -3730,21 +3730,21 @@ public class MainActivity extends Activity {
                 @Override public void onError(String message) {
                     if (!uiAlive()) return;
                     downloadProgressView = null;
-                    Toast.makeText(MainActivity.this, L10n.s("İndirme hatası: ") + message, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, L10n.s(L10n.s("İndirme hatası: ")) + message, Toast.LENGTH_SHORT).show();
                     if ("settings".equals(currentTab)) showModelCatalog();
                 }
             }, model.bytes, model.sha256, IMAGE_SUBDIRECTORY);
             if (!accepted) {
-                Toast.makeText(this, L10n.s("Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Önceki indirme hâlâ sonlanıyor; bir saniye sonra tekrar dene.")), Toast.LENGTH_SHORT).show();
             } else if ("settings".equals(currentTab)) {
                 showModelCatalog();
             }
         };
         if (metered) {
-            new AlertDialog.Builder(this).setTitle(L10n.s("Mobil veri uyarısı"))
-                    .setMessage(model.name + L10n.s(" (") + humanSize(model.bytes) + L10n.s(") mobil veriyle indirilecek. Wi-Fi önerilir."))
-                    .setPositiveButton(L10n.s("İndir"), (d, w) -> start.run())
-                    .setNegativeButton(L10n.s("Vazgeç"), null).show();
+            new AlertDialog.Builder(this).setTitle(L10n.s(L10n.s("Mobil veri uyarısı")))
+                    .setMessage(model.name + L10n.s(" (") + humanSize(model.bytes) + L10n.s(L10n.s(") mobil veriyle indirilecek. Wi-Fi önerilir.")))
+                    .setPositiveButton(L10n.s(L10n.s("İndir")), (d, w) -> start.run())
+                    .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).show();
         } else {
             start.run();
         }
@@ -3752,10 +3752,10 @@ public class MainActivity extends Activity {
 
     private void startImageModelLoad(ModelCatalog.ImageModel model, File stored) {
         if (LocalImageEngine.INSTANCE.isModelLoading() || LocalImageEngine.INSTANCE.isGenerating()) {
-            Toast.makeText(this, L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
         }
-        imageLoadStatus = L10n.s("Yükleniyor… ilk üretimden önce birkaç dakika sürebilir.");
+        imageLoadStatus = L10n.s(L10n.s("Yükleniyor… ilk üretimden önce birkaç dakika sürebilir."));
         if ("settings".equals(currentTab)) showModelCatalog();
         LocalImageEngine.INSTANCE.loadStoredModel(this, stored, new LocalImageEngine.ImageListener() {
             @Override public void onStatus(String message) { }
@@ -3764,7 +3764,7 @@ public class MainActivity extends Activity {
                 imageLoadStatus = null;
                 LocalImageEngine.INSTANCE.setPreparedStepCount(model.steps);
                 Toast.makeText(MainActivity.this,
-                        model.name + L10n.s(" yüklendi; sohbette ✨ düğmesiyle görsel üretebilirsin."), Toast.LENGTH_LONG).show();
+                        model.name + L10n.s(L10n.s(" yüklendi; sohbette ✨ düğmesiyle görsel üretebilirsin.")), Toast.LENGTH_LONG).show();
                 if ("settings".equals(currentTab)) showModelCatalog();
             }
             @Override public void onError(String message) {
@@ -3779,7 +3779,7 @@ public class MainActivity extends Activity {
     private void loadStoredModelFile(File file) {
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading()) return;
         modelLoading = true;
-        modelStatus = "Yükleme başlatılıyor…";
+        modelStatus = L10n.s("Yükleme başlatılıyor…");
         if ("settings".equals(currentTab)) showModels();
         LocalAiRuntime.INSTANCE.loadStoredModel(this, file, new LocalAiRuntime.ModelListener() {
             @Override public void onStatus(String message) {
@@ -3793,19 +3793,19 @@ public class MainActivity extends Activity {
                 selectedModelName = fileName;
                 contextChars.clear();
                 chatMetrics.clear();
-                modelStatus = L10n.s("Hazır · ") + humanSize(bytes) + L10n.s(" · çevrimdışı");
+                modelStatus = L10n.s(L10n.s("Hazır · ")) + humanSize(bytes) + L10n.s(L10n.s(" · çevrimdışı"));
                 if ("settings".equals(currentTab)) showModels();
                 else if (onboardingActive && "model".equals(onboardingStep)) showOnboardingModel();
-                Toast.makeText(MainActivity.this, fileName + L10n.s(" yüklendi."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, fileName + L10n.s(L10n.s(" yüklendi.")), Toast.LENGTH_SHORT).show();
             }
             @Override public void onError(String message) {
                 if (!uiAlive()) return;
                 modelLoading = false;
-                modelStatus = L10n.s("Yüklenemedi: ") + message;
+                modelStatus = L10n.s(L10n.s("Yüklenemedi: ")) + message;
                 if ("settings".equals(currentTab)) showModels();
                 else if (onboardingActive && "model".equals(onboardingStep)) showOnboardingModel();
-                new AlertDialog.Builder(MainActivity.this).setTitle(L10n.s("Model yüklenemedi"))
-                        .setMessage(message).setPositiveButton(L10n.s("Tamam"), null).show();
+                new AlertDialog.Builder(MainActivity.this).setTitle(L10n.s(L10n.s("Model yüklenemedi")))
+                        .setMessage(message).setPositiveButton(L10n.s(L10n.s("Tamam")), null).show();
             }
         });
     }
@@ -3823,52 +3823,52 @@ public class MainActivity extends Activity {
         String generalMode = prefs.getString("general_prompt_source", "default");
         String sysMode = prefs.getString("sys_prompt_source", "engine");
 
-        addSection("Genel AI talimatı", null, null);
-        addBody("Her promptun \"Genel AI talimatı\" satırını seçer: varsayılanlar dile göre belirlenir; özel seçtiğinde kendi metnin kullanılır.");
-        addSecondary(L10n.s("Varsayılan (Türkçe)") + ("default".equals(generalMode) && prefs().getString("app_language", "tr").equals("tr") ? "  ✓" : ""), v -> setGeneralPromptSource("default"));
-        addSecondary(L10n.s("Varsayılan (English)") + ("default".equals(generalMode) && prefs().getString("app_language", "tr").equals("en") ? "  ✓" : ""), v -> setGeneralPromptSource("default"));
-        addSecondary(L10n.s("Özel") + ("custom".equals(generalMode) ? "  ✓" : ""), v -> {
+        addSection(L10n.s("Genel AI talimatı"), null, null);
+        addBody(L10n.s("Her promptun \"Genel AI talimatı\" satırını seçer: varsayılanlar dile göre belirlenir; özel seçtiğinde kendi metnin kullanılır."));
+        addSecondary(L10n.s(L10n.s("Varsayılan (Türkçe)")) + ("default".equals(generalMode) && prefs().getString("app_language", "tr").equals("tr") ? "  ✓" : ""), v -> setGeneralPromptSource("default"));
+        addSecondary(L10n.s(L10n.s("Varsayılan (English)")) + ("default".equals(generalMode) && prefs().getString("app_language", "tr").equals("en") ? "  ✓" : ""), v -> setGeneralPromptSource("default"));
+        addSecondary(L10n.s(L10n.s("Özel")) + ("custom".equals(generalMode) ? "  ✓" : ""), v -> {
             prefs.edit().putString("general_prompt_source", "custom").apply();
             LocalAiRuntime.INSTANCE.resetConversation(null);
             showPromptStyle();
         });
         if ("custom".equals(generalMode)) {
-            EditText instructions = field("AI'nin genel yanıt yönergesi", prefs.getString("ai_instructions", DEFAULT_AI_INSTRUCTIONS), 4);
-            addPrimary("Özel talimatı kaydet", v -> {
+            EditText instructions = field(L10n.s("AI'nin genel yanıt yönergesi"), prefs.getString("ai_instructions", DEFAULT_AI_INSTRUCTIONS), 4);
+            addPrimary(L10n.s("Özel talimatı kaydet"), v -> {
                 prefs.edit().putString("ai_instructions", instructions.getText().toString().trim()).apply();
-                Toast.makeText(this, L10n.s("Özel talimat kaydedildi."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Özel talimat kaydedildi.")), Toast.LENGTH_SHORT).show();
             });
         }
 
-        addSection("Sistem promptu", null, null);
-        addBody("Motorun dünya görüşünü belirleyen çekirdek prompt; karakter tanımından önce gelir.");
-        addSecondary(L10n.s("Motor varsayılanı") + ("engine".equals(sysMode) ? "  ✓" : ""), v -> setSystemPromptSource("engine"));
-        addSecondary(L10n.s("Türkçe") + ("tr".equals(sysMode) ? "  ✓" : ""), v -> setSystemPromptSource("tr"));
+        addSection(L10n.s("Sistem promptu"), null, null);
+        addBody(L10n.s("Motorun dünya görüşünü belirleyen çekirdek prompt; karakter tanımından önce gelir."));
+        addSecondary(L10n.s(L10n.s("Motor varsayılanı")) + ("engine".equals(sysMode) ? "  ✓" : ""), v -> setSystemPromptSource("engine"));
+        addSecondary(L10n.s(L10n.s("Türkçe")) + ("tr".equals(sysMode) ? "  ✓" : ""), v -> setSystemPromptSource("tr"));
         addSecondary("English" + ("en".equals(sysMode) ? "  ✓" : ""), v -> setSystemPromptSource("en"));
-        addSecondary(L10n.s("Özel") + ("custom".equals(sysMode) ? "  ✓" : ""), v -> {
+        addSecondary(L10n.s(L10n.s("Özel")) + ("custom".equals(sysMode) ? "  ✓" : ""), v -> {
             prefs.edit().putString("sys_prompt_source", "custom").apply();
             applySystemPrompt();
             LocalAiRuntime.INSTANCE.resetConversation(null);
             showPromptStyle();
         });
         if ("custom".equals(sysMode)) {
-            EditText systemEditor = field("Motor kavrayışının çekirdeği",
+            EditText systemEditor = field(L10n.s("Motor kavrayışının çekirdeği"),
                     prefs.getString("custom_sys_prompt", LocalAiRuntime.INSTANCE.currentSystemPrompt()), 4);
-            addPrimary("Özel sistem promptunu kaydet", v -> {
+            addPrimary(L10n.s("Özel sistem promptunu kaydet"), v -> {
                 prefs.edit().putString("custom_sys_prompt", systemEditor.getText().toString().trim()).apply();
                 applySystemPrompt();
                 LocalAiRuntime.INSTANCE.resetConversation(null);
-                Toast.makeText(this, L10n.s("Sistem promptu kaydedildi; model bağlamı yeniden kurulacak."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Sistem promptu kaydedildi; model bağlamı yeniden kurulacak.")), Toast.LENGTH_SHORT).show();
                 showPromptStyle();
             });
         }
-        addBody("Değişiklikler model bağlamını sıfırlar; ilk yanıt biraz daha uzun sürebilir.");
+        addBody(L10n.s("Değişiklikler model bağlamını sıfırlar; ilk yanıt biraz daha uzun sürebilir."));
     }
 
     private void setGeneralPromptSource(String mode) {
         prefs().edit().putString("general_prompt_source", mode).apply();
         LocalAiRuntime.INSTANCE.resetConversation(null);
-        Toast.makeText(this, L10n.s("Genel talimat tercihleri güncellendi."), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, L10n.s(L10n.s("Genel talimat tercihleri güncellendi.")), Toast.LENGTH_SHORT).show();
         showPromptStyle();
     }
 
@@ -3876,40 +3876,40 @@ public class MainActivity extends Activity {
         prefs().edit().putString("sys_prompt_source", mode).apply();
         applySystemPrompt();
         LocalAiRuntime.INSTANCE.resetConversation(null);
-        Toast.makeText(this, L10n.s("Sistem promptu tercihi güncellendi."), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, L10n.s(L10n.s("Sistem promptu tercihi güncellendi.")), Toast.LENGTH_SHORT).show();
         showPromptStyle();
     }
 
     private void showAiAdvanced() {
         visibleChatId = null;
         backAction = this::showSettings;
-        setPage("Sahne hafızası ve zincir", "Geçmiş derinliği, bağlam ve kendiliğinden devam", "settings");
+        setPage(L10n.s("Sahne hafızası ve zincir"), L10n.s("Geçmiş derinliği, bağlam ve kendiliğinden devam"), "settings");
         SharedPreferences prefs = prefs();
-        addSection("Sahne hafızası", "Model bağlamının derinliği", null);
+        addSection(L10n.s("Sahne hafızası"), L10n.s("Model bağlamının derinliği"), null);
         int depth = prefs.getInt("history_depth", 8);
-        addSlider("Geçmiş mesaj sayısı", depth, 2, 14, 1, value -> {
+        addSlider(L10n.s("Geçmiş mesaj sayısı"), depth, 2, 14, 1, value -> {
             prefs.edit().putInt("history_depth", value).apply();
-        }, value -> value + " mesaj");
+        }, value -> value + L10n.s(" mesaj"));
         int chars = prefs.getInt("history_chars", 2600);
-        addSlider("Geçmiş karakter bütçesi", chars, 1200, 3600, 200, value -> {
+        addSlider(L10n.s("Geçmiş karakter bütçesi"), chars, 1200, 3600, 200, value -> {
             prefs.edit().putInt("history_chars", value).apply();
-        }, value -> humanSize(value) + " metin");
+        }, value -> humanSize(value) + L10n.s(" metin"));
 
-        addSection("Bağlam davranışı", null, null);
+        addSection(L10n.s("Bağlam davranışı"), null, null);
         addBudgetRow(prefs);
 
-        addSection("Karakter zinciri", null, null);
+        addSection(L10n.s("Karakter zinciri"), null, null);
         int autoChain = prefs.getInt("auto_chain", 0);
-        addSlider("Kendiliğinden devam sayısı", autoChain, 0, 3, 1, value -> {
+        addSlider(L10n.s("Kendiliğinden devam sayısı"), autoChain, 0, 3, 1, value -> {
             prefs.edit().putInt("auto_chain", value).apply();
-        }, value -> value == 0 ? "Kapalı" : value + " zincir");
-        addBody("Zincir açıkken karakter, kendi yanıtından sonra sıradaki karakteri otomatik çağırır. Sahne palazlanır ama token tüketimi artar.");
+        }, value -> value == 0 ? L10n.s("Kapalı") : value + " zincir");
+        addBody(L10n.s("Zincir açıkken karakter, kendi yanıtından sonra sıradaki karakteri otomatik çağırır. Sahne palazlanır ama token tüketimi artar."));
 
-        addSection("Metin görüntüsü", null, null);
-        addToggleRow("Markdown biçimlendirme", "*italik* ve **kalın** baloncuklarda uygulanır",
+        addSection(L10n.s("Metin görüntüsü"), null, null);
+        addToggleRow(L10n.s("Markdown biçimlendirme"), L10n.s("*italik* ve **kalın** baloncuklarda uygulanır"),
                 "markdown_lite", true);
-        addBody("Değişiklikler bir sonraki yanıtta uygulanır.");
-        addPrimary("Vazgeç", v -> showSettings());
+        addBody(L10n.s("Değişiklikler bir sonraki yanıtta uygulanır."));
+        addPrimary(L10n.s("Vazgeç"), v -> showSettings());
     }
 
     /** Simple on/off preference row bound to a boolean pref; returns the current state. */
@@ -3924,7 +3924,7 @@ public class MainActivity extends Activity {
         java.util.function.BooleanSupplier render = () -> prefs().getBoolean(key, defaultValue);
         Runnable refresh = () -> {
             boolean on = render.getAsBoolean();
-            row.setText(title + L10n.s("  ·  ") + (on ? L10n.s("Açık") : L10n.s("Kapalı"))
+            row.setText(title + L10n.s("  ·  ") + (on ? L10n.s(L10n.s("Açık")) : L10n.s(L10n.s("Kapalı")))
                     + (subtitle.isEmpty() ? "" : "\n" + subtitle));
         };
         refresh.run();
@@ -3963,15 +3963,15 @@ public class MainActivity extends Activity {
     private void addBudgetRow(SharedPreferences prefs) {
         int saved = prefs.getInt("context_budget_chars", -1);
         boolean manual = saved > 0;
-        addBody("Bağlam bütçesi");
+        addBody(L10n.s("Bağlam bütçesi"));
         LinearLayout row = new LinearLayout(this);
-        TextView auto = label("Otomatik", 13, !manual ? Design.onAccent() : Design.muted());
+        TextView auto = label(L10n.s("Otomatik"), 13, !manual ? Design.onAccent() : Design.muted());
         auto.setGravity(Gravity.CENTER);
         auto.setBackground(rounded(manual ? Design.accentSoft() : Design.accent(),
                 manual ? Design.accentStroke() : Design.accent(), 12));
         auto.setPadding(dp(10), dp(6), dp(10), dp(6));
         row.addView(auto);
-        TextView manualChip = label("Elle", 13, manual ? Design.onAccent() : Design.muted());
+        TextView manualChip = label(L10n.s("Elle"), 13, manual ? Design.onAccent() : Design.muted());
         manualChip.setGravity(Gravity.CENTER);
         manualChip.setBackground(rounded(manual ? Design.accent() : Design.accentSoft(),
                 manual ? Design.accent() : Design.accentStroke(), 12));
@@ -3981,7 +3981,7 @@ public class MainActivity extends Activity {
         chipParams.setMargins(dp(8), 0, 0, 0);
         row.addView(manualChip, chipParams);
         content.addView(row, fullWidth());
-        TextView valueLabel = label(manual ? humanSize(saved) + " karakter" : "modele göre otomatik", 13, Design.text());
+        TextView valueLabel = label(manual ? humanSize(saved) + " karakter" : L10n.s("modele göre otomatik"), 13, Design.text());
         valueLabel.setPadding(0, dp(6), 0, dp(2));
         content.addView(valueLabel);
         SeekBar bar = new SeekBar(this);
@@ -3995,7 +3995,7 @@ public class MainActivity extends Activity {
             @Override public void onProgressChanged(SeekBar seek, int progress, boolean fromUser) {
                 if (!fromUser) return;
                 int value = min + progress * step;
-                valueLabel.setText(humanSize(value) + " karakter");
+                valueLabel.setText(humanSize(value) + L10n.s(" karakter"));
                 prefs.edit().putInt("context_budget_chars", value).apply();
                 LocalAiRuntime.INSTANCE.setManualContextBudget(value);
             }
@@ -4006,20 +4006,20 @@ public class MainActivity extends Activity {
         auto.setOnClickListener(v -> {
             prefs.edit().putInt("context_budget_chars", -1).apply();
             LocalAiRuntime.INSTANCE.setManualContextBudget(-1);
-            valueLabel.setText(L10n.s("modele göre otomatik"));
+            valueLabel.setText(L10n.s(L10n.s("modele göre otomatik")));
             bar.setEnabled(false);
             bar.setAlpha(.45f);
             manualChip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 12));
             manualChip.setTextColor(Design.muted());
             auto.setBackground(rounded(Design.accent(), Design.accent(), 12));
             auto.setTextColor(Design.onAccent());
-            Toast.makeText(this, L10n.s("Bağlam bütçesi modele göre hesaplanacak."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Bağlam bütçesi modele göre hesaplanacak.")), Toast.LENGTH_SHORT).show();
         });
         manualChip.setOnClickListener(v -> {
             int initial = min;
             prefs.edit().putInt("context_budget_chars", initial).apply();
             LocalAiRuntime.INSTANCE.setManualContextBudget(initial);
-            valueLabel.setText(humanSize(initial) + " karakter");
+            valueLabel.setText(humanSize(initial) + L10n.s(" karakter"));
             bar.setEnabled(true);
             bar.setAlpha(1f);
             bar.setProgress(0);
@@ -4039,26 +4039,26 @@ public class MainActivity extends Activity {
     private String modelInfoText(LocalAiRuntime.ModelInfo info) {
         StringBuilder details = new StringBuilder();
         if (info.getArchitecture() != null && !info.getArchitecture().trim().isEmpty()) {
-            details.append("Mimari: ").append(info.getArchitecture());
+            details.append(L10n.s("Mimari: ")).append(info.getArchitecture());
         }
         if (info.getQuantization() != null && !"unknown".equalsIgnoreCase(info.getQuantization())) {
-            if (details.length() > 0) details.append(" · ");
-            details.append("Nicemleme: ").append(info.getQuantization());
+            if (details.length() > 0) details.append(L10n.s(" · "));
+            details.append(L10n.s("Nicemleme: ")).append(info.getQuantization());
         }
         if (info.getContextLength() != null) {
-            if (details.length() > 0) details.append(" · ");
-            details.append(L10n.s("Eğitim bağlamı: ")).append(info.getContextLength()).append(" token");
+            if (details.length() > 0) details.append(L10n.s(" · "));
+            details.append(L10n.s(L10n.s("Eğitim bağlamı: "))).append(info.getContextLength()).append(L10n.s(" token"));
         }
         if (info.getSizeLabel() != null && !info.getSizeLabel().trim().isEmpty()
                 && !"unknown".equalsIgnoreCase(info.getSizeLabel())) {
-            if (details.length() > 0) details.append(" · ");
-            details.append(L10n.s("Boyut sınıfı: ")).append(info.getSizeLabel());
+            if (details.length() > 0) details.append(L10n.s(" · "));
+            details.append(L10n.s(L10n.s("Boyut sınıfı: "))).append(info.getSizeLabel());
         }
-        if (details.length() == 0) details.append(L10n.s("GGUF başlığı okundu; ayrıntılı alan bulunamadı."));
-        details.append("\n").append(L10n.s("Motor bağlamı en fazla 8192 token; uygulama bütçesi "))
-                .append(LocalAiRuntime.INSTANCE.contextCharBudget()).append(" karakter.");
+        if (details.length() == 0) details.append(L10n.s(L10n.s("GGUF başlığı okundu; ayrıntılı alan bulunamadı.")));
+        details.append("\n").append(L10n.s(L10n.s("Motor bağlamı en fazla 8192 token; uygulama bütçesi ")))
+                .append(LocalAiRuntime.INSTANCE.contextCharBudget()).append(L10n.s(" karakter."));
         if (info.getContextLength() != null && info.getContextLength() < 4096) {
-            details.append("\n").append(L10n.s("Modelin eğitim bağlamı düşük; uzun sohbetlerde bağlam otomatik sıfırlanabilir."));
+            details.append("\n").append(L10n.s(L10n.s("Modelin eğitim bağlamı düşük; uzun sohbetlerde bağlam otomatik sıfırlanabilir.")));
         }
         return details.toString();
     }
@@ -4067,10 +4067,10 @@ public class MainActivity extends Activity {
         if (!LocalAiRuntime.INSTANCE.isModelReady() || modelLoading ||
                 LocalAiRuntime.INSTANCE.isModelLoading() || LocalAiRuntime.INSTANCE.isBenchmarking()) return;
         if (generatingChatId != null || LocalAiRuntime.INSTANCE.isGenerating()) {
-            Toast.makeText(this, L10n.s("Yanıt üretilirken motor testi başlatılamaz."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Yanıt üretilirken motor testi başlatılamaz.")), Toast.LENGTH_SHORT).show();
             return;
         }
-        modelStatus = "Motor testi çalışıyor…";
+        modelStatus = L10n.s("Motor testi çalışıyor…");
         if ("settings".equals(currentTab)) showModels();
         LocalAiRuntime.INSTANCE.benchmark(new LocalAiRuntime.BenchmarkListener() {
             @Override public void onStatus(String message) {
@@ -4081,21 +4081,21 @@ public class MainActivity extends Activity {
             }
             @Override public void onResult(String result) {
                 if (!uiAlive()) return;
-                modelStatus = "Motor testi tamamlandı.";
+                modelStatus = L10n.s("Motor testi tamamlandı.");
                 if ("settings".equals(currentTab)) showModels();
                 refreshVisibleChat(false);
                 String text = result == null || result.trim().isEmpty()
-                        ? "Motor sonuç döndürmedi." : result.trim();
+                        ? L10n.s("Motor sonuç döndürmedi.") : result.trim();
                 new AlertDialog.Builder(MainActivity.this).setTitle(L10n.s("Motor testi sonucu"))
-                        .setMessage(text).setPositiveButton(L10n.s("Tamam"), null).show();
+                        .setMessage(text).setPositiveButton(L10n.s(L10n.s("Tamam")), null).show();
             }
             @Override public void onError(String message) {
                 if (!uiAlive()) return;
-                modelStatus = L10n.s("Motor testi hatası: ") + message;
+                modelStatus = L10n.s(L10n.s("Motor testi hatası: ")) + message;
                 if ("settings".equals(currentTab)) showModels();
                 refreshVisibleChat(false);
-                new AlertDialog.Builder(MainActivity.this).setTitle(L10n.s("Motor testi tamamlanamadı"))
-                        .setMessage(message).setPositiveButton(L10n.s("Tamam"), null).show();
+                new AlertDialog.Builder(MainActivity.this).setTitle(L10n.s(L10n.s("Motor testi tamamlanamadı")))
+                        .setMessage(message).setPositiveButton(L10n.s(L10n.s("Tamam")), null).show();
             }
         });
     }
@@ -4170,8 +4170,8 @@ public class MainActivity extends Activity {
             selectedModel = data.getData();
             try { getContentResolver().takePersistableUriPermission(selectedModel, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (SecurityException ignored) {}
             String name = queryName(selectedModel);
-            selectedModelName = name == null || name.trim().isEmpty() ? "Seçilen model dosyası" : name;
-            modelStatus = "Seçildi · yükleme başlatılıyor…";
+            selectedModelName = name == null || name.trim().isEmpty() ? L10n.s("Seçilen model dosyası") : name;
+            modelStatus = L10n.s("Seçildi · yükleme başlatılıyor…");
             contextChars.clear();
             chatMetrics.clear();
             LocalAiRuntime.INSTANCE.resetConversation(null);
@@ -4185,7 +4185,7 @@ public class MainActivity extends Activity {
         if (requestCode == AVATAR_PICK && resultCode == RESULT_OK && data != null && data.getData() != null) {
             File saved = saveAvatarCopy(data.getData());
             if (saved == null) {
-                Toast.makeText(this, L10n.s("Fotoğraf açılamadı; başka bir dosya deneyin."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Fotoğraf açılamadı; başka bir dosya deneyin.")), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (avatarPickPersona) {
@@ -4202,7 +4202,7 @@ public class MainActivity extends Activity {
                 if (!pickedAvatarPath.isEmpty()) deleteAvatarFile(pickedAvatarPath);
                 pickedAvatarPath = saved.getPath();
                 if (avatarStatusView != null) {
-                    avatarStatusView.setText(L10n.s("Fotoğraf: ✓ hazır (Kaydet ile saklanır)"));
+                    avatarStatusView.setText(L10n.s(L10n.s("Fotoğraf: ✓ hazır (Kaydet ile saklanır)")));
                     avatarStatusView.setTextColor(Design.accent());
                 }
             }
@@ -4211,7 +4211,7 @@ public class MainActivity extends Activity {
         if (requestCode == CHAT_PHOTO_PICK && resultCode == RESULT_OK && data != null && data.getData() != null) {
             File saved = saveAvatarCopy(data.getData());
             if (saved == null) {
-                Toast.makeText(this, L10n.s("Fotoğraf açılamadı; başka bir dosya deneyin."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Fotoğraf açılamadı; başka bir dosya deneyin.")), Toast.LENGTH_SHORT).show();
                 return;
             }
             pendingComposerImage = saved;
@@ -4229,7 +4229,7 @@ public class MainActivity extends Activity {
     private void fillPersonaPreview(LinearLayout pane, String name, String avatarPath) {
         pane.removeAllViews();
         View face = Avatar.forIdentity(this,
-                name == null || name.isEmpty() ? "Sen" : name, avatarPath, 64);
+                name == null || name.isEmpty() ? L10n.s("Sen") : name, avatarPath, 64);
         pane.addView(face, new LinearLayout.LayoutParams(dp(64), dp(64)));
     }
 
@@ -4247,7 +4247,7 @@ public class MainActivity extends Activity {
         bar.setBackground(background);
         TextView message = label(text, 13, Design.text());
         bar.addView(message, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        TextView undoButton = label(L10n.s("Geri al"), 13, Design.accent());
+        TextView undoButton = label(L10n.s(L10n.s("Geri al")), 13, Design.accent());
         undoButton.setTypeface(null, android.graphics.Typeface.BOLD);
         undoButton.setPadding(dp(16), dp(6), dp(4), dp(6));
         undoButton.setOnClickListener(v -> {
@@ -4342,15 +4342,15 @@ public class MainActivity extends Activity {
     /** Selective export (DeepSeek item 9b): choose characters + chats, then pick the format. */
     private void showSelectiveExport() {
         backAction = this::showSettings;
-        setPage("Seçmeli dışa aktar", "Yalnızca seçtiğin karakterler ve sohbetler yazılır", "settings");
+        setPage(L10n.s("Seçmeli dışa aktar"), L10n.s("Yalnızca seçtiğin karakterler ve sohbetler yazılır"), "settings");
         List<CharacterProfile> characters = store.characters();
         List<Group> groups = store.groups();
         if (characters.isEmpty() && groups.isEmpty()) {
-            addEmpty("Yazılacak bir şey yok", "Önce karakter ya da sohbet oluştur.", null, null);
+            addEmpty(L10n.s("Yazılacak bir şey yok"), L10n.s("Önce karakter ya da sohbet oluştur."), null, null);
             return;
         }
         List<CheckBox> characterBoxes = new ArrayList<>();
-        addSection("Karakterler", "Seçtiğin sohbetlerin karakterleri otomatik yazılır", null);
+        addSection(L10n.s("Karakterler"), L10n.s("Seçtiğin sohbetlerin karakterleri otomatik yazılır"), null);
         for (CharacterProfile character : characters) {
             CheckBox choice = new CheckBox(this);
             choice.setText("   " + character.name);
@@ -4361,7 +4361,7 @@ public class MainActivity extends Activity {
             characterBoxes.add(choice);
         }
         List<CheckBox> groupBoxes = new ArrayList<>();
-        addSection("Sohbetler", "Geçmişleriyle birlikte yazılır", null);
+        addSection(L10n.s("Sohbetler"), L10n.s("Geçmişleriyle birlikte yazılır"), null);
         for (Group group : groups) {
             CheckBox choice = new CheckBox(this);
             choice.setText("   " + group.name);
@@ -4371,7 +4371,7 @@ public class MainActivity extends Activity {
             content.addView(choice);
             groupBoxes.add(choice);
         }
-        addPrimary("Devam et", v -> {
+        addPrimary(L10n.s("Devam et"), v -> {
             java.util.Set<String> characterIds = new java.util.HashSet<>();
             for (int i = 0; i < characterBoxes.size(); i++) {
                 if (characterBoxes.get(i).isChecked()) characterIds.add(characters.get(i).id);
@@ -4381,7 +4381,7 @@ public class MainActivity extends Activity {
                 if (groupBoxes.get(i).isChecked()) groupIds.add(groups.get(i).id);
             }
             if (characterIds.isEmpty() && groupIds.isEmpty()) {
-                Toast.makeText(this, L10n.s("En az bir karakter veya sohbet seç."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("En az bir karakter veya sohbet seç.")), Toast.LENGTH_SHORT).show();
                 return;
             }
             pendingExportCharacters = characterIds;
@@ -4393,8 +4393,8 @@ public class MainActivity extends Activity {
     private void showExportFormatPicker() {
         String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
         new AlertDialog.Builder(this)
-                .setTitle(L10n.s("Yedek biçimi"))
-                .setItems(new String[]{L10n.s("JSON (küçük, görsellersiz)"), L10n.s("ZIP (görsellerle)")},
+                .setTitle(L10n.s(L10n.s("Yedek biçimi")))
+                .setItems(new String[]{L10n.s(L10n.s("JSON (küçük, görsellersiz)")), L10n.s(L10n.s("ZIP (görsellerle)"))},
                         (d, which) -> {
                             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                             intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -4408,7 +4408,7 @@ public class MainActivity extends Activity {
                                 startActivityForResult(intent, BACKUP_EXPORT_MEDIA);
                             }
                         })
-                .setNegativeButton(L10n.s("Vazgeç"), (d, w) -> clearPendingSelection())
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), (d, w) -> clearPendingSelection())
                 .create()
                 .show();
     }
@@ -4420,19 +4420,19 @@ public class MainActivity extends Activity {
             clearPendingSelection();
             String payload = PersistenceCodec.encodeBundle(bundle);
             if (payload.isEmpty()) {
-                runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek oluşturulamadı (veri okunamıyor)."), Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Yedek oluşturulamadı (veri okunamıyor).")), Toast.LENGTH_LONG).show());
                 return;
             }
             try (java.io.OutputStream output = getContentResolver().openOutputStream(target)) {
-                if (output == null) throw new IllegalStateException("Dosya açılamadı.");
+                if (output == null) throw new IllegalStateException(L10n.s("Dosya açılamadı."));
                 output.write(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
                 output.flush();
             } catch (Exception failure) {
-                runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek yazılamadı: ") + failure.getMessage(), Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Yedek yazılamadı: ")) + failure.getMessage(), Toast.LENGTH_LONG).show());
                 return;
             }
             runOnUiThread(() -> Toast.makeText(this,
-                    L10n.s("Yedek yazıldı · ") + bundle.characters.size() + L10n.s(" karakter · ") + bundle.groups.size() + L10n.s(" sohbet"),
+                    L10n.s(L10n.s("Yedek yazıldı · ")) + bundle.characters.size() + L10n.s(" karakter · ") + bundle.groups.size() + L10n.s(" sohbet"),
                     Toast.LENGTH_LONG).show());
         }).start();
     }
@@ -4450,14 +4450,14 @@ public class MainActivity extends Activity {
                 avatarRoot = new File(getFilesDir(), "avatars").getCanonicalPath();
                 imageRoot = LocalImageEngine.INSTANCE.imagesDirectory(this).getCanonicalPath();
             } catch (java.io.IOException failure) {
-                runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek oluşturulamadı (veri okunamıyor)."), Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Yedek oluşturulamadı (veri okunamıyor).")), Toast.LENGTH_LONG).show());
                 return;
             }
             PersistenceCodec.Bundle bundle = buildFullBundle(avatarRoot, imageRoot);
             clearPendingSelection();
             String payload = PersistenceCodec.encodeBundle(bundle);
             if (payload.isEmpty()) {
-                runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek oluşturulamadı (veri okunamıyor)."), Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Yedek oluşturulamadı (veri okunamıyor).")), Toast.LENGTH_LONG).show());
                 return;
             }
             java.util.LinkedHashSet<String> markers = new java.util.LinkedHashSet<>();
@@ -4496,7 +4496,7 @@ public class MainActivity extends Activity {
             String mediaChecksum = PersistenceCodec.mediaDigestHex(packedMedia);
             try (java.io.OutputStream output = getContentResolver().openOutputStream(target);
                  java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(output)) {
-                if (output == null) throw new IllegalStateException("Dosya açılamadı.");
+                if (output == null) throw new IllegalStateException(L10n.s("Dosya açılamadı."));
                 zip.putNextEntry(new java.util.zip.ZipEntry("bundle.json"));
                 zip.write(json);
                 zip.closeEntry();
@@ -4510,15 +4510,15 @@ public class MainActivity extends Activity {
                 }
                 zip.flush();
             } catch (Exception failure) {
-                runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek yazılamadı: ") + failure.getMessage(), Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Yedek yazılamadı: ")) + failure.getMessage(), Toast.LENGTH_LONG).show());
                 return;
             }
             int characterCount = bundle.characters.size();
             int groupCount = bundle.groups.size();
             int packedCount = packedMedia.size();
             runOnUiThread(() -> Toast.makeText(this,
-                    L10n.s("Yedek yazıldı · ") + characterCount + L10n.s(" karakter · ") + groupCount
-                            + L10n.s(" sohbet · ") + packedCount + L10n.s(" medya dosyası"),
+                    L10n.s(L10n.s("Yedek yazıldı · ")) + characterCount + L10n.s(" karakter · ") + groupCount
+                            + L10n.s(" sohbet · ") + packedCount + L10n.s(L10n.s(" medya dosyası")),
                     Toast.LENGTH_LONG).show());
         }).start();
     }
@@ -4527,19 +4527,19 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             byte[] bytes;
             try (java.io.InputStream input = getContentResolver().openInputStream(source)) {
-                if (input == null) throw new IllegalStateException("Dosya açılamadı.");
+                if (input == null) throw new IllegalStateException(L10n.s("Dosya açılamadı."));
                 java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
                 byte[] chunk = new byte[8192];
                 int read;
                 while ((read = input.read(chunk)) >= 0) {
                     buffer.write(chunk, 0, read);
                     if (buffer.size() > 256L * 1024 * 1024) { // sanity cap; real backups stay far smaller
-                        throw new IllegalStateException("Dosya beklenenden çok büyük.");
+                        throw new IllegalStateException(L10n.s("Dosya beklenenden çok büyük."));
                     }
                 }
                 bytes = buffer.toByteArray();
             } catch (Exception failure) {
-                runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek okunamadı: ") + failure.getMessage(), Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Yedek okunamadı: ")) + failure.getMessage(), Toast.LENGTH_LONG).show());
                 return;
             }
             // ZIP bundles (backup v2) start with the "PK" magic; JSON v1 files cannot.
@@ -4550,7 +4550,7 @@ public class MainActivity extends Activity {
             String raw = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
             PersistenceCodec.Bundle bundle = PersistenceCodec.decodeBundle(raw);
             if (bundle == null) {
-                runOnUiThread(() -> Toast.makeText(this, L10n.s("Bu dosya geçerli bir LocalRP yedeği değil."), Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Bu dosya geçerli bir LocalRP yedeği değil.")), Toast.LENGTH_LONG).show());
                 return;
             }
             // Backups carry paths, not image bytes. A path that does not exist on THIS
@@ -4585,12 +4585,12 @@ public class MainActivity extends Activity {
             // dead activity's window crashes (chy bug report: geri yükleme çökmesi).
             if (!uiAlive()) return;
             if (!restored) {
-                Toast.makeText(this, L10n.s("Geri yükleme yapılamadı: mevcut veriler okunamıyor."), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, L10n.s(L10n.s("Geri yükleme yapılamadı: mevcut veriler okunamıyor.")), Toast.LENGTH_LONG).show();
                 if (!store.integrityIssues().isEmpty()) reportIntegrityIssues();
                 return;
             }
             Toast.makeText(this,
-                    L10n.s("Geri yüklendi · ") + bundle.characters.size() + L10n.s(" karakter · ") + bundle.groups.size() + L10n.s(" sohbet"),
+                    L10n.s(L10n.s("Geri yüklendi · ")) + bundle.characters.size() + L10n.s(" karakter · ") + bundle.groups.size() + L10n.s(" sohbet"),
                     Toast.LENGTH_LONG).show();
             showHome();
         });
@@ -4625,11 +4625,11 @@ public class MainActivity extends Activity {
                 zip.closeEntry();
             }
         } catch (Exception failure) {
-            runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek okunamadı: ") + failure.getMessage(), Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Yedek okunamadı: ")) + failure.getMessage(), Toast.LENGTH_LONG).show());
             return;
         }
         if (payload == null || checksumLine == null) {
-            runOnUiThread(() -> Toast.makeText(this, L10n.s("Bu dosya geçerli bir LocalRP yedeği değil."), Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Bu dosya geçerli bir LocalRP yedeği değil.")), Toast.LENGTH_LONG).show());
             return;
         }
         // Two lines: first the JSON payload digest, then the packaged-media digest.
@@ -4637,7 +4637,7 @@ public class MainActivity extends Activity {
         if (checksumLines.length < 2
                 || !checksumLines[0].trim().matches("[0-9a-f]{64}")
                 || !checksumLines[1].trim().matches("[0-9a-f]{64}")) {
-            runOnUiThread(() -> Toast.makeText(this, L10n.s("Bu dosya geçerli bir LocalRP yedeği değil."), Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Bu dosya geçerli bir LocalRP yedeği değil.")), Toast.LENGTH_LONG).show());
             return;
         }
         java.util.SortedMap<String, byte[]> sortedMedia = new java.util.TreeMap<>(media);
@@ -4646,12 +4646,12 @@ public class MainActivity extends Activity {
         if (!computed.equals(checksumLines[0].trim())
                 || !computedMedia.equals(checksumLines[1].trim())
                 || computedMedia.isEmpty()) {
-            runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek doğrulamadı: sağlama farkı."), Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Yedek doğrulamadı: sağlama farkı.")), Toast.LENGTH_LONG).show());
             return;
         }
         PersistenceCodec.Bundle bundle = PersistenceCodec.decodeBundle(payload);
         if (bundle == null) {
-            runOnUiThread(() -> Toast.makeText(this, L10n.s("Bu dosya geçerli bir LocalRP yedeği değil."), Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Bu dosya geçerli bir LocalRP yedeği değil.")), Toast.LENGTH_LONG).show());
             return;
         }
         try {
@@ -4670,7 +4670,7 @@ public class MainActivity extends Activity {
                 }
             }
         } catch (java.io.IOException failure) {
-            runOnUiThread(() -> Toast.makeText(this, L10n.s("Yedek okunamadı: ") + failure.getMessage(), Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Yedek okunamadı: ")) + failure.getMessage(), Toast.LENGTH_LONG).show());
             return;
         }
         applyImportedBundle(bundle);
@@ -4711,7 +4711,7 @@ public class MainActivity extends Activity {
         while ((read = zip.read(chunk)) >= 0) {
             buffer.write(chunk, 0, read);
             if (buffer.size() > 64L * 1024 * 1024) { // a 512px PNG lands far below this
-                throw new IllegalStateException("Yedek girdisi beklenenden çok büyük.");
+                throw new IllegalStateException(L10n.s("Yedek girdisi beklenenden çok büyük."));
             }
         }
         return buffer.toByteArray();
@@ -4721,7 +4721,7 @@ public class MainActivity extends Activity {
         if (selectedModel == null) { showModels(); return; }
         if (LocalAiRuntime.INSTANCE.isBenchmarking()) return;
         modelLoading = true;
-        modelStatus = "Yükleme başlatılıyor…";
+        modelStatus = L10n.s("Yükleme başlatılıyor…");
         if ("settings".equals(currentTab)) showModels();
         LocalAiRuntime.INSTANCE.loadModel(this, selectedModel, new LocalAiRuntime.ModelListener() {
             @Override public void onStatus(String message) {
@@ -4736,19 +4736,19 @@ public class MainActivity extends Activity {
                 selectedModelName = fileName;
                 contextChars.clear();
                 chatMetrics.clear();
-                modelStatus = L10n.s("Hazır · ") + String.format(Locale.getDefault(), "%.2f GB", bytes / 1_000_000_000.0) + L10n.s(" · çevrimdışı");
+                modelStatus = L10n.s(L10n.s("Hazır · ")) + String.format(Locale.getDefault(), "%.2f GB", bytes / 1_000_000_000.0) + L10n.s(L10n.s(" · çevrimdışı"));
                 if ("settings".equals(currentTab)) showModels();
-                Toast.makeText(MainActivity.this, L10n.s("Model hazır."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, L10n.s(L10n.s("Model hazır.")), Toast.LENGTH_SHORT).show();
                 refreshVisibleChat(true);
             }
             @Override public void onError(String message) {
                 if (!uiAlive()) return;
                 modelLoading = false;
-                modelStatus = L10n.s("Yüklenemedi: ") + message;
+                modelStatus = L10n.s(L10n.s("Yüklenemedi: ")) + message;
                 if ("settings".equals(currentTab)) showModels();
                 refreshVisibleChat(false);
-                new AlertDialog.Builder(MainActivity.this).setTitle(L10n.s("Model yüklenemedi"))
-                        .setMessage(message).setPositiveButton(L10n.s("Tamam"), null).show();
+                new AlertDialog.Builder(MainActivity.this).setTitle(L10n.s(L10n.s("Model yüklenemedi")))
+                        .setMessage(message).setPositiveButton(L10n.s(L10n.s("Tamam")), null).show();
             }
         });
     }
@@ -4765,7 +4765,7 @@ public class MainActivity extends Activity {
     private void showStoredModels() {
         List<File> files = LocalAiRuntime.INSTANCE.storedModels(this);
         if (files.isEmpty()) {
-            Toast.makeText(this, L10n.s("Cihazda kayıtlı model kopyası yok."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Cihazda kayıtlı model kopyası yok.")), Toast.LENGTH_SHORT).show();
             showModels();
             return;
         }
@@ -4776,15 +4776,15 @@ public class MainActivity extends Activity {
             boolean loaded = file.getAbsolutePath().equals(loadedPath);
             int verdict = fitVerdict(file.length());
             String verdictTag = verdict < 0 ? ""
-                    : verdict == 0 ? L10n.s("  ·  sığar")
-                    : verdict == 1 ? L10n.s("  ·  sınırda")
+                    : verdict == 0 ? L10n.s(L10n.s("  ·  sığar"))
+                    : verdict == 1 ? L10n.s(L10n.s("  ·  sınırda"))
                     : L10n.s("  ·  zor");
-            labels[i] = file.getName() + "  ·  " + humanSize(file.length()) + verdictTag
-                    + (loaded ? L10n.s("  ·  yüklü") : "");
+            labels[i] = file.getName() + L10n.s("  ·  ") + humanSize(file.length()) + verdictTag
+                    + (loaded ? L10n.s(L10n.s("  ·  yüklü")) : "");
         }
-        new AlertDialog.Builder(this).setTitle(L10n.s("Model kopyaları"))
+        new AlertDialog.Builder(this).setTitle(L10n.s(L10n.s("Model kopyaları")))
                 .setItems(labels, (dialog, which) -> showStoredModelProfile(files.get(which)))
-                .setNegativeButton(L10n.s("Kapat"), null).show();
+                .setNegativeButton(L10n.s(L10n.s("Kapat")), null).show();
     }
 
     /**
@@ -4794,50 +4794,50 @@ public class MainActivity extends Activity {
     private void showStoredModelProfile(File file) {
         SharedPreferences prefs = prefs();
         int verdict = fitVerdict(file.length());
-        String verdictText = verdict < 0 ? L10n.s("RAM bilgisi okunamadı; gösterge bilinmiyor.")
-                : verdict == 0 ? L10n.s("Bu cihazda rahat sığar.")
-                : verdict == 1 ? L10n.s("Sınırda: çalışır ama bellek dar.")
-                : L10n.s("Bu cihazda zor; büyük ihtimalle açılmaz.");
+        String verdictText = verdict < 0 ? L10n.s(L10n.s("RAM bilgisi okunamadı; gösterge bilinmiyor."))
+                : verdict == 0 ? L10n.s(L10n.s("Bu cihazda rahat sığar."))
+                : verdict == 1 ? L10n.s(L10n.s("Sınırda: çalışır ama bellek dar."))
+                : L10n.s(L10n.s("Bu cihazda zor; büyük ihtimalle açılmaz."));
         String autoFile = prefs.getString("auto_load_file", null);
         boolean auto = prefs.getBoolean("auto_load_model", false) && file.getName().equals(autoFile);
         String detail = L10n.s("Boyut: ") + humanSize(file.length()) + "\n"
-                + L10n.s("Tahmini bellek kullanımı ~1,3× dosya.\n")
+                + L10n.s(L10n.s("Tahmini bellek kullanımı ~1,3× dosya.\n"))
                 + verdictText;
         new AlertDialog.Builder(this).setTitle(file.getName())
                 .setMessage(detail)
                 .setItems(new String[]{
-                        L10n.s("Modeli yükle"),
-                        auto ? L10n.s("Açılışta otomatik yükleme: AÇIK (kapat)")
-                                : L10n.s("Açılışta otomatik yükle"),
-                        L10n.s("Kopyayı sil")}, (d, choice) -> {
+                        L10n.s(L10n.s("Modeli yükle")),
+                        auto ? L10n.s(L10n.s("Açılışta otomatik yükleme: AÇIK (kapat)"))
+                                : L10n.s(L10n.s("Açılışta otomatik yükle")),
+                        L10n.s(L10n.s("Kopyayı sil"))}, (d, choice) -> {
                     if (choice == 0) {
                         loadStoredModelFile(file);
                     } else if (choice == 1) {
                         if (auto) {
                             prefs.edit().putBoolean("auto_load_model", false).apply();
-                            Toast.makeText(this, L10n.s("Açılışta otomatik yükleme kapatıldı."), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, L10n.s(L10n.s("Açılışta otomatik yükleme kapatıldı.")), Toast.LENGTH_SHORT).show();
                         } else {
                             prefs.edit().putString("auto_load_file", file.getName())
                                     .putBoolean("auto_load_model", true).apply();
-                            Toast.makeText(this, file.getName() + L10n.s(" açılışta otomatik yüklenecek."), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, file.getName() + L10n.s(L10n.s(" açılışta otomatik yüklenecek.")), Toast.LENGTH_SHORT).show();
                         }
                     } else {
-                        confirm(file.getName() + " silinsin mi?", "Sil", () -> {
+                        confirm(file.getName() + " silinsin mi?", L10n.s("Sil"), () -> {
                             if (LocalAiRuntime.INSTANCE.deleteStoredModel(this, file)) {
                                 // Only a successful deletion may drop the auto-load pin;
                                 // a failed delete keeps the file and the user's choice.
                                 if (file.getName().equals(prefs.getString("auto_load_file", null))) {
                                     prefs.edit().putBoolean("auto_load_model", false).apply();
                                 }
-                                Toast.makeText(this, L10n.s("Model kopyası silindi."), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(this, L10n.s(L10n.s("Model kopyası silindi.")), Toast.LENGTH_SHORT).show();
                             } else {
-                                Toast.makeText(this, L10n.s("Model dosyası silinemedi."), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(this, L10n.s(L10n.s("Model dosyası silinemedi.")), Toast.LENGTH_SHORT).show();
                             }
                             showModels();
                         });
                     }
                 })
-                .setNegativeButton(L10n.s("Kapat"), null).show();
+                .setNegativeButton(L10n.s(L10n.s("Kapat")), null).show();
     }
 
     /** Launch-time auto-load (DeepSeek item 11): silently restores the pinned model. */
@@ -4855,8 +4855,8 @@ public class MainActivity extends Activity {
         if (LocalAiRuntime.INSTANCE.isModelReady() || LocalAiRuntime.INSTANCE.isModelLoading() || modelLoading) return;
         for (File file : LocalAiRuntime.INSTANCE.storedModels(this)) {
             if (file.getName().equals(wanted)) {
-                Toast.makeText(this, L10n.s("Açılışta otomatik yükleniyor…"), Toast.LENGTH_SHORT).show();
-                modelStatus = L10n.s("Açılışta otomatik yükleniyor…");
+                Toast.makeText(this, L10n.s(L10n.s("Açılışta otomatik yükleniyor…")), Toast.LENGTH_SHORT).show();
+                modelStatus = L10n.s(L10n.s("Açılışta otomatik yükleniyor…"));
                 loadStoredModelFile(file);
                 return;
             }
@@ -4874,7 +4874,7 @@ public class MainActivity extends Activity {
     private void unloadModel() {
         if (LocalAiRuntime.INSTANCE.isBenchmarking()) return;
         modelLoading = true;
-        modelStatus = "Model bellekten kaldırılıyor…";
+        modelStatus = L10n.s("Model bellekten kaldırılıyor…");
         if ("settings".equals(currentTab)) showModels();
         LocalAiRuntime.INSTANCE.unload(new LocalAiRuntime.ModelListener() {
             @Override public void onStatus(String message) {
@@ -4894,7 +4894,7 @@ public class MainActivity extends Activity {
             @Override public void onError(String message) {
                 if (!uiAlive()) return;
                 modelLoading = false;
-                modelStatus = "Hata: " + message;
+                modelStatus = L10n.s("Hata: ") + message;
                 if ("settings".equals(currentTab)) showModels();
                 refreshVisibleChat(false);
             }
@@ -4908,7 +4908,7 @@ public class MainActivity extends Activity {
                 if (index >= 0) return cursor.getString(index);
             }
         } catch (Exception ignored) {}
-        return "Seçilen model dosyası";
+        return L10n.s("Seçilen model dosyası");
     }
 
     private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation) {
@@ -4952,14 +4952,14 @@ public class MainActivity extends Activity {
         List<Message> history = store.messages(group.id);
         String continuationPrompt = english
                 ? "The scene continues; react naturally to this moment and speak as " + speaker.name + "."
-                : "Sahne devam ediyor; bu tur " + speaker.name + " olarak doğal bir tepki ver.";
+                : "Sahne devam ediyor; bu tur " + speaker.name + L10n.s(" olarak doğal bir tepki ver.");
         String finalUserText;
         if (!history.isEmpty() && history.get(history.size() - 1).user) {
             Message trailing = history.get(history.size() - 1);
             finalUserText = trailing.text;
             if (finalUserText == null || finalUserText.isEmpty()) {
                 // Image-only trailing note keeps the same placeholder the transcript uses.
-                finalUserText = trailing.hasImage() ? "[görsel]" : continuationPrompt;
+                finalUserText = trailing.hasImage() ? L10n.s("[görsel]") : continuationPrompt;
             }
         } else {
             finalUserText = continuationPrompt;
@@ -4988,7 +4988,7 @@ public class MainActivity extends Activity {
 
     private String aiThemeName(String id) {
         if ("custom".equals(id)) return L10n.s(clip(prefs().getString("ai_theme_custom_name", ""), 60).isEmpty()
-                ? "Özel tema" : prefs().getString("ai_theme_custom_name", ""));
+                ? L10n.s("Özel tema") : prefs().getString("ai_theme_custom_name", ""));
         for (String[] theme : AI_THEMES) if (theme[0].equals(id)) return L10n.s(theme[1]);
         return L10n.s(AI_THEMES[0][1]);
     }
@@ -5002,21 +5002,21 @@ public class MainActivity extends Activity {
     private String aiThemeDescription(String id) {
         String instruction = aiThemeInstruction(id);
         return instruction.isEmpty()
-                ? "Tema kısıtlaması yok; karakterin doğal dünyası ve sahnenin tonu korunur."
+                ? L10n.s("Tema kısıtlaması yok; karakterin doğal dünyası ve sahnenin tonu korunur.")
                 : instruction;
     }
 
     private void showThemePicker() {
         if (generatingChatId != null) {
-            Toast.makeText(this, L10n.s("Yanıt üretilirken tema değiştirilemez."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Yanıt üretilirken tema değiştirilemez.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading()) {
-            Toast.makeText(this, L10n.s("Model yüklenirken tema değiştirilemez."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Model yüklenirken tema değiştirilemez.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (LocalAiRuntime.INSTANCE.isBenchmarking()) {
-            Toast.makeText(this, L10n.s("Motor testi sürerken tema değiştirilemez."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Motor testi sürerken tema değiştirilemez.")), Toast.LENGTH_SHORT).show();
             return;
         }
         String[] labels = new String[AI_THEMES.length + 1];
@@ -5024,8 +5024,8 @@ public class MainActivity extends Activity {
         for (int i = 0; i < AI_THEMES.length; i++) {
             labels[i] = L10n.s(AI_THEMES[i][1]) + (AI_THEMES[i][0].equals(current) ? "  ✓" : "");
         }
-        labels[AI_THEMES.length] = L10n.s("Özel tema (kendin yaz)") + ("custom".equals(current) ? "  ✓" : "");
-        new AlertDialog.Builder(this).setTitle(L10n.s("AI sahne teması"))
+        labels[AI_THEMES.length] = L10n.s(L10n.s("Özel tema (kendin yaz)")) + ("custom".equals(current) ? "  ✓" : "");
+        new AlertDialog.Builder(this).setTitle(L10n.s(L10n.s("AI sahne teması")))
                 .setItems(labels, (dialog, which) -> {
                     if (which == AI_THEMES.length) {
                         showCustomThemeEditor();
@@ -5037,10 +5037,10 @@ public class MainActivity extends Activity {
                     contextChars.clear();
                     chatMetrics.clear();
                     LocalAiRuntime.INSTANCE.resetConversation(null);
-                    Toast.makeText(this, AI_THEMES[which][1] + L10n.s(" teması seçildi."), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, AI_THEMES[which][1] + L10n.s(L10n.s(" teması seçildi.")), Toast.LENGTH_SHORT).show();
                     showSettings();
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).show();
     }
 
     /** Full editor for the user's own AI theme: a name plus a prompt instruction. */
@@ -5049,14 +5049,14 @@ public class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(22), dp(18), dp(22), 0);
         EditText name = new EditText(this);
-        name.setHint(L10n.s("Tema adı"));
+        name.setHint(L10n.s(L10n.s("Tema adı")));
         name.setText(prefs().getString("ai_theme_custom_name", ""));
         name.setSingleLine(true);
         name.setTextColor(Design.text());
         name.setHintTextColor(Design.muted());
         box.addView(name);
         EditText instruction = new EditText(this);
-        instruction.setHint(L10n.s("Sahne talimatı (prompta girer)"));
+        instruction.setHint(L10n.s(L10n.s("Sahne talimatı (prompta girer)")));
         instruction.setText(prefs().getString("ai_theme_custom_instruction", ""));
         instruction.setMinLines(3);
         instruction.setGravity(Gravity.TOP);
@@ -5064,12 +5064,12 @@ public class MainActivity extends Activity {
         instruction.setHintTextColor(Design.muted());
         box.addView(instruction);
         new AlertDialog.Builder(this)
-                .setTitle(L10n.s("Özel tema"))
+                .setTitle(L10n.s(L10n.s("Özel tema")))
                 .setView(box)
-                .setPositiveButton(L10n.s("Özel temayı kaydet ve uygula"), (d, w) -> {
+                .setPositiveButton(L10n.s(L10n.s("Özel temayı kaydet ve uygula")), (d, w) -> {
                     String themeName = name.getText().toString().trim();
                     if (themeName.isEmpty()) {
-                        Toast.makeText(this, L10n.s("Bir tema adı gerekli."), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Bir tema adı gerekli.")), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     prefs().edit()
@@ -5080,10 +5080,10 @@ public class MainActivity extends Activity {
                     contextChars.clear();
                     chatMetrics.clear();
                     LocalAiRuntime.INSTANCE.resetConversation(null);
-                    Toast.makeText(this, themeName + L10n.s(" teması uygulandı."), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, themeName + L10n.s(L10n.s(" teması uygulandı.")), Toast.LENGTH_SHORT).show();
                     showSettings();
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null)
                 .show();
     }
 
@@ -5243,7 +5243,7 @@ public class MainActivity extends Activity {
                 back.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
                 back.setGravity(Gravity.CENTER);
                 back.setOnClickListener(v -> backAction.run());
-                back.setContentDescription(L10n.s("Geri"));
+                back.setContentDescription(L10n.s(L10n.s("Geri")));
                 header.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
             }
             // cAI-style leading avatar on the chat header; ids stay legible next to it.
@@ -5276,7 +5276,7 @@ public class MainActivity extends Activity {
                 back.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
                 back.setGravity(Gravity.CENTER);
                 back.setOnClickListener(v -> backAction.run());
-                back.setContentDescription(L10n.s("Geri"));
+                back.setContentDescription(L10n.s(L10n.s("Geri")));
                 header.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
                 pageBackButton = back;
                 LinearLayout headerTexts = new LinearLayout(this);
@@ -5421,15 +5421,15 @@ public class MainActivity extends Activity {
                 new int[]{Design.heroA(), Design.heroB()});
         bg.setCornerRadius(dp(24));
         hero.setBackground(bg);
-        TextView eyebrow = label("KENDİ DÜNYANI KUR", 10, Design.heroSub());
+        TextView eyebrow = label(L10n.s("KENDİ DÜNYANI KUR"), 10, Design.heroSub());
         eyebrow.setLetterSpacing(.12f);
         eyebrow.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
         hero.addView(eyebrow);
-        TextView title = label("Hikâyen\nburada başlıyor.", 26, Design.heroText());
+        TextView title = label(L10n.s("Hikâyen\nburada başlıyor."), 26, Design.heroText());
         title.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
         title.setPadding(0, dp(9), 0, dp(8));
         hero.addView(title);
-        TextView detail = label(store.characters().size() + " karakter  ·  " + store.groups().size() + " sohbet", 14, Design.heroSub());
+        TextView detail = label(store.characters().size() + L10n.s(" karakter  ·  ") + store.groups().size() + L10n.s(" sohbet"), 14, Design.heroSub());
         hero.addView(detail);
         LinearLayout.LayoutParams p = fullWidth();
         p.setMargins(0, 0, 0, dp(20));
@@ -5487,13 +5487,13 @@ public class MainActivity extends Activity {
         String preview;
         String when = "";
         if (group.id.equals(generatingChatId)) {
-            preview = L10n.speaker(generatingSpeaker == null ? L10n.s("Bir karakter") : generatingSpeaker) + L10n.s("yanıt yazıyor…");
+            preview = L10n.speaker(generatingSpeaker == null ? L10n.s("Bir karakter") : generatingSpeaker) + L10n.s(L10n.s("yanıt yazıyor…"));
         } else if (last == null) {
-            preview = "Sahneyi başlatmak için dokun";
+            preview = L10n.s("Sahneyi başlatmak için dokun");
         } else {
             // Image-only last message would render as "Speaker: "; show a placeholder.
             String body = (last.text == null || last.text.isEmpty()) && last.hasImage()
-                    ? L10n.s("[görsel]") : oneLine(last.text, 90);
+                    ? L10n.s(L10n.s("[görsel]")) : oneLine(last.text, 90);
             preview = (last.user ? L10n.speaker("Sen") : last.speaker) + ": " + body;
             when = clock.format(new Date(last.at));
         }
@@ -5612,13 +5612,13 @@ public class MainActivity extends Activity {
      * character JSON export — the full backup stays the standard path.
      */
     private void showCharacterActions(CharacterProfile character) {
-        String[] items = {L10n.s("Kopya oluştur"), L10n.s("JSON dışa aktar")};
+        String[] items = {L10n.s(L10n.s("Kopya oluştur")), L10n.s(L10n.s("JSON dışa aktar"))};
         new AlertDialog.Builder(this).setTitle(character.name)
                 .setItems(items, (dialog, which) -> {
                     if (which == 0) duplicateCharacter(character);
                     else exportCharacterPicker(character);
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).show();
     }
 
     private void duplicateCharacter(CharacterProfile original) {
@@ -5630,10 +5630,10 @@ public class MainActivity extends Activity {
         copy.examples = original.examples;
         copy.avatarPath = original.avatarPath; // the file keeps existing; both cards may show it
         if (!store.saveCharacter(copy)) {
-            Toast.makeText(this, L10n.s("Kopya oluşturulamadı: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L10n.s(L10n.s("Kopya oluşturulamadı: karakter verisi okunamıyor.")), Toast.LENGTH_LONG).show();
             return;
         }
-        Toast.makeText(this, L10n.s("Kopya oluşturuldu."), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, L10n.s(L10n.s("Kopya oluşturuldu.")), Toast.LENGTH_SHORT).show();
         showCharacters();
     }
 
@@ -5654,23 +5654,23 @@ public class MainActivity extends Activity {
         CharacterProfile character = charExportTarget == null ? null : store.character(charExportTarget);
         charExportTarget = null;
         if (character == null) {
-            Toast.makeText(this, L10n.s("Dışa aktaramadı: karakter bulunamadı."), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L10n.s(L10n.s("Dışa aktaramadı: karakter bulunamadı.")), Toast.LENGTH_LONG).show();
             return;
         }
         List<CharacterProfile> single = new ArrayList<>();
         single.add(character);
         String encoded = PersistenceCodec.encodeCharacters(single);
         if (encoded.isEmpty()) {
-            Toast.makeText(this, L10n.s("Dışa aktaramadı: karakter verisi okunamıyor."), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L10n.s(L10n.s("Dışa aktaramadı: karakter verisi okunamıyor.")), Toast.LENGTH_LONG).show();
             return;
         }
         try (java.io.OutputStream output = getContentResolver().openOutputStream(uri)) {
             if (output == null) throw new java.io.IOException();
             output.write(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             output.flush();
-            Toast.makeText(this, L10n.s("Karakter dışa aktarıldı."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Karakter dışa aktarıldı.")), Toast.LENGTH_SHORT).show();
         } catch (java.io.IOException writeFailed) {
-            Toast.makeText(this, L10n.s("Dışa aktarılamadı: dosyaya yazılamadı."), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L10n.s(L10n.s("Dışa aktarılamadı: dosyaya yazılamadı.")), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -5683,11 +5683,11 @@ public class MainActivity extends Activity {
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(dp(12), 0, 0, 0);
-        TextView name = label("GGUF  ·  Cihaz içi yapay zekâ", 15, Design.text());
+        TextView name = label(L10n.s("GGUF  ·  Cihaz içi yapay zekâ"), 15, Design.text());
         name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         String statusText = LocalAiRuntime.INSTANCE.isModelReady()
-                ? L10n.s("Model hazır · çevrimdışı")
-                : (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading() ? "Model yükleniyor…" : modelStatus);
+                ? L10n.s(L10n.s("Model hazır · çevrimdışı"))
+                : (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading() ? L10n.s("Model yükleniyor…") : modelStatus);
         TextView status = label(statusText, 13, Design.muted());
         status.setPadding(0, dp(3), 0, 0);
         texts.addView(name);
@@ -5720,8 +5720,8 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         String[][] defs = {
-                {"＋", "Tek karakterli RP", "Karakter seç, hikâyeyi başlat"},
-                {"☷", "Grup RP", "Birden çok karakter aynı sahnede"},
+                {"＋", "Tek karakterli RP", L10n.s("Karakter seç, hikâyeyi başlat")},
+                {"☷", "Grup RP", L10n.s("Birden çok karakter aynı sahnede")},
         };
         Runnable[] actions = {this::createSingleCharacterRoleplay, () -> showGroupEditor(null)};
         for (int i = 0; i < 2; i++) {
@@ -5974,7 +5974,7 @@ public class MainActivity extends Activity {
             caption.setPadding(0, 0, 0, 0);
             wrap.addView(caption, fullWidth());
         } else {
-            fallback = label(user ? L10n.s("Fotoğraf eklendi") : L10n.s("Görsel üretildi"), 12, Design.muted());
+            fallback = label(user ? L10n.s(L10n.s("Fotoğraf eklendi")) : L10n.s(L10n.s("Görsel üretildi")), 12, Design.muted());
             wrap.addView(fallback, fullWidth());
         }
         final TextView captionFinal = caption != null ? caption : fallback;
@@ -6012,7 +6012,7 @@ public class MainActivity extends Activity {
     /** Bold accent speaker name with a muted time — reused by text and image balloons. */
     private CharSequence balloonHeader(String speaker, long at) {
         String display = speaker != null ? L10n.speaker(speaker) : "";
-        String header = at > 0 ? display + "  ·  " + clock.format(new Date(at)) : display;
+        String header = at > 0 ? display + L10n.s("  ·  ") + clock.format(new Date(at)) : display;
         SpannableString styled = new SpannableString(header);
         styled.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), 0, display.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         styled.setSpan(new ForegroundColorSpan(Design.accent()), 0, display.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -6034,7 +6034,7 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         TextView close = label("✕", 16, Design.text());
         close.setGravity(Gravity.CENTER);
-        close.setContentDescription(L10n.s("Kapat"));
+        close.setContentDescription(L10n.s(L10n.s("Kapat")));
         close.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 22));
         close.setOnClickListener(v -> viewer.dismiss());
         FrameLayout.LayoutParams closeParams = new FrameLayout.LayoutParams(dp(44), dp(44));
@@ -6048,7 +6048,7 @@ public class MainActivity extends Activity {
             if (bitmap == null) {
                 runOnUiThread(() -> {
                     if (!viewer.isShowing()) return;
-                    Toast.makeText(this, L10n.s("Görsel açılamadı."), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, L10n.s(L10n.s("Görsel açılamadı.")), Toast.LENGTH_SHORT).show();
                 });
                 return;
             }
@@ -6250,7 +6250,7 @@ public class MainActivity extends Activity {
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboard != null) {
             clipboard.setPrimaryClip(ClipData.newPlainText(label, text));
-            Toast.makeText(this, L10n.s("Mesaj kopyalandı."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Mesaj kopyalandı.")), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -6258,8 +6258,8 @@ public class MainActivity extends Activity {
     private void showMessageActions(String speaker, String text) {
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle(speaker + L10n.s(" · mesaj"))
                 .setItems(new String[]{L10n.s("Metni kopyala")}, (d, which) ->
-                        copyTextToClipboard(L10n.s("LocalRP mesajı"), text))
-                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+                        copyTextToClipboard(L10n.s(L10n.s("LocalRP mesajı")), text))
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).create();
         tintDialog(dialog);
         dialog.show();
     }
@@ -6273,7 +6273,7 @@ public class MainActivity extends Activity {
         int index = chatHistory.indexOf(message);
         if (index < 0) {
             String body = (message.text == null || message.text.isEmpty()) && message.hasImage()
-                    ? L10n.s("[görsel]") : message.text;
+                    ? L10n.s(L10n.s("[görsel]")) : message.text;
             showMessageActions(message.speaker, body);
             return;
         }
@@ -6284,17 +6284,17 @@ public class MainActivity extends Activity {
             String body = (message.text == null || message.text.isEmpty()) && message.hasImage()
                     ? "" : message.text;
             if (body.isEmpty() && message.hasImage()) {
-                Toast.makeText(this, L10n.s("Bu mesajın metni yok; görsel kayıtta saklanır."), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L10n.s(L10n.s("Bu mesajın metni yok; görsel kayıtta saklanır.")), Toast.LENGTH_SHORT).show();
                 return;
             }
-            copyTextToClipboard(L10n.s("LocalRP mesajı"), body);
+            copyTextToClipboard(L10n.s(L10n.s("LocalRP mesajı")), body);
         });
-        labels.add(L10n.s("Düzenle"));
+        labels.add(L10n.s(L10n.s("Düzenle")));
         actions.add(() -> editMessage(index));
-        labels.add(L10n.s("Sil"));
+        labels.add(L10n.s(L10n.s("Sil")));
         actions.add(() -> confirmDeleteMessage(index));
         if (!message.user && index == chatHistory.size() - 1 && !isGeneratingHere()) {
-            labels.add(L10n.s("Yeniden üret"));
+            labels.add(L10n.s(L10n.s("Yeniden üret")));
             actions.add(() -> regenerateLastAction(index));
         }
         String[] items = labels.toArray(new String[0]);
@@ -6302,7 +6302,7 @@ public class MainActivity extends Activity {
                 .setItems(items, (d, which) -> {
                     if (which >= 0 && which < actions.size()) actions.get(which).run();
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).create();
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).create();
         tintDialog(dialog);
         dialog.show();
     }
@@ -6317,29 +6317,29 @@ public class MainActivity extends Activity {
         Group group = store.group(visibleChatId);
         if (group == null) return;
         if (group.id.equals(generatingChatId)) {
-            Toast.makeText(this, L10n.s("Yanıt üretilirken mesaj değiştirilemez. Önce yanıtı durdur."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Yanıt üretilirken mesaj değiştirilemez. Önce yanıtı durdur.")), Toast.LENGTH_SHORT).show();
             return;
         }
         Message message = chatHistory.get(index);
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(22), dp(16), dp(22), 0);
-        EditText input = dialogField(L10n.s("Düzenle: ") + message.speaker);
+        EditText input = dialogField(L10n.s(L10n.s("Düzenle: ")) + message.speaker);
         input.setText(message.text == null ? "" : message.text);
         input.setMinLines(3);
         input.setGravity(Gravity.TOP);
         form.addView(input);
         new AlertDialog.Builder(this)
-                .setTitle(L10n.s("Mesajı düzenle"))
+                .setTitle(L10n.s(L10n.s("Mesajı düzenle")))
                 .setView(form)
-                .setPositiveButton(L10n.s("Kaydet"), (dialog, which) -> {
+                .setPositiveButton(L10n.s(L10n.s("Kaydet")), (dialog, which) -> {
                     String newText = input.getText().toString().trim();
                     if (newText.isEmpty() && !message.hasImage()) {
-                        Toast.makeText(this, L10n.s("Metin boş kalamaz; silmek için Sil'i kullan."), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Metin boş kalamaz; silmek için Sil'i kullan.")), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     if (!store.updateMessage(group.id, index, newText)) {
-                        Toast.makeText(this, L10n.s("Değişiklik kaydedilemedi: sohbet verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Değişiklik kaydedilemedi: sohbet verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                         return;
                     }
                     chatHistory.set(index, new Message(message.speaker, newText, message.user, message.at, message.image));
@@ -6349,10 +6349,10 @@ public class MainActivity extends Activity {
                     contextChars.remove(group.id);
                     chatMetrics.remove(group.id);
                     chainCounts.remove(group.id);
-                    Toast.makeText(this, L10n.s("Mesaj güncellendi."), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, L10n.s(L10n.s("Mesaj güncellendi.")), Toast.LENGTH_SHORT).show();
                     jumpToMessage(group, index);
                 })
-                .setNegativeButton(L10n.s("Vazgeç"), null).show();
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).show();
     }
 
     private void confirmDeleteMessage(int index) {
@@ -6360,16 +6360,16 @@ public class MainActivity extends Activity {
         Group group = store.group(visibleChatId);
         if (group == null) return;
         if (group.id.equals(generatingChatId)) {
-            Toast.makeText(this, L10n.s("Yanıt üretilirken mesaj silinemez. Önce yanıtı durdur."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Yanıt üretilirken mesaj silinemez. Önce yanıtı durdur.")), Toast.LENGTH_SHORT).show();
             return;
         }
         Message message = chatHistory.get(index);
         confirm((message.hasImage()
-                ? L10n.s("Bu mesaj ve görseli silinsin mi?")
-                : L10n.s("Bu mesaj silinsin mi?")), L10n.s("Sil"), () -> {
+                ? L10n.s(L10n.s("Bu mesaj ve görseli silinsin mi?"))
+                : L10n.s("Bu mesaj silinsin mi?")), L10n.s(L10n.s("Sil")), () -> {
                     if (message.hasImage()) deleteMessageImageFile(message.image);
                     if (!store.removeMessage(group.id, index)) {
-                        Toast.makeText(this, L10n.s("Silinemedi: sohbet verisi okunamıyor."), Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, L10n.s(L10n.s("Silinemedi: sohbet verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                         return;
                     }
                     chatMetrics.remove(group.id);
@@ -6391,11 +6391,11 @@ public class MainActivity extends Activity {
         if (group == null) return;
         if (group.id.equals(generatingChatId)) return;
         if (modelLoading || LocalAiRuntime.INSTANCE.isModelLoading()) {
-            Toast.makeText(this, L10n.s("Model yükleniyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Model yükleniyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (LocalAiRuntime.INSTANCE.isBenchmarking()) {
-            Toast.makeText(this, L10n.s("Motor testi sürüyor; bitmesini bekle."), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Motor testi sürüyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
         }
         if (!modelCanRespond()) {
@@ -6407,7 +6407,7 @@ public class MainActivity extends Activity {
             if (stored.get(i).hasImage()) deleteMessageImageFile(stored.get(i).image);
         }
         if (!store.removeMessagesFrom(group.id, index)) {
-            Toast.makeText(this, L10n.s("Yeniden üretilemedi: sohbet verisi okunamıyor."), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L10n.s(L10n.s("Yeniden üretilemedi: sohbet verisi okunamıyor.")), Toast.LENGTH_LONG).show();
             return;
         }
         chatMetrics.remove(group.id);
@@ -6427,7 +6427,7 @@ public class MainActivity extends Activity {
         // Corrupt/foreign records could carry a null speaker; L10n.speaker passes it
         // through, so guard here instead of NPE-ing inside the span assembly.
         String display = speaker != null ? L10n.speaker(speaker) : "";
-        String header = at > 0 ? display + "  ·  " + clock.format(new Date(at)) : display;
+        String header = at > 0 ? display + L10n.s("  ·  ") + clock.format(new Date(at)) : display;
         String value = header + "\n" + text;
         SpannableString styled = new SpannableString(value);
         styled.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), 0, display.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -6478,13 +6478,13 @@ public class MainActivity extends Activity {
     }
 
     private int dp(int px) { return (int) (px * getResources().getDisplayMetrics().density + .5f); }
-    private String brief(String s) { return s == null || s.trim().isEmpty() ? "Açıklama yok" : oneLine(s, 120); }
+    private String brief(String s) { return s == null || s.trim().isEmpty() ? L10n.s("Açıklama yok") : oneLine(s, 120); }
 
-    private void confirm(String message, Runnable action) { confirm(message, "Sil", action); }
+    private void confirm(String message, Runnable action) { confirm(message, L10n.s("Sil"), action); }
 
     private void confirm(String message, String positive, Runnable action) {
         tintDialog(new AlertDialog.Builder(this).setMessage(L10n.s(message))
-                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null)
                 .setPositiveButton(L10n.s(positive), (d, w) -> action.run()).show());
     }
 

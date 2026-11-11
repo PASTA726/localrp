@@ -830,5 +830,154 @@ public final class L10n {
         EN.put("Bu cihazda fotoğraf seçici yok.", "No photo picker on this device.");
         EN.put("Anlatıcı", "Narrator");
         EN.put("Yüklendi", "Loaded");
+        // ---- v0.19.17 L10n coverage completion ----
+        EN.put("Sen", "You");
+        EN.put("sen", "You");
+        EN.put("Otomatik", "Automatic");
+        EN.put("Elle", "Manual");
+        EN.put("Sahne", "Scene");
+        EN.put("Ayarlar", "Settings");
+        EN.put("Sohbet", "Chat");
+        EN.put("Yedekleme", "Backup");
+        EN.put("Gizlilik", "Privacy");
+        EN.put("Temizle", "Clear");
+        EN.put("Kaydet", "Save");
+        EN.put("Model", "Model");
+        EN.put("Sistem promptu", "System prompt");
+        EN.put("Sahne atmosferi", "Scene atmosphere");
+        EN.put("Motor testi", "Engine test");
+        EN.put("Karakter zinciri", "Character chain");
+        EN.put("Karakteri sil", "Delete character");
+        EN.put("Cihaz analizi", "Device analysis");
+        EN.put("Dil / Language", "Dil / Language");
+        EN.put("Son sohbetler", "Recent chats");
+        EN.put("Karakterler", "Characters");
+        EN.put("Sohbetler", "Chats");
+        EN.put("Yedek girdisi beklenenden çok büyük.", "Backup input is larger than expected.");
+        EN.put("Dışa aktaramadı: karakter verisi okunamıyor.", "Export failed: character data is unreadable.");
+        EN.put("Seçmeli dışa aktar", "Selective export");
+        EN.put("Seçtiğin sohbetlerin karakterleri otomatik yazılır", "Characters of your selected chats are written automatically");
+        EN.put("Geçmişleriyle birlikte yazılır", "Written together with their histories");
+        EN.put("Yalnızca seçtiğin karakterler ve sohbetler yazılır", "Only your selected characters and chats are written");
+        EN.put("Geri yükleme aynı kimlikli karakter/sohbetleri günceller, yeni olanları ekler. ",
+                "Restore updates characters/chats with the same id and adds new ones. ");
+        EN.put("Karakterler, sohbetler ve model dosyaları yalnızca bu telefonda kalır; ",
+                "Characters, chats and model files stay on this phone only; ");
+        EN.put("hiçbir sohbet verisi otomatik olarak gönderilmez.", "no chat data is ever sent automatically.");
+        EN.put("Bu ayar açıkken ve eksiksizken yanıtlar, seçtiğin OpenAI-uyumlu https adresine gider; ",
+                "When this is on and complete, replies go to the OpenAI-compatible https address you chose; ");
+        EN.put("sohbet içerik cihazdan çıkmış olur. Kapalıyken hiçbir şey gönderilmez.",
+                "chat content leaves the device. Nothing is sent while it is off.");
+        EN.put("Online AI sağlayıcı", "Online AI provider");
+        EN.put("Opsiyonel ve kapalı başlar: açık değilken hiçbir veri gönderilmez, çevrimdışı model varsayılandır. ",
+                "Optional and off by default: nothing is sent until you turn it on; the offline model stays the default. ");
+        EN.put("Sağlayıcı açıkken yanıtlar https üzerinden gider: sohbetler yalnızca sizin onayınızla dışarı çıkar.",
+                "With the provider on, replies travel over https: chats leave the device only with your approval.");
+        EN.put("Bu sayfadaki ayarlar yalnızca bu sohbet için geçerlidir. ",
+                "Settings on this page apply to this chat only. ");
+        EN.put("Genel ayarı izleyen öğeler Ayarlar'daki değeri kullanır.",
+                "Items that follow the general setting use the value from Settings.");
+        EN.put("Geçmiş derinliği", "History depth");
+        EN.put("Üst sınır (token)", "Upper limit (tokens)");
+        EN.put("Profili sıfırla", "Reset profile");
+        EN.put("Sahne teması", "Scene theme");
+        EN.put("Metin görüntüsü", "Text display");
+        EN.put("Uygulama ve yanıt dili", "App and reply language");
+        EN.put("Model seçimi", "Model selection");
+        EN.put("Cihazdaki model kopyaları", "Model copies on this device");
+        EN.put("Model yok (henüz)", "No model (yet)");
+        EN.put("Model hazır", "Model ready");
+        EN.put("Motor testi sonucu", "Engine test result");
+        EN.put("Mimari: ", "Architecture: ");
+        EN.put("Nicemleme: ", "Quantization: ");
+        EN.put("Bellek: ", "Memory: ");
+        EN.put("Hata: ", "Error: ");
+        EN.put("Dosya boyutu beklenenden farklı (", "File size differs from expected (");
+        EN.put(" GB.", " GB.");
+        EN.put("Tahmini bellek kullanımı ~1,3× dosya.\n", "Estimated memory use ~1.3× the file.\n");
+        EN.put("GPU  motor yolu yok", "No GPU engine path");
+        EN.put("Dokun: yükle", "Tap: load");
+        EN.put("Dokun: alanları doldurur", "Tap: fills the fields");
+        EN.put("Model seçmezsen karakterler ve sohbetler yine kaydedilir; ",
+                "If you skip the model, characters and chats still save; ");
+        EN.put("ancak yanıt üretimi için bir model yüklemelisin.", "but you must load a model to generate replies.");
+        EN.put("Tamamen senin cihazında", "Entirely on your device");
+        EN.put("Yanıtlar, telefonda çalışan GGUF modeliyle üretilir",
+                "Replies are generated by the GGUF model running on your phone");
+        EN.put("Yerel, çevrimdışı yapay zekâ ile rol yapma", "Roleplay with a local, offline AI");
+        EN.put("LocalRP'ye hoş geldin", "Welcome to LocalRP");
+        EN.put("Karakter seç, hikâyeyi başlat", "Pick a character, start the story");
+        EN.put("İlk karakter", "First character");
+        EN.put("İleri: ilk karakter", "Next: first character");
+        EN.put("Kimliği adı kadar kişiliği çizer", "The persona shapes the identity");
+        EN.put("Atla (karakterleri sonra eklerim)", "Skip (I'll add characters later)");
+        EN.put("Devam et", "Continue");
+        EN.put("Nova · 20:41\nGüzel bir gece…", "Nova · 20:41\nA lovely evening…");
+        EN.put("Kısa tanıtım (hikâyedeki yeri, dünyası)", "Short intro (their role in the story, their world)");
+        EN.put("Kişilik ve konuşma tarzı (isteğe bağlı)", "Persona and speech style (optional)");
+        EN.put("Adı", "Name");
+        EN.put("İlk bilgiyi ekle", "Add the first entry");
+        EN.put("Dünya kitabını temizle", "Clear the world book");
+        EN.put("Her kayıt anahtar kelime(ler) ve bir olgudur. Son 3 mesajda bir anahtar geçerse olgu prompta yazılır; ",
+                "Each entry is keyword(s) and a fact. When a key appears in the last 3 messages, the fact goes into the prompt; ");
+        EN.put("blok en fazla 900 karakter tutar, anahtar hiç geçmezse yer kaplamaz.",
+                "entries hold up to 900 characters; a key that never appears takes no space.");
+        EN.put("Birden çok karakter aynı sahnede", "Multiple characters in one scene");
+        EN.put("karakter listesi", "character list");
+        EN.put("sohbet listesi", "chat list");
+        EN.put("Karakteri oluştur ve başla", "Create character and start");
+        EN.put("Nasıl çalışır?", "How does it work?");
+        EN.put("Sohbetler varsayılan olarak \"varsayılan\" etiketli kişiliği kullanır; ",
+                "By default chats use the persona tagged \"default\"; ");
+        EN.put("her sohbet kendi kişiliğini seçebilir (Sohbetler → sohbet → Üretim profili).",
+                "each chat can pick its own persona (Chats → chat → Generation profile).");
+        // multi-persona strings
+        EN.put("Kullanıcı kişilikleri", "User personas");
+        EN.put("Sohbetlerde seni bu kimlikler taşır", "These identities play you in chats");
+        EN.put("Farklı roller için farklı kimlikler: gerçek adın, takma adın, karakterlerin karşıtı bir oyuncu…",
+                "Different identities for different roles: your real name, a nickname, a player opposing your characters…");
+        EN.put("İlk kişiliği ekle", "Add your first persona");
+        EN.put("Henüz kişilik yok", "No personas yet");
+        EN.put("Henüz kişilik yok — dokunup kendini tanıt", "No personas yet — tap and introduce yourself");
+        EN.put("Henüz bir kişilik tanımlı.", "No persona is defined yet.");
+        EN.put("Adsız kişilik", "Unnamed persona");
+        EN.put("Kişilik", "Persona");
+        EN.put("  ·  varsayılan", "  ·  default");
+        EN.put("  (varsayılan kişilik)", "  (default persona)");
+        EN.put(" kişilik · ", " personas · ");
+        EN.put(" kişilik · dokun: yönet", " personas · tap to manage");
+        EN.put("＋  Yeni kişilik", "＋  New persona");
+        EN.put("Yeni kişilik", "New persona");
+        EN.put("Kişiliği düzenle", "Edit persona");
+        EN.put("Kişiliği kaydet", "Save persona");
+        EN.put("Kişiliği sil", "Delete persona");
+        EN.put("Kişilik silindi.", "Persona deleted.");
+        EN.put(" kişiliği silinsin mi?", "'s persona will be deleted.");
+        EN.put("Varsayılan kişilik yap", "Make default persona");
+        EN.put("Varsayılan kişilik güncellendi.", "Default persona updated.");
+        EN.put("Kullanıcı kişiliği kaydedildi.", "User persona saved.");
+        EN.put("Bu sohbetin kişiliği", "This chat's persona");
+        EN.put("Kişilik seç", "Choose persona");
+        EN.put("Genel varsayılanı izle", "Follow the global default");
+        EN.put("Genel varsayılanı izler: ", "Follows the global default: ");
+        EN.put("Kişiliği genel varsayılana döndür", "Return persona to the global default");
+        EN.put("Bu sohbet genel varsayılan kişiliği izliyor.", "This chat follows the global default persona.");
+        EN.put(" (kişisel seçim)", " (this chat's own pick)");
+        EN.put("Bu sohbet artık ", "This chat now plays as ");
+        EN.put(" ile oynanıyor.", ".");
+        EN.put("Bu sohbet artık adsız kişilik ile oynanıyor.", "This chat now plays as the unnamed persona.");
+        EN.put("Önce karakterler ekranından bir kullanıcı kişiliği tanımla.",
+                "Define a user persona on the Characters screen first.");
+        EN.put(" ile RP", " RP");
+        EN.put(" karakter", " characters");
+        EN.put(" karakter  ·  ", " characters  ·  ");
+        EN.put(" karakter.", " characters.");
+        EN.put(" mesaj", " messages");
+        EN.put(" metin", " of text");
+        EN.put(" sohbet", " chats");
+        EN.put(" sohbet · ", " chats · ");
+        EN.put(" token", " tokens");
+        EN.put(" adım", " steps");
+        EN.put(" · ", " · ");
     }
 }
