@@ -1,85 +1,79 @@
-# LocalRP — Yerel AI Roleplay (Android)
+<div align="center">
+  <img src=".github/assets/banner.png" alt="LocalRP — karanlık sahnede spot ışığı altında palyaço, elinde tragedya maskesi" width="100%">
 
-LocalRP; GGUF modellerle **tamamen çevrimdışı** çalışan, Türkçe arayüzlü bir Android roleplay (RP) uygulamasıdır. Karakterlerini oluşturur, tek veya çok karakterli grup RP'leri kurarsın; model dosyaları uygulamanın özel alanında kalır, hikâyelerin telefonda saklanır.
+[![CI](https://github.com/PASTA726/localrp/actions/workflows/ci.yml/badge.svg)](https://github.com/PASTA726/localrp/actions/workflows/ci.yml)
+[![Sürüm](https://img.shields.io/github/v/release/PASTA726/localrp?include_prereleases&label=s%C3%BCr%C3%BCm&color=9B7BFF)](https://github.com/PASTA726/localrp/releases)
+[![Lisans](https://img.shields.io/github/license/PASTA726/localrp?color=9B7BFF)](LICENSE)
+![Testler](https://img.shields.io/badge/birim%20test-127%20ge%C3%A7er-4A2BA8)
 
-> LocalRP is an offline-first, Turkish-language Android roleplay app running GGUF models locally (llama.cpp). Build characters, start 1-on-1 or group RP, keep everything on-device.
+*Hikâyelerin telefonda, model cihazda, veri sende.*
 
-## Öne çıkanlar / Highlights
+**[Türkçe](#özellikler)** · [English](#english-summary)
 
-- **Yerel AI / Local AI**: llama.cpp tabanlı motor (`com.arm:ai-chat`), ARM64 GGUF desteği. Çıkarım tamamen cihazda; sohbet metni hiçbir sunucuya gitmez. Inference is fully on-device; chat text never leaves the phone.
-- **Model öneri merkezine** CPU ve GPU kategorileri: her kartta tahmini hız aralığı, bağlam penceresi, dil düzeyi ve "neden önerilir" notu. CPU önerileri llama.cpp CPU ölçütlerine göre, GPU önerileri `*` işaretli olup Vulkan/MLC tabanlı motorlar içindir.
-- **Uygulama içi indirme**: Hugging Face'ten doğrudan, iptal edilebilir, ilerleme göstergeli indirme; `.part` dosyası silinmez ve **kaldığı yerden devam eder** (HTTP Range); depolama kontrolü ve mobil veri için onay.
-- **Karakter ve grup RP**: kişiye özel tanım/kişilik/örnek diyalog, çok karakterli sohbetler, ad geçince o karakterin konuşması, sıra döngüsü ve elle sabitlenen sıradaki konuşmacı.
-- **Detaylı AI ayarları**: sistem promptu, geçmiş mesaj sayısı ve karakter bütçesi, otomatik/elle bağlam bütçesi, karakter zinciri (otomatik devam) sayısı.
-- **6 GUI teması**: Lavanta, Okyanus, Orman (açık) · Gölge, Deniz Gecesi, Gün Batımı (koyu) — kartlar, balonlar ve sistem çubukları tek dokunuşla boyanır.
-- **RP kontrolleri**: Her an durdurma, yeniden dene, uzun basınca kopyala, sohbet geçmişi temizleme, üretim ölçümleri (süre/token/tok-s/bağlam %), motor testi (`bench`).
-- **Yedekleme ve geri yükleme** (v0.11.0): tüm karakterler, sohbetler ve geçmişler Görünüm → Veri yedeği'nden SAF ile istediğin klasöre `.json` olarak dışa aktarılır; geri yükleme kimliği aynı olanları günceller, yalnızca daha uzun geçmişleri değiştirir.
-- **Ölçeklenebilirlik**: uzun sohbetlerde ekran en yeni 40 mesajı çizer, eskiler "Daha eski mesajlar" ile dilimlenir (v0.12.0); üretilen yanıt akışta tek balonda büyür, çökme durumunda yarım yanıt taslağından bir kez kurtarılır.
-- **Testler/CI**: 60+ JVM birim testi; GitHub Actions her push/PR'da test + debug derleme çalıştırır (`contents: read`, APK yayını yok). Sürüm APK'ları GitHub Releases'te.
-- **Lisanslar**: projesi MIT; paketli motor bağımlılığının ve katalog modellerinin lisans bildirimleri için `THIRD_PARTY_NOTICES.md`.
-- **Gizlilik / Privacy**: İnternet izni yalnızca model indirmede kullanılır; anahtar gömülmez; veri `SharedPreferences` + uygulama içi dosyada kalır.
+</div>
 
-## Kurulum / Install
+---
 
-**Ön koşullar / Prerequisites**: JDK 17, Android SDK (Platform 36, Build-Tools 36.0.0, platform-tools). Repo, Gradle **8.13** sürümüne sabitlenmiş bir **wrapper** ile gelir; ek Gradle kurulumu gerekmez (ilk `./gradlew` çağrısı dağıtımı bir kez indirir). Uygulamanın çalışması için **Android 13 (API 33) veya üstü** ve **ARM64** bir cihaz gerekir. Android motoru bağımlılığı [`com.arm:ai-chat:0.1.0`](https://github.com/arm/ai-chat) Apache-2.0 lisanslı, doğrudan Maven Central'dan çözülür.
+**LocalRP**, GGUF modellerle **tamamen çevrimdışı** çalışan, Türkçe arayüzlü bir Android roleplay uygulamasıdır. Karakterlerini oluşturur, tek veya çok karakterli grup hikâyeleri kurarsın; çıkarım llama.cpp ile telefonda çalışır, sohbetlerin ve karakterlerin cihazda kalır.
 
-> The repo ships with a Gradle wrapper pinned to 8.13; you only need JDK 17 and an Android SDK (Platform 36, Build-Tools 36.0.0). The app requires Android 13+ (API 33) on ARM64. The engine dependency `com.arm:ai-chat:0.1.0` (Apache-2.0) resolves from Maven Central.
+> *LocalRP is an offline-first, Turkish-language Android roleplay app running GGUF models locally (llama.cpp). Everything stays on-device.*
 
-1. **APK'yi derle / Build the APK**:
-   ```bash
-   ./gradlew :app:assembleDebug
-   # Çevrimdışı derleme (önceden doldurulmuş bir önbellek varsa):
-   GRADLE_USER_HOME="$PWD/.gradle-home" ./gradlew --no-daemon --offline :app:assembleDebug
-   ```
-   Çıktı: `app/build/outputs/apk/debug/app-debug.apk`
-2. Telefona kur / Install on phone:
-   ```bash
-   adb install -r app/build/outputs/apk/debug/app-debug.apk
-   ```
-3. Uygulamada **AI sekmesi → Model önerileri**nden bir model indir (öneri: `Llama-3.2-1B Q4_K_M`, ~0,8 GB; daha hızlı seçenek: `Qwen2.5-0.5B`). Sonra aynı ekrandan **Modeli yükle**. İndirme yarıda kesilirse "İndir" düğmesi kaldığı yerden devam eder.
-4. Alternatif: kendi `.gguf` dosyanı telefon depolama yöneticinden paylaşarak LocalRP'ye kopyala ("GGUF model dosyası seç") veya `Android/data/app.localrp/files/models/` altına koy.
+## Özellikler
 
-> Model dosyaları APK'da değildir; özel depolamada saklanır. İlk indirme için bir kez internet gerekir; sonrasında uygulama tamamen çevrimdışı çalışır.
+### 🎭 Karakter ve hikâye
+- **Karakter editörü** — ad, tanıtım, kişilik, sistem talimatı, örnek diyaloglar, avatar.
+- **Grup RP** — her karaktere ayrı prompt; sıra döngüsü, ad geçince konuşma, elle sabitlenen konuşmacı, zincir limitleriyle kontrolsüz üretim döngüsünün önü kesilir.
+- **Dünya kitabı (lorebook)** — anahtar kelime → olgu kayıtları; son mesajlarda anahtar geçerse prompta yazılır.
+- **Sohbet profili** — sohbet başına token bütçesi, geçmiş derinliği ve sahne teması.
 
-## Kullanım / Usage
+### 🤖 Yerel AI (varsayılan)
+- **llama.cpp GGUF** motoru, `arm64-v8a`; çıkarım tamamen cihazda.
+- **Model kataloğu** — SHA-256 doğrulamalı https indirme, **yarıdan devam** (HTTP Range), depolama kontrolü, cihazına göre *sığar/sınırda/zor* fizibilite etiketleri.
+- Kendi `.gguf` dosyanı da kopyalayıp kullanabilirsin.
+- **Görsel üretim** — safetensors model kataloğuyla sohbet içinde yerel görsel üretimi.
+- Üretim ölçümleri: süre / token / tok-s / bağlam doluluk %; cihaz hız testi (`bench`).
 
-- **Ana sayfa**: yeni tek/çok karakterli RP başlat, son sohbetlere dön.
-- **Karakter**: oluştur, düzenle, sil; tanım + kişilik + özel talimat + örnek diyalog.
-- **Sohbetler**: tüm RP geçmişi; mesaja uzun basınca kopyala.
-- **AI**: model seçimi/yükleme, GGUF bilgi kartı, motor testi, model önerileri (CPU/GPU) ve **Gelişmiş AI** (sistem promptu, geçmiş derinliği, bağlam bütçesi, karakter zinciri).
-- **Görünüm**: 6 tema arasından anında seçim.
-- Sohbette mesaj gönderince karakter otomatik yanıt verir; gruplarda konuşmacı adı geçtiğinde o karakter konuşur veya "Sıradaki konuşsun" ile elle seçilir.
+### 🌐 Çevrimiçi sağlayıcı (opsiyonel, opt-in)
+- OpenAI-uyumlu **https** endpoint; API anahtarı **AndroidKeyStore** ile kriptolu saklanır, yedeklerde taşınmaz.
+- Varsayılan **kapalı** gelir; açık olmadan hiçbir veri dışarı çıkmaz. Kapalıyken davranış saf çevrimdışıdır.
 
-## Mimari / Architecture
+### 🛠 Uygulama
+- **6 GUI teması** — Lavanta, Okyanus, Orman (açık) · Gölge, Deniz Gecesi, Gün Batımı (koyu); koyu paletlerde karanlık açılış ekranı.
+- **Yedekleme/geri yükleme** — `.json` / medyalı `.zip`; seçmeli dışa aktarma; geri alınabilir silme; veri bütünlüğü raporu.
+- Uzun sohbetlerde mesaj dilimleme; akış sırasında tek balonda büyüyen yanıt; her an **durdur** düğmesi.
 
-| Dosya | Rol |
-| --- | --- |
-| `MainActivity.java` | Tek activity; tüm ekranlar, RP akışı, konuşmacı seçimi, veri deposu |
-| `LocalAiRuntime.kt` | llama.cpp motoru, model yükleme/çıkarma, GGUF metadata, ölçümler |
-| `AppTheme.java` / `Design.java` | 6 GUI teması + palet tokenları + sistem çubuğu boyama |
-| `ModelCatalog.java` | Doğrulanmış CPU/GPU GGUF katalogu (URL, boyut, öneri rozetleri) |
-| `ModelDownload.kt` | Akış indirme: ilerleme, iptal, `.part` temizliği, depolama kontrolü |
+## Kurulum
 
-Veri modeli `SharedPreferences` içinde JSON; modeller `Android/data/app.localrp/files/models/` altında.
+### Hazır APK (önerilen)
+1. [Releases](https://github.com/PASTA726/localrp/releases) sayfasından en güncel pre-release APK'sını indir — **SHA-256 doğrulaması** sürüm notlarında yayınlanır.
+2. Telefona kur (Android 13+ / ARM64).
+3. Uygulamada model önerileri ekranından bir GGUF model indir (öneri: `Llama-3.2-1B Q4_K_M`, ~0,8 GB), sonra **Modeli yükle**. İndirme yarıda kesilirse kaldığı yerden devam eder.
 
-## Sınırlar / Limitations
+### Kaynaktan derleme
+Ön koşullar: JDK 17, Android SDK (Platform 36, Build-Tools 36.0.0). Repo, Gradle **8.13**'e sabitlenmiş wrapper ile gelir; motor bağımlılığı [`com.arm:ai-chat:0.1.0`](https://github.com/arm/ai-chat) (Apache-2.0) Maven Central'dan çözülür.
 
-- Paketli motor temperature/top-p/top-k ayarını dışa açmıyor; yanıt yönlendirmesi prompt ve uzunluk kaynaklı.
-- Motor bağlamı en fazla 8.192 token; uygulama Türkçe için ~2,5 karakter/token hesabıyla bütçe koyar.
-- GPU hız aralıkları `*` işaretlidir: Vulkan/MLC motorları içindir; paketli motor CPU'dur.
-- **Android 15+**: Android 15'te zorunlu hale gelen edge-to-edge modunda sistem çubuklarının renklendirilmesi göz ardı edilir (çizim Android'e ait); arabirim, inset yastıklaması sayesinde çubukların altına girmeden düzgün çizilir. Çubuk boyama davranışının tam çalıştığı sürüm Android 14'tür.
-- Veriler (`SharedPreferences` + uygulama dosyaları) cihazda **şifrelenmemiş** olarak saklanır; cihaz kilidi kullanıcıya aittir.
-
-## Klasörler / Folder map
-
-```
-app/src/main/java/app/localrp/   Uygulama kodu (tek activity + motor/sağlayıcı sınıflar)
-app/src/main/res/                Launcher ikonları ve tema XML'leri
-docs/logo-source.png             Launcher ikonunun kaynak görseli
-gradle/wrapper/                  Gradle 8.13 wrapper jar/properties (gradlew ile birlikte)
+```bash
+./gradlew :app:assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## Lisans / License
+## Gizlilik
 
-MIT — bkz. `LICENSE`. GGUF modeller kendi lisanslarına tabidir (Llama, Gemma, Qwen vb. model lisanslarına bak).
-MIT licensed; model weights follow their own licenses (Llama, Gemma, Qwen, etc.).
+- Sohbet, karakter ve dünya kitabı verileri `SharedPreferences` + uygulama içi dosyada saklanır; hiçbir sunucuya gitmez.
+- İnternet izni yalnızca **model indirme** ve açıkça etkinleştirilmiş **çevrimiçi sağlayıcı** için kullanılır.
+- API anahtarları APK'ya gömülmez, düz metin diske yazılmaz, yedeklere taşınmaz.
+- Paketli motorun ve katalog modellerinin lisans bildirimleri: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
+## Durum
+
+| | |
+|---|---|
+| Sürüm | v0.19.15-alpha1 (versionCode 44) — tüm sürümler pre-release |
+| Testler | 127 JVM birim testi, 0 hata; CI her push'ta yeşil |
+| Mimari | Native Kotlin + Java, AndroidX/Room yok; saf views + SharedPreferences |
+| Yapay zekâ | llama.cpp (GGUF, arm64) yerel; OpenAI-uyumlu sağlayıcı opt-in |
+| Bekleyen | Sağlayıcı akışının gerçek cihazda uçtan uca kabul turu |
+
+## English summary
+
+LocalRP is an offline-first Android roleplay app (Turkish UI). Build characters, run one-on-one or multi-character group stories with per-character prompts, a keyword→fact lorebook and per-chat generation profiles. Inference runs fully on-device via llama.cpp (GGUF, arm64); models install through a SHA-256-verified in-app catalog with resumable downloads. An OpenAI-compatible online provider exists but is strictly opt-in (https-only, AndroidKeyStore-encrypted key) and off by default. Backups export to `.json`/`.zip`; deletes are undoable; 127 JVM unit tests pass on every push.
