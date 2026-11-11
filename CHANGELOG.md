@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.19-alpha1 — 2026-11-11 (güvenlik güncellemesi)
+
+Platform düzeyinde savunma derinliği: ağ politikası ve veri çıkarma kuralları artık açıkça shipped — davranışsal değişiklik yok, garanti sözleşmeye dönüştü.
+
+- **Ağ politikası** (`res/xml/network_security_config.xml`): tüm trafik için `cleartextTrafficPermitted="false"`. Uygulama yalnızca https uçlarına konuşur (model kataloğu indirmeleri, OpenAI-uyumlu sağlayıcı); bu artık manifest seviyesinde dayatılmış, gelecekteki kod yolunun platform varsayılanına muhtaç olmadığı bir garanti.
+- **Veri çıkarma kuralları** (`res/xml/data_extraction_rules.xml`): Android 12+ bulut yedekleme **ve** cihazdan-cihaza transfer için tüm depolama alanları (root/file/database/sharedpref/external) açıkça dışlandı. RP kayıtları, karakterler ve kişilikler yalnızca uygulama içi, kullanıcı başlattığı yedekle cihazdan çıkar. `allowBackup="false"` ile birlikte çift kilit.
+- **Sağlayıcı endpoint politikası sağlamlaştırıldı** — `OpenAiCompat.allowsEndpoint` string-prefix kontrolünden `URL`-parse tabanlı şema kontrolüne geçti: büyük/küçük harf ("HTTPS://") bağlantının kendisiyle aynı şekilde değerlendirilir, bozuk/farklı şemalar (ftp/file/javascript/gopher) kapalı başarısız olur. `DownloadPolicy.isHttps` ile aynı muhakeme.
+- **Regresyon koruması**: `SecurityPolicyTest` iki politika XML'ini doğrudan okur — cleartext izni veya çıkarma kuralı gevşetilirse derleme başarısız olur; `OpenAiCompatTest` şema politikasının uç durumlarını sabitler.
+- Mevcut savunma katmanları (denetim sonucu değişiklik yok, hepsi yerinde): AndroidKeyStore AES/GCM anahtar saklama (düz metin diskte yok), https-only indirmeler + in-app SHA-256 doğrulama + Range-doğrulamalı devam, yedek ZIP sağlama özeti + ZIP-bombası limitleri + yol geçişi reddi, `allowBackup=false`, tek izin (INTERNET), log yazımı yok, tüm prefs `MODE_PRIVATE`.
+- versionCode 48 / 0.19.19-alpha1.
+
 ## v0.19.18-alpha1 — 2026-11-11 (kişilikler yedeğe dahil)
 
 v0.19.16'da bilinçli olarak dışarıda bırakılan sınırlar kapatıldı: **kullanıcı kişilikleri artık `.json` / `.zip` yedeğine giriyor**.
