@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.14-alpha1 — 2026-11-11 (aynı sayfa yenilemesi artık yerinde çiziliyor)
+
+v0.19.13'te bilinçli olarak ertelenen kalem: sayfa içi yenilemeler (lore kaydı, ayar toggle'ları, model durumu) hâlâ tüm pencereyi `setContentView` ile yeniden kuruyordu — gezinme flaşı gidince kalan ikinci titreme kaynağı.
+
+- **Yerinde sayfa yenilemesi**: aynı sayfa (başlık + alt başlık + sekme + geri durumu eşleşiyorsa) yeniden çizilirken artık yalnızca içerik listesi temizlenip yeniden dolduruluyor; başlık, alt bar ve pencere korunur. Lore kaydetme/silme, ayar toggle'ları ve profil düğmeleri artık flaş yapmaz.
+- **Chat sayfaları her zaman tam kurulum** kalır (mesaj çizimi zaten yerinde); çapa geçersiz kılınır.
+- **Tema ve dil değişimi tam kurulumu zorlar** (`resetPageAnchor`): başlık/alt bar eski paletle/eski dille kalmasın.
+- Scroll konumu liste düzenlemesinde korunur (istenen davranış); içerik kısalırsa otomatik kelepçelenir.
+- Harici inceleme (Codex CLI): "Kritik yok"; 4 bulgunun tamamı incelendi — undo bar kesinleşmesinin yerinde yenilemede korunması (bar 8 sn sayacıyla kendi kendine kesinleşir; gerçek gezinmede eskisi gibi kesinleşir), aynı adlı grup eşleşmesinin ulaşılamaz akış olması, scroll konumu ve alan bayatlaması sorunsuz — tamamı bilinçli kabul edildi.
+- versionCode 43 / 0.19.14-alpha1.
+
 ## v0.19.13-alpha1 — 2026-11-11 (hata raporu taraması: titreme + çökme riskleri)
 
 Kullanıcı hata raporu ("her alan/gezinme değişiminde flaş etkisi, ara sıra çökme") üzerine iki harici salt-okunur inceleme (Codex CLI + Antigravity CLI) yapıldı; bulgular bağımsız doğrulanıp girmeden düzeltildi.
