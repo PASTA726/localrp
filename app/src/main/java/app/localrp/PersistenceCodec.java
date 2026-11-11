@@ -128,6 +128,49 @@ final class PersistenceCodec {
         }
     }
 
+    /** v0.19.16 multi-persona list: [{id, name, description, avatar}]. */
+    static String encodePersonas(List<Persona> items) {
+        try {
+            JSONArray data = new JSONArray();
+            for (Persona p : items) {
+                JSONObject o = new JSONObject();
+                o.put("id", p.id == null ? "" : p.id);
+                o.put("name", p.name == null ? "" : p.name);
+                o.put("description", p.description == null ? "" : p.description);
+                o.put("avatar", p.avatarPath == null ? "" : p.avatarPath);
+                data.put(o);
+            }
+            return data.toString();
+        } catch (JSONException e) {
+            return "";
+        }
+    }
+
+    /** Tolerant list decode: single corrupt records are dropped, not fatal. */
+    static Decode<Persona> decodePersonas(String raw) {
+        Decode<Persona> result = new Decode<>();
+        try {
+            JSONArray data = new JSONArray(raw == null ? "[]" : raw);
+            for (int i = 0; i < data.length(); i++) {
+                try {
+                    JSONObject o = data.getJSONObject(i);
+                    Persona p = new Persona();
+                    p.id = o.isNull("id") ? "" : o.optString("id");
+                    p.name = o.isNull("name") ? "" : o.optString("name");
+                    p.description = o.isNull("description") ? "" : o.optString("description");
+                    p.avatarPath = o.isNull("avatar") ? "" : o.optString("avatar");
+                    if (p.id.isEmpty()) continue; // an identity without an id cannot be addressed
+                    result.items.add(p);
+                } catch (JSONException badRecord) {
+                    result.droppedRecords++;
+                }
+            }
+        } catch (JSONException root) {
+            result.rootCorrupt = true;
+        }
+        return result;
+    }
+
     static String encodeGroups(List<Group> items) {
         try {
             JSONArray data = new JSONArray();

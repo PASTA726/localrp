@@ -2,6 +2,19 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.16-alpha1 — 2026-11-11 (çoklu kullanıcı kişilik sistemi)
+
+Tekil "kullanıcı profili" artık **kişilik listesi**: birden fazla kimlik tanımla, sohbet başına seç.
+
+- **Kişilik yöneticisi** — Karakterler ekranındaki kart artık kişilik listesini açar: her kart avatar + ad + açıklama; "＋ Yeni kişilik" ile ekleme, dokununca editör.
+- **Editör** — ad, kendini tanıtma, profil fotoğrafı; "Varsayılan kişilik yap" düğmesi; silme (kullanan sohbet seçimleri otomatik temizlenir, avatar dosyası silinir).
+- **Sohbet başına kişilik** — Üretim profili → "Bu sohbetin kişiliği": "Genel varsayılanı izle" veya listeden bir kişilik; seçim/geri döndürme yerel motor bağlamını sıfırlar (eski kimlik bağlamda kalıntı bırakmaz).
+- **Varsayılan kişilik** — ilk tanımlanan otomatik varsayılan olur; değiştirilebilir; prompt çözümü: sohbet seçimi → genel varsayılan → yok (blok eklenmez).
+- **Geçiş (migrasyon)** — eski tekil `user_persona` kaydı ilk açılışta `id="default"` kişiliğe taşınır; kullanıcı hiçbir şey yapmaz, profili kaybolmaz.
+- Avatar taslağı artık kişilik sahibiyle eşleşir: başka bir kimlik için kalmış taslak sessizce uygulanmaz, silinir.
+- Yedek kapsamı: kişilikler (önceki tekil profil gibi) `SharedPreferences`'ta yaşar; `.json/.zip` yedeğine dahil değildir (öncekiyle aynı kapsam; ayrı turda değerlendirilir).
+- versionCode 45 / 0.19.16-alpha1.
+
 ## v0.19.15-alpha1 — 2026-11-11 (yeni başlatıcı ikonu: dram sahnesi)
 
 - **Yeni ikon** (kullanıcı seçimi): karanlık sahnede spot ışığı altında palyaço, elinde gözyaşlı tragedya (üzgün) maskesi — dram tiyatrosu teması. Dört konsept (maskeler / kitap / d20 zar / dram sahnesi) arasından kullanıcı bu sahneyi seçti.

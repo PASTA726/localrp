@@ -226,4 +226,52 @@ public class PersistenceCodecTest {
         assertNull(PersistenceCodec.decodePersona(""));
         assertNull(PersistenceCodec.decodePersona("{garbage"));
     }
+
+    // ---- v0.19.16 multi-persona codec ----
+
+    @Test
+    public void personas_roundTrip() {
+        List<Persona> personas = new ArrayList<>();
+        Persona first = new Persona("p1", "Evren", "Sessiz bahçıvan", "/x/a.png");
+        Persona second = new Persona("p2", "Denizci", "Rüzgârlı ses", "");
+        personas.add(first);
+        personas.add(second);
+
+        String raw = PersistenceCodec.encodePersonas(personas);
+        PersistenceCodec.Decode<Persona> out = PersistenceCodec.decodePersonas(raw);
+        assertEquals(0, out.droppedRecords);
+        assertFalse(out.rootCorrupt);
+        assertEquals(2, out.items.size());
+        assertEquals("p1", out.items.get(0).id);
+        assertEquals("Evren", out.items.get(0).name);
+        assertEquals("Sessiz bahçıvan", out.items.get(0).description);
+        assertEquals("/x/a.png", out.items.get(0).avatarPath);
+        assertEquals("Denizci", out.items.get(1).name);
+        assertEquals("", out.items.get(1).avatarPath);
+    }
+
+    @Test
+    public void personas_decodeTolerantly_dropsBrokenRecords() {
+        PersistenceCodec.Decode<Persona> out = PersistenceCodec.decodePersonas(
+                "[{\"id\":\"p1\",\"name\":\"Tam\"},42,{\"name\":\"idsiz\"},{\"id\":\"p2\",\"name\":\"Devam\"}]");
+        assertEquals(1, out.droppedRecords);
+        assertEquals(2, out.items.size());
+        assertEquals("Tam", out.items.get(0).name);
+        assertEquals("p2", out.items.get(1).id);
+    }
+
+    @Test
+    public void personas_emptyAndCorruptRootsFailSoftly() {
+        assertTrue(PersistenceCodec.decodePersonas(null).items.isEmpty());
+        assertTrue(PersistenceCodec.decodePersonas("").items.isEmpty());
+        PersistenceCodec.Decode<Persona> corrupt = PersistenceCodec.decodePersonas("{not-an-array");
+        assertTrue(corrupt.rootCorrupt);
+        assertTrue(corrupt.items.isEmpty());
+        // Encoding null-safe fields never throws; empty list round-trips to "[]".
+        List<Persona> nulls = new ArrayList<>();
+        nulls.add(new Persona(null, null, null, null));
+        PersistenceCodec.Decode<Persona> out = PersistenceCodec.decodePersonas(
+                PersistenceCodec.encodePersonas(nulls));
+        assertTrue(out.items.isEmpty()); // id-less records are rejected by design
+    }
 }

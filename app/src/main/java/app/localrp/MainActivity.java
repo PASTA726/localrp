@@ -200,6 +200,8 @@ public class MainActivity extends Activity {
     // v0.14.0 feature set: user persona + profile photos + preset characters.
     private boolean avatarPickPersona;          // target of AVATAR_PICK: true = user persona, false = character
     private String personaAvatarDraft;          // freshly picked persona photo, applied on Kaydet
+    /** Which persona identity the draft belongs to; a stale draft is discarded, never applied silently. */
+    private String personaDraftOwnerId;
     private CharacterProfile editorCharacter;   // character being edited (null = creating)
     private Runnable editorAfterSave, editorOnBack;
     private String pickedAvatarPath = "";       // freshly picked character photo, applied on Kaydet
@@ -448,13 +450,15 @@ public class MainActivity extends Activity {
         addPresetGrid();
     }
 
-    /** v0.14.0: "Sen (kullanıcı profili)" card leading the characters screen. */
+    /** v0.14.0 "Sen (kullanıcı profili)" card; v0.19.16: shows the default persona and
+     *  opens the multi-persona manager. */
     private void addUserProfileCard() {
-        String[] persona = store.persona();
-        String name = persona != null ? persona[0] : "";
-        String description = persona != null ? persona[1] : "";
+        Persona persona = store.defaultPersona();
+        String name = persona != null ? persona.name : "";
+        String description = persona != null ? persona.description : "";
         String avatar = personaAvatarDraft != null ? personaAvatarDraft
-                : (persona != null ? persona[2] : "");
+                : (persona != null ? persona.avatarPath : "");
+        int count = store.personas().size();
         LinearLayout card = makeCard();
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -463,31 +467,93 @@ public class MainActivity extends Activity {
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(dp(12), 0, 0, 0);
-        TextView title = label(name.isEmpty() ? "Sen" : name + L10n.s("  (kullanıcı)"), 16, Design.text());
+        TextView title = label(name.isEmpty()
+                ? L10n.s("Kullanıcı kişilikleri")
+                : name + L10n.s("  (varsayılan kişilik)"), 16, Design.text());
         title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         texts.addView(title);
-        TextView detail = label(description.isEmpty()
-                ? "Kullanıcı personası tanımlı değil — dokunup kendini tanıt"
-                : brief(description), 12, Design.muted());
+        TextView detail = label(count == 0
+                ? "Henüz kişilik yok — dokunup kendini tanıt"
+                : (description.isEmpty()
+                        ? count + L10n.s(" kişilik · dokun: yönet")
+                        : count + L10n.s(" kişilik · ") + brief(description)), 12, Design.muted());
         detail.setPadding(0, dp(3), 0, 0);
         detail.setSingleLine(true);
         detail.setEllipsize(TextUtils.TruncateAt.END);
         texts.addView(detail);
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         card.addView(row);
-        card.setOnClickListener(v -> showUserProfile());
+        card.setOnClickListener(v -> showPersonas());
         addCardToPage(card);
     }
 
-    /** v0.14.0: user persona editor (name + self-description + optional photo). */
-    private void showUserProfile() {
+    /** v0.19.16: persona manager — the list of user identities; tap one to edit. */
+    private void showPersonas() {
         visibleChatId = null;
         backAction = this::showCharacters;
-        setPage("Sen (kullanıcı profili)", "Yapay zekâ sana bu kimlikle davranır", "characters");
-        String[] persona = store.persona();
-        String name = persona != null ? persona[0] : "";
-        String description = persona != null ? persona[1] : "";
-        final String storedAvatar = persona != null ? persona[2] : "";
+        setPage("Kullanıcı kişilikleri", "Sohbetlerde seni bu kimlikler taşır", "characters");
+        java.util.List<Persona> personas = store.personas();
+        if (personas.isEmpty()) {
+            addEmpty("Henüz kişilik yok",
+                    "Farklı roller için farklı kimlikler: gerçek adın, takma adın, karakterlerin karşıtı bir oyuncu…",
+                    "İlk kişiliği ekle", v -> showPersonaEditor(null));
+        } else {
+            addInfoCard("Nasıl çalışır?",
+                    "Sohbetler varsayılan olarak \"varsayılan\" etiketli kişiliği kullanır; "
+                            + "her sohbet kendi kişiliğini seçebilir (Sohbetler → sohbet → Üretim profili).", "Kişilik");
+            for (Persona persona : personas) {
+                LinearLayout card = makeCard();
+                LinearLayout row = new LinearLayout(this);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                View face = Avatar.forIdentity(this,
+                        persona.name.isEmpty() ? L10n.s("Sen") : persona.name, persona.avatarPath, 44);
+                row.addView(face, new LinearLayout.LayoutParams(dp(44), dp(44)));
+                LinearLayout texts = new LinearLayout(this);
+                texts.setOrientation(LinearLayout.VERTICAL);
+                texts.setPadding(dp(12), 0, 0, 0);
+                TextView title = label(persona.name.isEmpty()
+                        ? L10n.s("Adsız kişilik") : persona.name, 16, Design.text());
+                title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+                texts.addView(title);
+                String tag = store.isDefaultPersona(persona.id) ? L10n.s("  ·  varsayılan") : "";
+                TextView detail = label(brief(persona.description) + tag, 12, Design.muted());
+                detail.setPadding(0, dp(3), 0, 0);
+                detail.setSingleLine(true);
+                detail.setEllipsize(TextUtils.TruncateAt.END);
+                texts.addView(detail);
+                row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+                card.addView(row);
+                card.setOnClickListener(v -> showPersonaEditor(persona));
+                addCardToPage(card);
+            }
+            addPrimary("＋  Yeni kişilik", v -> showPersonaEditor(null));
+        }
+    }
+
+    /**
+     * Persona editor; {@code editing == null} creates a new identity. Reuses the
+     * single-persona avatar draft fields, but only for the persona being edited —
+     * a stale draft for another identity is discarded here, never applied silently.
+     */
+    private void showPersonaEditor(Persona editing) {
+        visibleChatId = null;
+        backAction = this::showPersonas;
+        setPage(editing == null ? "Yeni kişilik" : "Kişiliği düzenle",
+                "Yapay zekâ sana bu kimlikle davranır", "characters");
+        List<Persona> personas = store.personas();
+        // A draft belonging to ANY other identity (including one from a cancelled
+        // "new persona" session) must not preview or persist into this editor.
+        boolean draftForeign = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
+                && (editing == null || personaDraftOwnerId == null || !editing.id.equals(personaDraftOwnerId));
+        if (draftForeign) {
+            deleteAvatarFile(personaAvatarDraft);
+            personaAvatarDraft = null;
+        }
+        personaDraftOwnerId = editing != null ? editing.id : null;
+
+        String name = editing != null ? editing.name : "";
+        String description = editing != null ? editing.description : "";
+        final String storedAvatar = editing != null ? editing.avatarPath : "";
 
         LinearLayout preview = makeCard();
         preview.setGravity(Gravity.CENTER);
@@ -496,15 +562,15 @@ public class MainActivity extends Activity {
                 personaAvatarDraft != null && !personaAvatarDraft.isEmpty() ? personaAvatarDraft : storedAvatar);
         addCardToPage(preview);
 
-        EditText nameField = field("Adın (boş bırakılırsa \"Sen\" sayılır)", name, 1);
+        EditText nameField = field(L10n.s("Adın (boş bırakılırsa \"Sen\" sayılır)"), name, 1);
         nameField.setSingleLine(true);
         personaNameField = nameField;
-        EditText descriptionField = field("Kendini tanıt (davranışını ve sesini etkiler)", description, 3);
-        addBody("RP sohbetlerinde mesajların \"Sen\" etiketiyle kalır; model sana \"Kullanıcı kimliği\" bloğunda burada yazdığın bilgilerle davranır.");
-        addPrimary("Profil fotoğrafı seç", v -> pickAvatar(true));
+        EditText descriptionField = field(L10n.s("Kendini tanıt (davranışını ve sesini etkiler)"), description, 3);
+        addBody(L10n.s("RP sohbetlerinde mesajların \"Sen\" etiketiyle kalır; model sana \"Kullanıcı kimliği\" bloğunda burada yazdığın bilgilerle davranır."));
+        addPrimary(L10n.s("Profil fotoğrafı seç"), v -> pickAvatar(true));
         if ((personaAvatarDraft != null && !personaAvatarDraft.isEmpty())
                 || !storedAvatar.isEmpty()) {
-            addDangerButton("Fotoğrafı kaldır", v -> {
+            addDangerButton(L10n.s("Fotoğrafı kaldır"), v -> {
                 String path = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
                         ? personaAvatarDraft : storedAvatar;
                 deleteAvatarFile(path);
@@ -515,7 +581,14 @@ public class MainActivity extends Activity {
                 }
             });
         }
-        addPrimary("Profili kaydet", v -> {
+        if (editing != null && !store.isDefaultPersona(editing.id)) {
+            addSecondary(L10n.s("Varsayılan kişilik yap"), v -> {
+                store.setDefaultPersonaId(editing.id);
+                Toast.makeText(this, L10n.s("Varsayılan kişilik güncellendi."), Toast.LENGTH_SHORT).show();
+                showPersonas();
+            });
+        }
+        addPrimary(L10n.s("Kişiliği kaydet"), v -> {
             String savedName = nameField.getText().toString().trim();
             String savedDescription = descriptionField.getText().toString().trim();
             String savedAvatar = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
@@ -523,18 +596,61 @@ public class MainActivity extends Activity {
             // A fresh draft replaces the persisted file; delete the old one only once
             // the save succeeded, so backing out can never orphan the kept avatar.
             String replacedAvatar = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
-                    && storedAvatar != null && !storedAvatar.isEmpty()
-                    && !storedAvatar.equals(personaAvatarDraft)
+                    && !storedAvatar.isEmpty() && !storedAvatar.equals(personaAvatarDraft)
                     ? storedAvatar : null;
+            List<Persona> updated = new ArrayList<>(store.personas());
+            if (editing != null) {
+                for (int i = 0; i < updated.size(); i++) {
+                    if (updated.get(i).id.equals(editing.id)) {
+                        Persona p = updated.get(i);
+                        p.name = savedName;
+                        p.description = savedDescription;
+                        p.avatarPath = savedAvatar;
+                        updated.set(i, p);
+                        break;
+                    }
+                }
+            } else {
+                String id = "persona-" + System.currentTimeMillis();
+                updated.add(new Persona(id, savedName, savedDescription, savedAvatar));
+                if (updated.size() == 1) store.setDefaultPersonaId(id); // first identity becomes default
+            }
             personaAvatarDraft = null;
-            if (!store.savePersona(savedName, savedDescription, savedAvatar)) {
+            personaDraftOwnerId = null;
+            if (!store.savePersonas(updated)) {
                 Toast.makeText(this, L10n.s("Profil kayda geçemedi."), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (replacedAvatar != null) deleteAvatarFile(replacedAvatar);
-            Toast.makeText(this, L10n.s("Kullanıcı profili kaydedildi."), Toast.LENGTH_SHORT).show();
-            showCharacters();
+            Toast.makeText(this, L10n.s("Kullanıcı kişiliği kaydedildi."), Toast.LENGTH_SHORT).show();
+            showPersonas();
         });
+        if (editing != null) {
+            addDangerButton(L10n.s("Kişiliği sil"), v -> confirm(
+                    (savedNameSafe(editing) ) + L10n.s(" kişiliği silinsin mi?"), L10n.s("Sil"), () -> {
+                List<Persona> remaining = new ArrayList<>(store.personas());
+                Persona doomed = null;
+                for (Persona p : remaining) if (p.id.equals(editing.id)) { doomed = p; remaining.remove(p); break; }
+                if (doomed == null) return;
+                if (!remaining.isEmpty() && store.isDefaultPersona(editing.id)) {
+                    store.setDefaultPersonaId(remaining.get(0).id);
+                }
+                if (!store.savePersonas(remaining)) {
+                    Toast.makeText(this, L10n.s("Profil kayda geçemedi."), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                store.clearChatPersonaReferences(editing.id);
+                if (!doomed.avatarPath.isEmpty()) deleteAvatarFile(doomed.avatarPath);
+                Toast.makeText(this, L10n.s("Kişilik silindi."), Toast.LENGTH_SHORT).show();
+                showPersonas();
+            }));
+        }
+    }
+
+    /** Persona display name used in confirm dialogs; falls back to "Adsız kişilik". */
+    private String savedNameSafe(Persona persona) {
+        return persona.name == null || persona.name.trim().isEmpty()
+                ? L10n.s("Adsız kişilik") : persona.name;
     }
 
     /** One-tap copies a preset into the user's own editable character list. */
@@ -2200,6 +2316,28 @@ public class MainActivity extends Activity {
             });
         }
 
+        // v0.19.16: which user identity plays "Sen" in this conversation.
+        addSection("Bu sohbetin kişiliği", null, null);
+        Persona effective = store.personaForChat(id);
+        String overrideId = store.chatPersonaId(id);
+        addBody(overrideId == null || overrideId.isEmpty()
+                ? (effective != null
+                        ? L10n.s("Genel varsayılanı izler: ") + (effective.name.isEmpty() ? L10n.s("Adsız kişilik") : effective.name)
+                        : L10n.s("Henüz bir kişilik tanımlı."))
+                : L10n.s("Bu sohbet: ") + (effective != null && !effective.name.isEmpty() ? effective.name : L10n.s("Adsız kişilik")) + L10n.s(" (kişisel seçim)"));
+        addSecondary("Kişilik seç", v -> showChatPersonaPicker(group));
+        if (overrideId != null && !overrideId.isEmpty()) {
+            addSecondary("Kişiliği genel varsayılana döndür", v -> {
+                if (chatProfileBusy(group)) return;
+                store.setChatPersona(id, "");
+                contextChars.remove(id);
+                chatMetrics.remove(id);
+                LocalAiRuntime.INSTANCE.resetConversation(id);
+                Toast.makeText(this, L10n.s("Bu sohbet genel varsayılan kişiliği izliyor."), Toast.LENGTH_SHORT).show();
+                showChatProfile(group);
+            });
+        }
+
         addSection("Profili sıfırla", null, null);
         addDangerButton("Tüm profili genel ayara döndür", v -> confirm(
                 L10n.s("Bu sohbetin üretim profili sıfırlansın mı?"), L10n.s("Sıfırla"), () -> {
@@ -2212,6 +2350,47 @@ public class MainActivity extends Activity {
                     Toast.makeText(this, L10n.s("Profil genel ayara döndü."), Toast.LENGTH_SHORT).show();
                     showChatProfile(group);
                 }));
+    }
+
+    /** v0.19.16: per-chat persona picker; first row follows the global default. */
+    private void showChatPersonaPicker(Group group) {
+        List<Persona> personas = store.personas();
+        if (personas.isEmpty()) {
+            Toast.makeText(this, L10n.s("Önce karakterler ekranından bir kullanıcı kişiliği tanımla."), Toast.LENGTH_LONG).show();
+            return;
+        }
+        String current = store.chatPersonaId(group.id);
+        String[] labels = new String[personas.size() + 1];
+        labels[0] = L10n.s("Genel varsayılanı izle") + ((current == null || current.isEmpty()) ? "  ✓" : "");
+        for (int i = 0; i < personas.size(); i++) {
+            Persona p = personas.get(i);
+            labels[i + 1] = (p.name.isEmpty() ? L10n.s("Adsız kişilik") : p.name)
+                    + (store.isDefaultPersona(p.id) ? L10n.s("  ·  varsayılan") : "")
+                    + (p.id.equals(current) ? "  ✓" : "");
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(L10n.s("Bu sohbetin kişiliği"))
+                .setItems(labels, (d, which) -> {
+                    if (chatProfileBusy(group)) return; // a running turn must finish on its own prompt
+                    if (which == 0) {
+                        store.setChatPersona(group.id, "");
+                        Toast.makeText(this, L10n.s("Bu sohbet genel varsayılan kişiliği izliyor."), Toast.LENGTH_SHORT).show();
+                    } else {
+                        Persona chosen = personas.get(which - 1);
+                        store.setChatPersona(group.id, chosen.id);
+                        Toast.makeText(this, chosen.name.isEmpty()
+                                ? L10n.s("Bu sohbet artık adsız kişilik ile oynanıyor.")
+                                : L10n.s("Bu sohbet artık ") + chosen.name + L10n.s(" ile oynanıyor."), Toast.LENGTH_SHORT).show();
+                    }
+                    // The engine's shared context holds the previous identity; a persona
+                    // switch must not let the model keep roleplaying the old "Sen".
+                    contextChars.remove(group.id);
+                    chatMetrics.remove(group.id);
+                    LocalAiRuntime.INSTANCE.resetConversation(group.id);
+                    showChatProfile(group);
+                })
+                .setNegativeButton(L10n.s("Vazgeç"), null)
+                .show();
     }
 
     /** Theme picker scoped to one chat; first row drops the override and follows the global theme. */
@@ -4747,8 +4926,8 @@ public class MainActivity extends Activity {
         boolean english = L10n.english;
         String instructions = resolveGeneralInstructions(english);
         String themeId = chatThemeId(group.id);
-        String[] persona = store.persona();
-        String[] personaText = persona != null ? new String[]{persona[0], persona[1]} : null;
+        // v0.19.16: the chat's own persona wins; otherwise the global default identity.
+        String[] personaText = store.personaTextForChat(group.id);
         return RoleplayPrompt.build(
                 group.name,
                 speaker,

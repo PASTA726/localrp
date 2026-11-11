@@ -78,16 +78,112 @@ class Store {
         return putCharacters(all);
     }
 
-    /** User persona record: null result = no persona configured (or unreadable). */
-    String[] persona() {
-        return PersistenceCodec.decodePersona(preferences.getString("user_persona", null));
+    // ---- v0.19.16 multi-persona system ----
+
+    static final String DEFAULT_PERSONA_ID = "default";
+
+    /** All personas with one-time migration from the legacy single-persona key. */
+    java.util.List<Persona> personas() {
+        String raw = preferences.getString("user_personas", null);
+        if (raw == null) {
+            // Legacy install: lift the single record into the list under a fixed id.
+            String legacy = preferences.getString("user_persona", null);
+            if (legacy != null) {
+                String[] fields = PersistenceCodec.decodePersona(legacy);
+                // An unreadable legacy record must not be deleted: keep the key so a
+                // later read can still rescue it, and leave the migration undone.
+                if (fields != null) {
+                    java.util.List<Persona> migrated = new java.util.ArrayList<>();
+                    migrated.add(new Persona(DEFAULT_PERSONA_ID, fields[0], fields[1], fields[2]));
+                    setDefaultPersonaId(DEFAULT_PERSONA_ID);
+                    preferences.edit().putString("user_personas", PersistenceCodec.encodePersonas(migrated))
+                            .remove("user_persona").apply();
+                }
+            }
+            return raw == null ? personasFromLegacyOnly() : PersistenceCodec.decodePersonas(raw).items;
+        }
+        PersistenceCodec.Decode<Persona> decoded = PersistenceCodec.decodePersonas(raw);
+        return decoded.items;
     }
 
-    boolean savePersona(String name, String description, String avatarPath) {
-        String raw = PersistenceCodec.encodePersona(name, description, avatarPath);
+    /** Legacy key without user_personas: an unreadable record yields an empty list. */
+    private java.util.List<Persona> personasFromLegacyOnly() {
+        String legacy = preferences.getString("user_persona", null);
+        if (legacy == null) return new java.util.ArrayList<>();
+        String[] fields = PersistenceCodec.decodePersona(legacy);
+        return fields != null
+                ? java.util.Collections.singletonList(new Persona(DEFAULT_PERSONA_ID, fields[0], fields[1], fields[2]))
+                : new java.util.ArrayList<>();
+    }
+
+    boolean savePersonas(java.util.List<Persona> items) {
+        String raw = PersistenceCodec.encodePersonas(items);
         if (raw.isEmpty()) return false;
-        preferences.edit().putString("user_persona", raw).apply();
+        // A write is allowed over storage that parses cleanly (or migrated legacy data).
+        String current = preferences.getString("user_personas", null);
+        if (current != null && PersistenceCodec.decodePersonas(current).rootCorrupt) return false;
+        preferences.edit().putString("user_personas", raw).apply();
         return true;
+    }
+
+    /** Default persona: the one marked default, else the first, else null. */
+    Persona defaultPersona() {
+        java.util.List<Persona> all = personas();
+        if (all.isEmpty()) return null;
+        String preferred = preferences.getString("default_persona_id", "");
+        for (Persona p : all) if (p.id.equals(preferred)) return p;
+        return all.get(0);
+    }
+
+    boolean isDefaultPersona(String id) {
+        Persona d = defaultPersona();
+        return d != null && d.id.equals(id);
+    }
+
+    void setDefaultPersonaId(String id) {
+        preferences.edit().putString("default_persona_id", id).apply();
+    }
+
+    Persona personaById(String id) {
+        if (id == null || id.isEmpty()) return null;
+        for (Persona p : personas()) if (p.id.equals(id)) return p;
+        return null;
+    }
+
+    /** Per-chat persona override; "" (or missing) = follow the global default. */
+    String chatPersonaId(String chatId) {
+        return preferences.getString("chat_persona_" + chatId, "");
+    }
+
+    void setChatPersona(String chatId, String personaId) {
+        preferences.edit().putString("chat_persona_" + chatId, personaId == null ? "" : personaId).apply();
+    }
+
+    /** Effective persona for a chat: its override wins, else the global default. */
+    Persona personaForChat(String chatId) {
+        Persona override = personaById(chatPersonaId(chatId));
+        if (override != null) return override;
+        return defaultPersona();
+    }
+
+    /** Drops every per-chat override that points at a deleted persona. */
+    void clearChatPersonaReferences(String personaId) {
+        android.content.SharedPreferences prefs = preferences;
+        java.util.Map<String, ?> all = prefs.getAll();
+        java.util.List<String> doomed = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<String, ?> e : all.entrySet()) {
+            if (e.getKey().startsWith("chat_persona_") && personaId.equals(e.getValue())) doomed.add(e.getKey());
+        }
+        if (doomed.isEmpty()) return;
+        android.content.SharedPreferences.Editor editor = prefs.edit();
+        for (String key : doomed) editor.remove(key);
+        editor.apply();
+    }
+
+    /** RoleplayPrompt-compatible {name, description} pair, or null when none exists. */
+    String[] personaTextForChat(String chatId) {
+        Persona p = personaForChat(chatId);
+        return p != null ? new String[]{p.name, p.description} : null;
     }
 
     boolean deleteCharacter(String id) {        if (defaultCharacterId.equals(id)) return true;
