@@ -101,20 +101,8 @@ final class PersistenceCodec {
         return c;
     }
 
-    /** Persona record: {name, description, avatar local path}. */
-    static String encodePersona(String name, String description, String avatarPath) {
-        try {
-            JSONObject o = new JSONObject();
-            o.put("name", name == null ? "" : name);
-            o.put("description", description == null ? "" : description);
-            o.put("avatar", avatarPath == null ? "" : avatarPath);
-            return o.toString();
-        } catch (JSONException e) {
-            return "";
-        }
-    }
-
-    /** @return {name, description, avatarPath} or null when the record is unreadable. */
+    /** Legacy single-persona record (v0.14–v0.15 format): read-only today — the
+     *  v0.19.16 migration decodes it into the persona list; nothing writes it. */
     static String[] decodePersona(String raw) {
         if (raw == null || raw.isEmpty()) return null;
         try {
