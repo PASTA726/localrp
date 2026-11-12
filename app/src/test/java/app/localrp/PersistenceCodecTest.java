@@ -215,12 +215,19 @@ public class PersistenceCodecTest {
     }
 
     @Test
-    public void persona_roundTrips_andFailsSoftly() {
-        String raw = PersistenceCodec.encodePersona("Evren", "Sessiz bahçıvan", "/x/p.png");
-        String[] persona = PersistenceCodec.decodePersona(raw);
+    public void persona_legacyRecordDecodes_andFailsSoftly() {
+        // The legacy single-persona key was produced by the v0.14–v0.15 app; nothing
+        // writes it anymore, but the migration must keep decoding it faithfully.
+        String legacy = "{\"name\":\"Evren\",\"description\":\"Sessiz bahçıvan\",\"avatar\":\"/x/p.png\"}";
+        String[] persona = PersistenceCodec.decodePersona(legacy);
         assertEquals("Evren", persona[0]);
         assertEquals("Sessiz bahçıvan", persona[1]);
         assertEquals("/x/p.png", persona[2]);
+        // Missing keys collapse to empty fields, never nulls.
+        String[] sparse = PersistenceCodec.decodePersona("{\"name\":\"Sade\"}");
+        assertEquals("Sade", sparse[0]);
+        assertEquals("", sparse[1]);
+        assertEquals("", sparse[2]);
 
         assertNull(PersistenceCodec.decodePersona(null));
         assertNull(PersistenceCodec.decodePersona(""));

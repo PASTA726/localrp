@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.20-alpha1 — 2026-11-12 (operasyon temizliği)
+
+Ölü kod çıkarma + bir GUI geçişinde sessizce erişilemez olmuş özelliğin geri bağlanması.
+
+- **Uzun basış menüsü geri geldi**: karakter grid hücrelerinde uzun basış yeniden "Kopya oluştur / JSON dışa aktar" menüsünü açar — list→grid yenilemesinde bu etkileşim sessizce kaybolmuştu (grid hücresinde `OnLongClickListener` yoktu). Davranış: uzun basış = eylemler, dokunuş = editör (öncekiyle aynı).
+- **Ölü kod**: hiç çağrılmayan `addCharacterStrip` + `addCharacterCard` (eski liste düzeni, grid yenilemesinde boşa düşmüştü) kaldırıldı; `PersistenceCodec.encodePersona` (legacy kayıt yazıcısı — uygulama artık yalnızca çözümlüyor) kaldırıldı, testi satır-içi legacy JSON ile `decodePersona`'yı doğrular hale geldi.
+- **Depo temizliği**: 35 birleştirilmiş yerel dal silindi (yalnızca `main` kaldı); `.tmp` arşivindeki 40 eski APK kaldırıldı (~907 MB) — tüm APK'lar zaten GitHub Releases'ta SHA-256 doğrulamalı yayında, en güncel APK ve tüm sürüm notları/raporlar korundu.
+- **Doküman**: `ARCHITECTURE.md`'deki bayat satır sayıları güncellendi.
+- **Bilinçli tutulanlar**: dinamik sarmalanmış dize sözlük girdileri (tema adları `L10n.s(theme[1])`, katalog metinleri `L10n.s(model.why)` kullanım yerinde çevrildiği için "kullanılmayan" görünen girdiler gerçekte canlı); `docs/logo-source.png` (kullanıcının eski logo kaynak dosyası olabileceği için korundu).
+- versionCode 49 / 0.19.20-alpha1.
+
 ## v0.19.19-alpha1 — 2026-11-11 (güvenlik güncellemesi)
 
 Platform düzeyinde savunma derinliği: ağ politikası ve veri çıkarma kuralları artık açıkça shipped — davranışsal değişiklik yok, garanti sözleşmeye dönüştü.

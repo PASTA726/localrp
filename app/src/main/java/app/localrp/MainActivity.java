@@ -5596,38 +5596,14 @@ public class MainActivity extends Activity {
         desc.setEllipsize(TextUtils.TruncateAt.END);
         desc.setPadding(0, dp(3), 0, 0);
         card.addView(desc);
-        // Tapping a grid cell opens the character editor, matching the previous long list.
-        card.setOnClickListener(v -> showCharacterEditor(character));
-        return card;
-    }
-
-    private void addCharacterStrip(List<CharacterProfile> characters) {
-        for (CharacterProfile character : characters) addCharacterCard(character);
-    }
-
-    private void addCharacterCard(CharacterProfile character) {
-        LinearLayout card = makeCard();
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        View avatar = Avatar.forIdentity(this, character.name, character.avatarPath, 42);
-        row.addView(avatar, new LinearLayout.LayoutParams(dp(42), dp(42)));
-        LinearLayout texts = new LinearLayout(this);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        texts.setPadding(dp(12), 0, 0, 0);
-        TextView name = label(character.name, 17, Design.text());
-        name.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        texts.addView(name);
-        TextView desc = label(brief(character.description), 13, Design.muted());
-        desc.setPadding(0, dp(3), 0, 0);
-        texts.addView(desc);
-        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        card.addView(row);
+        // Tap opens the editor; long-press opens quick actions (copy / JSON export),
+        // restoring the interaction the earlier list→grid rework had orphaned.
         card.setOnClickListener(v -> showCharacterEditor(character));
         card.setOnLongClickListener(v -> {
             showCharacterActions(character);
             return true;
         });
-        addCardToPage(card);
+        return card;
     }
 
     /**
