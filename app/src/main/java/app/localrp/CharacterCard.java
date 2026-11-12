@@ -23,7 +23,8 @@ final class CharacterCard {
     static final byte[] PNG_SIGNATURE = {(byte) 137, 80, 78, 71, 13, 10, 26, 10};
     /** Hard caps keep hostile/huge inputs from exhausting memory. */
     private static final int MAX_PNG_BYTES = 12 * 1024 * 1024;
-    private static final int MAX_CHUNK_BYTES = 4 * 1024 * 1024;
+    /** Only tEXt payloads are read into memory; other chunk types are skipped. */
+    private static final int MAX_TEXT_CHUNK_BYTES = 4 * 1024 * 1024;
 
     // ---- JSON ----
 
@@ -158,9 +159,10 @@ final class CharacterCard {
         int pos = 8;
         while (pos + 8 <= png.length) {
             long length = readLength(png, pos);
-            if (length < 0 || length > MAX_CHUNK_BYTES || pos + 12 + length > png.length) return null;
-            boolean isText = type(png, pos).equals("tEXt");
+            if (length < 0 || pos + 12 + length > png.length) return null;
             int dataStart = pos + 8;
+            boolean isText = type(png, pos).equals("tEXt");
+            if (isText && length > MAX_TEXT_CHUNK_BYTES) return null; // hostile payload
             if (isText && length > keywordBytes.length) {
                 boolean keywordMatches = true;
                 for (int i = 0; i < keywordBytes.length; i++) {
@@ -208,7 +210,9 @@ final class CharacterCard {
         int pos = 8;
         while (pos + 8 <= png.length) {
             long length = readLength(png, pos);
-            if (length < 0 || length > MAX_CHUNK_BYTES || pos + 12 + length > png.length) return -1;
+            // Traversal is bound by the file itself: large IDAT chunks of real
+            // PNGs must be skipped, not rejected (Codex review v0.21.00).
+            if (length < 0 || pos + 12 + length > png.length) return -1;
             if (type(png, pos).equals("IEND")) return pos;
             pos += 8 + (int) length + 4;
         }

@@ -153,4 +153,37 @@ public class CharacterCardTest {
         // chara still absent, so card import must fail cleanly.
         assertNull(CharacterCard.fromJson(CharacterCard.cardFromPng(png)));
     }
+
+    @Test
+    public void png_largeNonTextChunks_areSkipped() {
+        // Real PNGs carry IDAT chunks above the text-payload cap; the scan must
+        // traverse them instead of rejecting the file (Codex review v0.21.00).
+        byte[] big = new byte[5 * 1024 * 1024];
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        for (byte b : CharacterCard.PNG_SIGNATURE) out.write(b);
+        byte[] idatChunk = asChunk("IDAT", big);
+        out.write(idatChunk, 0, idatChunk.length);
+        byte[] iendChunk = asChunk("IEND", new byte[0]);
+        out.write(iendChunk, 0, iendChunk.length);
+        byte[] card = CharacterCard.buildCardPng(out.toByteArray(), profile());
+        assertNotNull(card);
+        assertEquals("Elif Kaya", CharacterCard.fromJson(CharacterCard.cardFromPng(card)).name);
+    }
+
+    @Test
+    public void png_oversizedTextChunk_isRejected() {
+        byte[] payload = new byte[5 * 1024 * 1024];
+        payload[0] = 'c';
+        payload[1] = 'h';
+        payload[2] = 'a';
+        payload[3] = 'r';
+        payload[4] = 'a';
+        payload[5] = 0;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        for (byte b : CharacterCard.PNG_SIGNATURE) out.write(b);
+        out.write(asChunk("tEXt", payload), 0, 12 + payload.length);
+        byte[] iendChunk = asChunk("IEND", new byte[0]);
+        out.write(iendChunk, 0, iendChunk.length);
+        assertNull(CharacterCard.findTextChunk(out.toByteArray(), "chara"));
+    }
 }

@@ -316,6 +316,9 @@ public class MainActivity extends Activity {
             pendingExportCharacters = new java.util.HashSet<>(state.getStringArrayList("pendingExportChars"));
             pendingExportGroups = new java.util.HashSet<>(state.getStringArrayList("pendingExportGroups"));
         }
+        if (state != null) {
+            charExportTarget = state.getString("charExportTarget", null);
+        }
         String modelUri = prefs.getString("selected_model_uri", null);
         if (modelUri != null) selectedModel = Uri.parse(modelUri);
         selectedModelName = prefs.getString("selected_model_name", selectedModelName);
@@ -4623,6 +4626,11 @@ public class MainActivity extends Activity {
         if (pendingExportGroups != null) {
             outState.putStringArrayList("pendingExportGroups", new ArrayList<>(pendingExportGroups));
         }
+        // A SAF picker may recreate the activity (Codex review v0.21.00): the card
+        // export target must survive, or the picked file has no character to write.
+        if (charExportTarget != null) {
+            outState.putString("charExportTarget", charExportTarget);
+        }
     }
 
     /** Drops a staged selection the moment it is consumed or the picker is cancelled. */
@@ -6135,7 +6143,9 @@ public class MainActivity extends Activity {
                         byte[] raw = buffer.toByteArray();
                         if (CharacterCard.isPng(raw)) return raw;
                     }
-                    Bitmap decoded = BitmapFactory.decodeFile(character.avatarPath);
+                    // Not a PNG (or over the size cap): decode at card resolution and
+                    // re-encode, so an oversized avatar still becomes a valid card.
+                    Bitmap decoded = scaledAvatarBitmap(character.avatarPath);
                     if (decoded != null) {
                         byte[] png = bitmapToPng(decoded);
                         decoded.recycle();
@@ -6147,6 +6157,18 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /** Decodes the avatar at card resolution (≤512px) to bound the PNG size. */
+    private Bitmap scaledAvatarBitmap(String path) {
+        android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(path, bounds);
+        int sample = 1;
+        while (bounds.outWidth / (sample * 2) >= 512 || bounds.outHeight / (sample * 2) >= 512) sample *= 2;
+        android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+        options.inSampleSize = sample;
+        return BitmapFactory.decodeFile(path, options);
     }
 
     private byte[] generatedCardImage(String name) {

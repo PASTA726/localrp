@@ -11,7 +11,7 @@ P0 önceliği: SillyTavern ekosistemiyle karakter alışverişi.
 - **İçe aktarma**: Karakterler sayfasındaki "Kart içe aktar (PNG / JSON)" her iki formatı da kabul eder; PNG kendisi import edilen karakterin avatarına kopyalanır. V1 düz kartlar (data sarmalayıcısız) da okunur. `scenario` ve `first_mes` alanları LocalRP'de özel alan olmadığından açıklamaya paragraf olarak eklenir (atılırlar). İçe aktarılan karakter yeni kimlik alır — çakışma yok.
 - **Saf mantık**: `CharacterCard` sınıfı (JSON eşleme + PNG chunk kodlayıcı/çözücü, java.util.zip.CRC32 ile RFC 1950 CRC), JVM testli; chunk sınırları ve PNG imza doğrulaması bozuk dosyalara karşı korur.
 - Eski "JSON dışa aktar" (LocalRP PersistenceCodec formatı) değişmedi — yedek/taşıma yolu aynı kalır.
-- 8 yeni birim testi (`CharacterCard`) → toplam 169.
+- 10 yeni birim testi (`CharacterCard`) → toplam 171.
 - versionCode 54 / 0.21.00-alpha1.
 
 ## v0.20.01-alpha1 — 2026-11-12 (erişilebilirlik + tanılama)
