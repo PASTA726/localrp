@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.20.01-alpha1 — 2026-11-12 (erişilebilirlik + tanılama)
+
+İki dış AI incelemesinin (Codex + DeepSeek) ortak önceliği: dokunma alanları, çökme kaydı ve Ayarlar'da tanılama kartı.
+
+- **48dp dokunma alanları**: sohbet konuşmacı seçici (40), devam düğmesi (44), fotoğraf/görsel düğmeleri (44), görsel görüntüleyici kapatma (44), Ayarlar satır düğmeleri (46), konuşma başlatıcı çipleri (40), composer fotoğraf çipi (38) ve v0.20.00'ın yeni çipleri/hızlı araçları/nav öğeleri artık en az 48dp — Android Views erişilebilirlik kılavuzunun önerisi.
+- **TalkBack etiketleri**: eksik açıklamalar tamamlandı (composer'daki ekli fotoğrafın kaldırma ✕ düğmesi dahil); metinli kontroller zaten etiketli.
+- **Çökme kaydı**: global uncaught exception yakalayıcı, son çökmenin türünü/mesajını/yığın tepesini (kırpılmış, toplam uzunluk sınırlı) SharedPreferences'a yazar. Zincirleme davranış korunur: önceki handler aynen çalışır, süreç ölümü etkilenmez; işlem başına bir kez kurulur.
+- **Ayarlar'da Tanılama kartı**: uygulama sürümü, Android sürümü, cihaz modeli, boş depolama ve varsa son çökme bloğu; "Tanılama raporunu kopyala" panoya tam raporu verir (hiçbir şey otomatik gönderilmez — manuel kurulum yapan kullanıcının hata raporuna yapıştırması için), çökme kaydı varken "Son çökme kaydını temizle" çıkar.
+- 6 yeni birim testi (`Diagnostics`: kayıt kırpma, null güvenliği, yığın tavanı, rapor biçimi) → toplam 161.
+- versionCode 53 / 0.20.01-alpha1.
+
 ## v0.20.00-alpha1 — 2026-11-12 (yeni arayüz: FigCraft önerisi koda döküldü)
 
 Onaylanan FigCraft UI önerisinin ilk dört parçası native olarak uygulandı.

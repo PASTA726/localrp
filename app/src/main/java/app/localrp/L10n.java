@@ -970,5 +970,15 @@ public final class L10n {
         EN.put("TEK", "SOLO");
         EN.put("Yönlendir", "Steer");
         EN.put("Geri getir", "Restore");
+        // v0.20.01 accessibility + diagnostics
+        EN.put("Tanılama", "Diagnostics");
+        EN.put("Cihaz ve son çökme", "Device and last crash");
+        EN.put("Tanı", "Diag");
+        EN.put("Tanılama raporunu kopyala", "Copy diagnostics report");
+        EN.put("LocalRP tanılama", "LocalRP diagnostics");
+        EN.put("Son çökme kaydını temizle", "Clear last-crash record");
+        EN.put("Son çökme kaydı yok. Cihaz ve uygulama bilgisi raporda hazır.",
+                "No crash on record. Device and app details are ready in the report.");
+        EN.put("Eklenti fotoğrafını kaldır", "Remove attached photo");
     }
 }

@@ -282,6 +282,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         store = new Store(this, BUILTIN_ROLEPLAY_ID);
         store.migrateToRoleplay();
+        installCrashHook();
         if (!store.integrityIssues().isEmpty()) reportIntegrityIssues();
         // Leftover generation drafts (crash mid-stream) become normal messages once, up front.
         restoreInterruptedDrafts();
@@ -320,6 +321,60 @@ public class MainActivity extends Activity {
         // Auto-load the pinned model a tick after the first frame so the UI is alive
         // before any long JNI work starts (DeepSeek item 11).
         new android.os.Handler(android.os.Looper.getMainLooper()).post(this::maybeAutoLoadModelAtStartup);
+    }
+
+    /** v0.20.01: remembers the last uncaught crash in prefs so the Settings
+     *  diagnostics card can show it; the previous handler still runs, so process
+     *  death behaves exactly as before. Installed once per app process. */
+    private static volatile Thread.UncaughtExceptionHandler crashHookPrev;
+
+    private void installCrashHook() {
+        Thread.UncaughtExceptionHandler current = Thread.getDefaultUncaughtExceptionHandler();
+        if (crashHookPrev != null) return; // this process already has the hook
+        crashHookPrev = current;
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            try {
+                Diagnostics.CrashRecord crash = Diagnostics.fromThrowable(
+                        System.currentTimeMillis(), throwable);
+                prefs().edit()
+                        .putLong("diag_crash_at", crash.at)
+                        .putString("diag_crash_type", crash.type)
+                        .putString("diag_crash_message", crash.message)
+                        .putString("diag_crash_stack", crash.stack)
+                        .apply();
+            } catch (Throwable ignored) {
+                // The hook must never break process death handling.
+            }
+            if (crashHookPrev != null) crashHookPrev.uncaughtException(thread, throwable);
+        });
+    }
+
+    /** v0.20.01: short status line for the Settings diagnostics card. */
+    private String diagnosticsSummary() {
+        long at = prefs().getLong("diag_crash_at", 0L);
+        if (at <= 0) return L10n.s("Son çökme kaydı yok. Cihaz ve uygulama bilgisi raporda hazır.");
+        String when = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(new Date(at));
+        return when + " · " + prefs().getString("diag_crash_type", "");
+    }
+
+    /** v0.20.01: the full diagnostics text the copy action puts on the clipboard. */
+    private String diagnosticsReport() {
+        long at = prefs().getLong("diag_crash_at", 0L);
+        Diagnostics.CrashRecord crash = at <= 0 ? null : new Diagnostics.CrashRecord(at,
+                prefs().getString("diag_crash_type", ""),
+                prefs().getString("diag_crash_message", ""),
+                prefs().getString("diag_crash_stack", ""));
+        long freeBytes = new File(getFilesDir().getAbsolutePath()).getUsableSpace();
+        return Diagnostics.buildReport(appVersionName(), android.os.Build.VERSION.SDK_INT,
+                android.os.Build.MODEL, freeBytes, crash);
+    }
+
+    private String appVersionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "?";
+        }
     }
 
     private void reportIntegrityIssues() {
@@ -428,6 +483,7 @@ public class MainActivity extends Activity {
         boolean selected = value.equals(homeChip);
         TextView chip = label(L10n.s(title), 13, selected ? Design.accent() : Design.muted());
         chip.setPadding(dp(14), dp(7), dp(14), dp(7));
+        chip.setMinimumHeight(dp(48));
         chip.setBackground(rounded(selected ? Design.accentSoft() : Design.cardBg(),
                 selected ? Design.accentSoft() : Design.cardBg(), 16));
         chip.setOnClickListener(v -> {
@@ -1178,7 +1234,7 @@ public class MainActivity extends Activity {
         for (String[] starter : starters) {
             TextView chip = label(starter[0], 13, Design.accent());
             chip.setPadding(dp(14), dp(8), dp(14), dp(8));
-            chip.setMinimumHeight(dp(40));
+            chip.setMinimumHeight(dp(48));
             chip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 20));
             chip.setOnClickListener(v -> {
                 if (chatInput == null || !group.id.equals(chatInputChatId)) return;
@@ -1303,7 +1359,7 @@ public class MainActivity extends Activity {
         // secondary control; the input + accent send button carry the visual weight.
         chatSpeakerView = label("", 12, Design.muted());
         chatSpeakerView.setPadding(dp(14), dp(9), dp(14), dp(9));
-        chatSpeakerView.setMinHeight(dp(40));
+        chatSpeakerView.setMinHeight(dp(48));
         chatSpeakerView.setBackground(rounded(Design.cardBg(), Design.cardBg(), 24));
         chatSpeakerView.setOnClickListener(v -> showSpeakerPicker(group));
         tools.addView(chatSpeakerView, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
@@ -1336,7 +1392,7 @@ public class MainActivity extends Activity {
         chatContinueButton.setTextSize(14);
         chatContinueButton.setTextColor(Design.accent());
         chatContinueButton.setBackground(rounded(Design.cardBg(), Design.cardBg(), 24));
-        chatContinueButton.setMinHeight(dp(44));
+        chatContinueButton.setMinHeight(dp(48));
         chatContinueButton.setOnClickListener(v -> continueOrRetry(group));
         LinearLayout.LayoutParams continueParams = fullWidth();
         continueParams.setMargins(0, dp(8), 0, 0);
@@ -1398,7 +1454,7 @@ public class MainActivity extends Activity {
         photo.setTextSize(15);
         photo.setPadding(0, 0, 0, 0);
         photo.setMinWidth(dp(44));
-        photo.setMinHeight(dp(44));
+        photo.setMinHeight(dp(48));
         photo.setTextColor(Design.muted());
         photo.setContentDescription(L10n.s(L10n.s("Fotoğraf ekle")));
         photo.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
@@ -1414,18 +1470,18 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, L10n.s(L10n.s("Bu cihazda fotoğraf seçici yok.")), Toast.LENGTH_SHORT).show();
             }
         });
-        composerRow.addView(photo, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        composerRow.addView(photo, new LinearLayout.LayoutParams(dp(48), dp(48)));
 
         Button paint = button("✨");
         paint.setTextSize(15);
         paint.setPadding(0, 0, 0, 0);
         paint.setMinWidth(dp(44));
-        paint.setMinHeight(dp(44));
+        paint.setMinHeight(dp(48));
         paint.setTextColor(Design.accent());
         paint.setContentDescription(L10n.s(L10n.s("Görsel üret")));
         paint.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
         paint.setOnClickListener(v -> showImageGenerateDialog(group));
-        LinearLayout.LayoutParams paintParams = new LinearLayout.LayoutParams(dp(44), dp(44));
+        LinearLayout.LayoutParams paintParams = new LinearLayout.LayoutParams(dp(48), dp(48));
         paintParams.setMargins(dp(8), 0, 0, 0);
         composerRow.addView(paint, paintParams);
 
@@ -1456,11 +1512,14 @@ public class MainActivity extends Activity {
             LinearLayout chip = new LinearLayout(this);
             chip.setGravity(Gravity.CENTER_VERTICAL);
             chip.setPadding(dp(12), 0, dp(12), 0);
-            chip.setMinimumHeight(dp(38));
+            chip.setMinimumHeight(dp(48));
             chip.setBackground(rounded(Design.accentSoft(), Design.accentStroke(), 20));
             TextView chipLabel = label(L10n.s(L10n.s("📷 Fotoğraf eklendi · gönder ile birlikte gider")), 13, Design.text());
             TextView chipRemove = label("✕", 15, Design.muted());
-            chipRemove.setPadding(dp(10), 0, 0, 0);
+            chipRemove.setPadding(dp(12), 0, dp(12), 0);
+            chipRemove.setMinimumHeight(dp(48));
+            chipRemove.setGravity(Gravity.CENTER);
+            chipRemove.setContentDescription(L10n.s(L10n.s("Eklenti fotoğrafını kaldır")));
             chipRemove.setOnClickListener(v -> {
                 saveComposerDraftTo(chatInputChatId);
                 removePendingComposerChip();
@@ -2917,6 +2976,22 @@ public class MainActivity extends Activity {
                     intent.setType("*/*");
                     startActivityForResult(intent, BACKUP_IMPORT);
                 }));
+
+        // v0.20.01: device + last-crash diagnostics; nothing is sent anywhere —
+        // the report exists so a manual-install user can copy it into a bug report.
+        addSection(L10n.s("Tanılama"), null, null);
+        addInfoCard(L10n.s("Cihaz ve son çökme"), diagnosticsSummary(), L10n.s("Tanı"));
+        addSecondary(L10n.s("Tanılama raporunu kopyala"), v ->
+                copyTextToClipboard(L10n.s("LocalRP tanılama"), diagnosticsReport()));
+        if (prefs().getLong("diag_crash_at", 0L) > 0) {
+            addSecondary(L10n.s("Son çökme kaydını temizle"), v -> {
+                prefs().edit()
+                        .remove("diag_crash_at").remove("diag_crash_type")
+                        .remove("diag_crash_message").remove("diag_crash_stack")
+                        .apply();
+                showSettings();
+            });
+        }
     }
 
     private void showModels() {
@@ -5667,6 +5742,7 @@ public class MainActivity extends Activity {
         text.setPadding(0, dp(2), 0, 0);
         item.addView(text);
         item.setPadding(dp(4), dp(6), dp(4), dp(6));
+        item.setMinimumHeight(dp(48));
         item.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, selected ? 1.35f : 1f);
@@ -6039,7 +6115,7 @@ public class MainActivity extends Activity {
         view.setTextSize(15);
         view.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
         view.setPadding(dp(16), 0, dp(16), 0);
-        view.setMinHeight(dp(46));
+        view.setMinHeight(dp(48));
         view.setBackground(rounded(Design.cardBg(), Design.cardBg(), 18));
         view.setOnClickListener(listener);
         LinearLayout.LayoutParams p = fullWidth();
@@ -6310,7 +6386,7 @@ public class MainActivity extends Activity {
         close.setContentDescription(L10n.s(L10n.s("Kapat")));
         close.setBackground(rounded(Design.cardBg(), Design.cardStroke(), 22));
         close.setOnClickListener(v -> viewer.dismiss());
-        FrameLayout.LayoutParams closeParams = new FrameLayout.LayoutParams(dp(44), dp(44));
+        FrameLayout.LayoutParams closeParams = new FrameLayout.LayoutParams(dp(48), dp(48));
         closeParams.gravity = Gravity.TOP | Gravity.END;
         closeParams.setMargins(0, dp(18), dp(18), 0);
         root.addView(close, closeParams);
@@ -6610,6 +6686,8 @@ public class MainActivity extends Activity {
     private TextView addQuickTool(LinearLayout host, String title, Runnable action) {
         TextView tool = label(title, 12, Design.accent());
         tool.setPadding(dp(12), dp(8), dp(12), dp(8));
+        tool.setMinimumHeight(dp(48));
+        tool.setGravity(Gravity.CENTER);
         tool.setBackground(rounded(Design.cardBg(), Design.cardBg(), 18));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
