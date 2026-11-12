@@ -990,5 +990,12 @@ public final class L10n {
         EN.put("Kart kaydedilemedi: karakter verisi okunamıyor.",
                 "Could not save the card: character data unreadable.");
         EN.put("Karakter kartı içe aktarıldı: ", "Character card imported: ");
+        // v0.22.00 voice
+        EN.put("🔊  Sesli oku", "🔊  Read aloud");
+        EN.put("⏹  Okumayı durdur", "⏹  Stop reading");
+        EN.put("Sesle yaz", "Dictate");
+        EN.put("Bu cihazda ses tanıma yok.", "Speech recognition is not available on this device.");
+        EN.put("Bu cihazda sesli okuma yok.", "Text-to-speech is not available on this device.");
+        EN.put("Ses motoru hazırlanıyor; bir kez daha dokun.", "The speech engine is starting; tap once more.");
     }
 }

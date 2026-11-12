@@ -63,6 +63,7 @@ public class MainActivity extends Activity {
     private static final int CHAR_CARD_PNG_EXPORT = 81;
     private static final int CHAR_CARD_JSON_EXPORT = 82;
     private static final int CHAR_CARD_IMPORT = 83;
+    private static final int SPEECH_INPUT = 84;
     private static final String PREFS = "localrp";
     private static final String DEFAULT_AI_INSTRUCTIONS = "Her zaman sahnenin içinde kal. Seçili karakter olarak konuş ve kullanıcının rolünü üstlenme.";
     private static final String DEFAULT_AI_INSTRUCTIONS_EN = "Stay inside the scene at all times. Speak as the selected character and never take over the user's role.";
@@ -166,6 +167,10 @@ public class MainActivity extends Activity {
     private TextView chatQuickRegen;
     private TextView chatQuickSteer;
     private TextView chatQuickUndo;
+    // v0.22.00 voice: lazy TTS engine for reading messages aloud + STT dictation.
+    private android.speech.tts.TextToSpeech tts;
+    private boolean ttsReady;
+    private boolean ttsFailed;
     // v0.20.00 home: live search pill + usage filter chips + the grid they re-render.
     private String homeSearchQuery = "";
     private String homeChip = "all";
@@ -1468,6 +1473,26 @@ public class MainActivity extends Activity {
 
         // Attachment buttons step down visually (muted strokes, not accent fills); the
         // round accent send stays the single prominent action.
+        // v0.22.00: speech input (system recognizer — no RECORD_AUDIO permission).
+        Button mic = button("🎤");
+        mic.setTextSize(15);
+        mic.setPadding(0, 0, 0, 0);
+        mic.setMinWidth(dp(48));
+        mic.setMinHeight(dp(48));
+        mic.setTextColor(Design.muted());
+        mic.setContentDescription(L10n.s(L10n.s("Sesle yaz")));
+        mic.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
+        mic.setOnClickListener(v -> {
+            Intent speech = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            speech.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            try {
+                startActivityForResult(speech, SPEECH_INPUT);
+            } catch (android.content.ActivityNotFoundException noRecognizer) {
+                Toast.makeText(this, L10n.s(L10n.s("Bu cihazda ses tanıma yok.")), Toast.LENGTH_SHORT).show();
+            }
+        });
+        composerRow.addView(mic, new LinearLayout.LayoutParams(dp(48), dp(48)));
         Button photo = button("📷");
         photo.setTextSize(15);
         photo.setPadding(0, 0, 0, 0);
@@ -4485,6 +4510,22 @@ public class MainActivity extends Activity {
             importCharacterCard(data.getData());
             return;
         }
+        if (requestCode == SPEECH_INPUT && resultCode == RESULT_OK && data != null) {
+            // v0.22.00: dictated text appends to the open composer, if it is still
+            // the visible chat; the recognizer result is user text, never system data.
+            ArrayList<String> heard = data.getStringArrayListExtra(
+                    android.speech.RecognizerIntent.EXTRA_RESULTS);
+            String text = heard != null && !heard.isEmpty() ? heard.get(0) : "";
+            if (!text.isEmpty() && chatInput != null && visibleChatId != null
+                    && visibleChatId.equals(chatInputChatId)) {
+                String current = chatInput.getText().toString();
+                String merged = current.isEmpty() ? text
+                        : current + (current.endsWith(" ") ? "" : " ") + text;
+                chatInput.setText(merged);
+                chatInput.setSelection(merged.length());
+            }
+            return;
+        }
         if (requestCode == BACKUP_IMPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
             importBackup(data.getData());
             return;
@@ -5530,7 +5571,52 @@ public class MainActivity extends Activity {
         else super.onBackPressed();
     }
 
+    /** v0.22.00: lazily creates the TTS engine; initialization is async. */
+    private void ensureTts() {
+        if (tts != null || ttsFailed) return;
+        tts = new android.speech.tts.TextToSpeech(this, status -> {
+            if (status == android.speech.tts.TextToSpeech.SUCCESS && tts != null) {
+                ttsReady = true;
+                tts.setLanguage(Locale.getDefault());
+            } else {
+                ttsFailed = true;
+                ttsReady = false;
+            }
+        });
+    }
+
+    /** v0.22.00: reads a message aloud, queueing long texts in sentence chunks. */
+    private void speakMessage(String text) {
+        ensureTts();
+        if (tts == null || !ttsReady) {
+            Toast.makeText(this, L10n.s(ttsFailed
+                    ? L10n.s("Bu cihazda sesli okuma yok.")
+                    : L10n.s("Ses motoru hazırlanıyor; bir kez daha dokun.")), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<String> parts = SpeechText.split(text);
+        if (parts.isEmpty()) return;
+        tts.stop();
+        for (int i = 0; i < parts.size(); i++) {
+            tts.speak(parts.get(i), i == 0
+                    ? android.speech.tts.TextToSpeech.QUEUE_FLUSH
+                    : android.speech.tts.TextToSpeech.QUEUE_ADD, null, "localrp-" + i);
+        }
+    }
+
+    private void stopSpeech() {
+        if (tts != null && tts.isSpeaking()) tts.stop();
+    }
+
     @Override protected void onDestroy() {
+        // v0.22.00: the TTS engine is per-activity; release it on every teardown
+        // (rotation included) so audio never outlives the window that owns it.
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+            tts = null;
+            ttsReady = false;
+        }
         if (isFinishing()) {
             visibleChatId = null;
             stopImageGeneratingTick();
@@ -6860,6 +6946,14 @@ public class MainActivity extends Activity {
         actions.add(() -> editMessage(index));
         labels.add(L10n.s(L10n.s("Sil")));
         actions.add(() -> confirmDeleteMessage(index));
+        // v0.22.00 voice: read the message aloud; a running read can be stopped
+        // from the same menu (isSpeaking is evaluated when the menu opens).
+        labels.add(L10n.s("🔊  Sesli oku"));
+        actions.add(() -> speakMessage(message.text == null ? "" : message.text));
+        if (tts != null && tts.isSpeaking()) {
+            labels.add(L10n.s("⏹  Okumayı durdur"));
+            actions.add(this::stopSpeech);
+        }
         if (!message.user && index == chatHistory.size() - 1 && !isGeneratingHere()) {
             labels.add(L10n.s(L10n.s("Yeniden üret")));
             actions.add(() -> regenerateLastAction(index, null));
