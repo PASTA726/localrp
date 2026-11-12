@@ -336,12 +336,14 @@ public class MainActivity extends Activity {
             try {
                 Diagnostics.CrashRecord crash = Diagnostics.fromThrowable(
                         System.currentTimeMillis(), throwable);
+                // commit(), not apply(): the process is about to die and the async
+                // apply() write may never reach disk (Codex review v0.20.01).
                 prefs().edit()
                         .putLong("diag_crash_at", crash.at)
                         .putString("diag_crash_type", crash.type)
                         .putString("diag_crash_message", crash.message)
                         .putString("diag_crash_stack", crash.stack)
-                        .apply();
+                        .commit();
             } catch (Throwable ignored) {
                 // The hook must never break process death handling.
             }
