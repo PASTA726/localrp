@@ -2,6 +2,16 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.22.00-alpha1 — 2026-11-12 (ses sistemi · ilk parti: TTS okuma + sesli giriş)
+
+P1 önceliğinin ilk partisi: mesajları dinlemek ve mikrofonla yazmak. (Otomatik özet/anı hafızası sonraki partide.)
+
+- **Sesli okuma (TTS)**: depolanan her mesajın uzun basma menüsünde "🔊 Sesli oku" — Android `TextToSpeech` motoru cihazın dilinde okur. Uzun mesajlar cümle sınırlarından kesilerek sıraya alınır (`SpeechText` saf sınıfı, 2800 karakter tavanı, JVM testli); okuma sırasında menüde "⏹ Okumayı durdur" çıkar. Motor lazy başlatılır, her `onDestroy`'de kapatılır (rotasyon dahil — ses pencereden uzun yaşamaz). Başarırsızlıkta bilgilendirici mesaj (motor yok / hazırlanıyor).
+- **Sesli giriş (STT)**: composer'da 🎤 düğmesi — sistem `RecognizerIntent` diyaloğunu açar (RECORD_AUDIO izni gerekmez, tanıma Google tarafında çalışır); dönen metin açık composer'a eklenir. Cihazda tanıma yoksa bilgilendirilir.
+- İsteğe bağlı sesli sohbetin temeli: oku + dikte birlikte kullanılabilir; tam çift yönlü sesli sohbet modu sonraki partilerde değerlendirilecek.
+- 5 yeni birim testi (`SpeechText`) → toplam 176.
+- versionCode 55 / 0.22.00-alpha1.
+
 ## v0.21.00-alpha1 — 2026-11-12 (Karakter Card V2: SillyTavern uyumluluğu)
 
 P0 önceliği: SillyTavern ekosistemiyle karakter alışverişi.
