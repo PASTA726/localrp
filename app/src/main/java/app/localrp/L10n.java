@@ -45,11 +45,7 @@ public final class L10n {
         EN.put("Bir veya daha fazla", "One or more");
         EN.put("Çalışma durumu", "Status");
         EN.put("Model dosyası", "Model file");
-        EN.put("Katalog", "Catalog");
-        EN.put("Gelişmiş AI", "Advanced AI");
-        EN.put("AI teması", "AI theme");
-        EN.put("Yanıt ayarları", "Reply settings");
-        EN.put("Motor testi", "Engine benchmark");
+                                        EN.put("Motor testi", "Engine benchmark");
         EN.put("Dil / Language", "Language / Dil");
         EN.put("Veri yedeği", "Data backup");
         EN.put("Profil fotoğrafı", "Profile photo");
@@ -58,9 +54,7 @@ public final class L10n {
         EN.put("Sohbet", "Chat");
 
         // ---- buttons
-        EN.put("＋  Tek karakterli RP", "＋  Solo RP");
-        EN.put("＋  Grup RP", "＋  Group RP");
-        EN.put("＋  Yeni karakter", "＋  New character");
+                        EN.put("＋  Yeni karakter", "＋  New character");
         EN.put("Kaydet", "Save");
         EN.put("Değişiklikleri kaydet", "Save changes");
         EN.put("Sohbeti başlat", "Start chat");
@@ -69,15 +63,12 @@ public final class L10n {
         EN.put("Profil fotoğrafı seç", "Pick profile photo");
         EN.put("Fotoğraf seç", "Choose photo");
         EN.put("Fotoğrafı kaldır", "Remove photo");
-        EN.put("Profili kaydet", "Save profile");
-        EN.put("＋ Ekle", "＋ Add");
+                EN.put("＋ Ekle", "＋ Add");
         EN.put("Telefondan GGUF seç", "Pick a GGUF from the phone");
         EN.put("Model önerilerini gör ve indir", "View and download suggestions");
-        EN.put("Gelişmiş AI ayarları", "Advanced AI settings");
-        EN.put("GUI temasını değiştir", "Change UI theme");
+                EN.put("GUI temasını değiştir", "Change UI theme");
         EN.put("AI temasını değiştir", "Change AI theme");
-        EN.put("Talimatı kaydet", "Save instruction");
-        EN.put("Hız testini başlat", "Start speed test");
+                EN.put("Hız testini başlat", "Start speed test");
         EN.put("Model kopyalarını yönet", "Manage model copies");
         EN.put("Yedeği dışa aktar", "Export backup");
         EN.put("Yedeği geri yükle", "Restore backup");
@@ -121,10 +112,8 @@ public final class L10n {
         // ---- chat composer & status
         EN.put("Hikâyeye bir şey yaz…", "Write to the story…");
         EN.put("Sıra: ", "Next: ");
-        EN.put("Sıra: Otomatik", "Next: Auto");
-        EN.put("  ▾", "  ▾");
-        EN.put("Devam", "Continue");
-        EN.put("Yanıt üretilemedi", "Reply failed");
+                EN.put("  ▾", "  ▾");
+                EN.put("Yanıt üretilemedi", "Reply failed");
         EN.put("Yanıt yarıda kesildi", "Reply was cut off");
         EN.put("Model boş yanıt döndürdü", "Model returned an empty reply");
         EN.put("Yanıt durduruldu.", "Reply stopped.");
@@ -182,16 +171,11 @@ public final class L10n {
         EN.put("Koyu palet", "Dark palette");
         EN.put(" teması uygulandı.", " theme applied.");
         EN.put("Yedekleme", "Backup");
-        EN.put("Karakterler, sohbetler ve geçmişler tek bir .json dosyasına yazılır. Dosya tamamen senin kontrolündedir: uygulama hiçbir veriyi otomatik göndermez.",
-                "Characters, chats and histories are written to a single .json file. You control it fully: the app never sends data automatically.");
-
+        
         // ---- persona
-        EN.put("  (kullanıcı)", "  (user)");
-        EN.put("Kullanıcı personası tanımlı değil — dokunup kendini tanıt", "No user persona yet — tap to introduce yourself");
-        EN.put("RP sohbetlerinde mesajların \"Sen\" etiketiyle kalır; model sana \"Kullanıcı kimliği\" bloğunda burada yazdığın bilgilerle davranır.",
+                        EN.put("RP sohbetlerinde mesajların \"Sen\" etiketiyle kalır; model sana \"Kullanıcı kimliği\" bloğunda burada yazdığın bilgilerle davranır.",
                 "In RP chats your messages keep the \"You\" label; the AI treats you through the \"User identity\" block from this screen.");
-        EN.put("Kullanıcı profili kaydedildi.", "User profile saved.");
-        EN.put("Profil kayda geçemedi.", "Could not save the profile.");
+                EN.put("Profil kayda geçemedi.", "Could not save the profile.");
 
         // ---- presets
         EN.put("Beğendiğin hazır karakter kopyalanıp tamamen düzenlenebilir bir karakter olarak listene geçer.",
@@ -207,8 +191,7 @@ public final class L10n {
 
         // ---- language row itself
         EN.put("Türkçe", "Türkçe");
-        EN.put("English (önerilir: RP için daha iyi)", "English (recommended: better RP)");
-        EN.put("Yanıt dili İngilizce olarak ayarlandı — model promptları artık İngilizce.",
+                EN.put("Yanıt dili İngilizce olarak ayarlandı — model promptları artık İngilizce.",
                 "English enabled — prompts are now in English.");
 
         // ---- AI theme names & instructions (English mode)
@@ -235,9 +218,7 @@ public final class L10n {
         EN.put("Gerilim, belirsizlik ve görünmeyen tehdit yarat; kan ve şiddeti ölçülü tut.",
                 "Create tension, uncertainty and unseen threats; keep gore and violence restrained.");
         EN.put("Sahne atmosferi", "Scene tone");
-        EN.put("Tema, tüm RP sohbetlerinde sahnenin atmosferini belirler. Değiştirince model bağlamı sıfırlanır.",
-                "The theme sets the mood of all RP chats. Changing it resets the model context.");
-
+        
         // ---- uncensored catalog (18+, age-gated)
         EN.put("Sansürsüz", "Uncensored");
         EN.put("Sansürsüz modeller abliterated (filtre katmanı çıkarılmış) eğitimlidir; 18 yaş üstü içindir.",
@@ -246,9 +227,7 @@ public final class L10n {
                 "The app never sends chat data online; processing happens entirely on this device. Responsibility lies with the user.");
         EN.put("SANSÜRSÜZ  ·  18+", "UNCENSORED  ·  18+");
         EN.put("Sansürsüz modeller (18+)", "Uncensored models (18+)");
-        EN.put("Sansürsüz (abliterated) modeller 18 yaş altına uygun değildir. Devam etmek için yaşını gir.",
-                "Uncensored (abliterated) models are not suitable for minors. Enter your age to continue.");
-        EN.put("Yaşın", "Your age");
+                EN.put("Yaşın", "Your age");
         EN.put("Onayla", "Confirm");
         EN.put("Sansürsüz bölümü bu oturum için açıldı.", "Uncensored section unlocked for this session.");
         EN.put("Onaylamak için kelimeyi yaz: ", "Type the word to confirm: ");
@@ -281,8 +260,7 @@ public final class L10n {
         EN.put("Seçildi · yüklemeye hazır", "Picked · ready to load");
         EN.put("Seçildi · yükleme başlatılıyor…", "Picked · loading…");
         EN.put("Model önerileri", "Model suggestions");
-        EN.put("Öneri", "Suggestion");
-        EN.put("CPU önerileri", "CPU picks");
+                EN.put("CPU önerileri", "CPU picks");
         EN.put("GPU önerileri", "GPU picks");
 
         // prompt sources
@@ -350,9 +328,7 @@ public final class L10n {
         // stricter 18+ gate
         EN.put("UYARI: Bu modellerde güvenlik filtresi yoktur; 18 yaş altına uygun içerik koruması içermez.",
                 "WARNING: these models have no safety filter and no content protection for minors.");
-        EN.put("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir. Devam için yaşını gir ve uyarıyı onayla.",
-                "Processing runs fully on this device, offline; you take responsibility. Enter your age and acknowledge the warning.");
-        EN.put("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir.",
+                EN.put("İşleme tamamen bu cihazda, çevrimdışı çalışır; sorumluluk sana aittir.",
                 "Processing runs fully on this device, offline; you take responsibility.");
         EN.put("Uyarıyı okudum; 18 yaş üstü olduğumu onaylıyorum.", "I have read the warning and confirm I am 18 or older.");
         EN.put("Önce uyarıyı onaylaman gerekli.", "You must acknowledge the warning first.");
@@ -372,8 +348,7 @@ public final class L10n {
         EN.put("Boyut sınıfı: ", "Size class: ");
         EN.put("BU CİHAZ İÇİN ÖNERİ", "RECOMMENDED FOR THIS DEVICE");
         EN.put("Bu dosya geçerli bir LocalRP yedeği değil.", "This file is not a valid LocalRP backup.");
-        EN.put("Bu model şu anda yüklü.", "This model is currently loaded.");
-        EN.put("⚠ Bu motorda çalışmaz — paketli motor yalnızca CPU; Vulkan/MLC motoru gerekir.",
+                EN.put("⚠ Bu motorda çalışmaz — paketli motor yalnızca CPU; Vulkan/MLC motoru gerekir.",
                 "⚠ Will not run on this engine — the bundled engine is CPU-only; a Vulkan/MLC engine is required.");
         EN.put("Bu sohbetin tüm mesajları silinsin mi?", "Delete all messages in this chat?");
         EN.put("Cihazda kayıtlı model kopyası yok.", "No model copy stored on this device.");
@@ -538,9 +513,7 @@ public final class L10n {
                 "This page refreshes when loading finishes; you do not have to wait.");
         EN.put("Model yüklü; sohbetler internet olmadan da sürer.",
                 "The model is loaded; conversations run without internet too.");
-        EN.put("Model seçmezsen karakterler ve sohbetler yine kaydedilir; ancak yanıt üretimi için bir model yüklemelisin.",
-                "Without a model, characters and conversations are still saved; but you must load a model before replies can be generated.");
-        EN.put("Bu adımı istediğin zaman Ayarlar → Model yönetimi'nden tamamlayabilirsin.",
+                EN.put("Bu adımı istediğin zaman Ayarlar → Model yönetimi'nden tamamlayabilirsin.",
                 "You can finish this step later under Settings → Model management.");
         EN.put("Karakterler, sohbetleri yönlendiren profillerdir; her şeyi sonra düzenleyebilirsin.",
                 "Characters are profiles that steer conversations; everything can be edited later.");
@@ -550,9 +523,7 @@ public final class L10n {
         // ---- world book / lorebook (DeepSeek item 12)
         EN.put("Dünya kitabı", "World book");
         EN.put(" dünya kitabı girdilerini silinsin mi?", "'s world book entries be deleted?");
-        EN.put("Her kayıt anahtar kelime(ler) ve bir olgudur. Son 3 mesajda bir anahtar geçerse olgu prompta yazılır; blok en fazla 900 karakter tutar, anahtar hiç geçmezse yer kaplamaz.",
-                "Each record is trigger keyword(s) plus a fact. When a key appears in the last 3 messages, the fact is added to the prompt; the block keeps at most 900 characters and costs nothing when no key appears.");
-        EN.put("Henüz bilgi yok", "No entries yet");
+                EN.put("Henüz bilgi yok", "No entries yet");
         EN.put("Dünyanın kalıcı bilgileri: yerler, kurallar, geçmiş olaylar, karakterler.",
                 "The world's lasting facts: places, rules, past events, characters.");
         EN.put("＋  Yeni bilgi", "＋  New entry");
@@ -569,9 +540,7 @@ public final class L10n {
         EN.put("Faz 5 · opsiyonel · çevrimdışı varsayılan kalır",
                 "Phase 5 · optional · offline stays the default");
         EN.put("Veri dışarı çıkarır", "Sends data off-device");
-        EN.put("Bu ayar açıkken ve eksiksizken yanıtlar, seçtiğin OpenAI-uyumlu https adresine gider; sohbet içerik cihazdan çıkmış olur. Kapalıyken hiçbir şey gönderilmez.",
-                "With this on and fully configured, replies go to the OpenAI-compatible https address you chose; conversation content then leaves the device. While off, nothing is sent.");
-        EN.put("Sağlayıcıyı etkinleştir", "Enable the provider");
+                EN.put("Sağlayıcıyı etkinleştir", "Enable the provider");
         EN.put("Sağlayıcı açık — kapata geç", "Provider is on — switch it off");
         EN.put("Önce adres, model adı ve API anahtarını eksiksiz doldur.",
                 "First complete the address, the model name and the API key.");
@@ -829,8 +798,7 @@ public final class L10n {
         EN.put("📷 Fotoğraf eklendi · gönder ile birlikte gider", "📷 Photo attached · goes with your next send");
         EN.put("Bu cihazda fotoğraf seçici yok.", "No photo picker on this device.");
         EN.put("Anlatıcı", "Narrator");
-        EN.put("Yüklendi", "Loaded");
-        // ---- v0.19.17 L10n coverage completion ----
+                // ---- v0.19.17 L10n coverage completion ----
         EN.put("Sen", "You");
         EN.put("sen", "You");
         EN.put("Otomatik", "Automatic");
