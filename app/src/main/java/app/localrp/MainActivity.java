@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -38,6 +39,7 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -58,6 +60,9 @@ public class MainActivity extends Activity {
     private static final int CHAT_PHOTO_PICK = 78;
     private static final int CHAR_EXPORT = 79;
     private static final int BACKUP_EXPORT_MEDIA = 80;
+    private static final int CHAR_CARD_PNG_EXPORT = 81;
+    private static final int CHAR_CARD_JSON_EXPORT = 82;
+    private static final int CHAR_CARD_IMPORT = 83;
     private static final String PREFS = "localrp";
     private static final String DEFAULT_AI_INSTRUCTIONS = "Her zaman sahnenin içinde kal. Seçili karakter olarak konuş ve kullanıcının rolünü üstlenme.";
     private static final String DEFAULT_AI_INSTRUCTIONS_EN = "Stay inside the scene at all times. Speak as the selected character and never take over the user's role.";
@@ -650,6 +655,14 @@ public class MainActivity extends Activity {
         setPage(L10n.s("Karakterler"), L10n.s("Hikâyendeki kişileri yönet"), "characters");
         addUserProfileCard();
         addPrimary("＋  Yeni karakter", v -> showCharacterEditor(null));
+        // Character Card V2 (v0.21.00): SillyTavern cards arrive as PNG or JSON.
+        addSecondary(L10n.s("Kart içe aktar (PNG / JSON)"), v -> {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/png", "application/json"});
+            startActivityForResult(intent, CHAR_CARD_IMPORT);
+        });
         List<CharacterProfile> characters = store.characters();
         if (characters.isEmpty()) addEmpty(L10n.s("İlk karakterini oluştur"), L10n.s("Adını, kişiliğini ve hikâyedeki yerini belirle."), L10n.s("Karakter oluştur"), v -> showCharacterEditor(null));
         else addCharacterGrid(characters);
@@ -4457,6 +4470,18 @@ public class MainActivity extends Activity {
             exportCharacter(data.getData());
             return;
         }
+        if (requestCode == CHAR_CARD_PNG_EXPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            exportCardPng(data.getData());
+            return;
+        }
+        if (requestCode == CHAR_CARD_JSON_EXPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            exportCardJson(data.getData());
+            return;
+        }
+        if (requestCode == CHAR_CARD_IMPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            importCharacterCard(data.getData());
+            return;
+        }
         if (requestCode == BACKUP_IMPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
             importBackup(data.getData());
             return;
@@ -5962,16 +5987,6 @@ public class MainActivity extends Activity {
      * Character card extras (DeepSeek review item): quick variant copies and a single
      * character JSON export — the full backup stays the standard path.
      */
-    private void showCharacterActions(CharacterProfile character) {
-        String[] items = {L10n.s(L10n.s("Kopya oluştur")), L10n.s(L10n.s("JSON dışa aktar"))};
-        new AlertDialog.Builder(this).setTitle(character.name)
-                .setItems(items, (dialog, which) -> {
-                    if (which == 0) duplicateCharacter(character);
-                    else exportCharacterPicker(character);
-                })
-                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).show();
-    }
-
     private void duplicateCharacter(CharacterProfile original) {
         CharacterProfile copy = new CharacterProfile();
         copy.name = original.name + L10n.s(" (kopya)");
@@ -6022,6 +6037,185 @@ public class MainActivity extends Activity {
             Toast.makeText(this, L10n.s(L10n.s("Karakter dışa aktarıldı.")), Toast.LENGTH_SHORT).show();
         } catch (java.io.IOException writeFailed) {
             Toast.makeText(this, L10n.s(L10n.s("Dışa aktarılamadı: dosyaya yazılamadı.")), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    // ---- Character Card V2 (v0.21.00): SillyTavern-compatible PNG + JSON cards ----
+
+    /** Long-press extras: copy, SillyTavern PNG card, SillyTavern JSON card, LocalRP JSON. */
+    private void showCharacterActions(CharacterProfile character) {
+        String[] items = {L10n.s(L10n.s("Kopya oluştur")),
+                L10n.s("PNG kart olarak dışa aktar (SillyTavern)"),
+                L10n.s("JSON kart olarak dışa aktar (SillyTavern)"),
+                L10n.s(L10n.s("JSON dışa aktar"))};
+        new AlertDialog.Builder(this).setTitle(character.name)
+                .setItems(items, (dialog, which) -> {
+                    if (which == 0) duplicateCharacter(character);
+                    else if (which == 1) cardExportPicker(character, CHAR_CARD_PNG_EXPORT,
+                            "image/png", ".png", "png-kart");
+                    else if (which == 2) cardExportPicker(character, CHAR_CARD_JSON_EXPORT,
+                            "application/json", ".json", "st-kart");
+                    else exportCharacterPicker(character);
+                })
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).show();
+    }
+
+    private void cardExportPicker(CharacterProfile character, int requestCode,
+                                  String mime, String suffix, String label) {
+        charExportTarget = character.id;
+        String safe = character.name.replaceAll("[^\\p{L}\\p{N} _-]+", "").trim();
+        if (safe.isEmpty()) safe = "karakter";
+        String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(new Date());
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType(mime);
+        intent.putExtra(Intent.EXTRA_TITLE,
+                "localrp-" + label + "-" + safe + "-" + stamp + suffix);
+        startActivityForResult(intent, requestCode);
+    }
+
+    /** Writes the SillyTavern PNG card: the character image with the V2 JSON inside. */
+    private void exportCardPng(Uri uri) {
+        CharacterProfile character = charExportTarget == null ? null : store.character(charExportTarget);
+        charExportTarget = null;
+        if (character == null) {
+            Toast.makeText(this, L10n.s(L10n.s("Dışa aktaramadı: karakter bulunamadı.")), Toast.LENGTH_LONG).show();
+            return;
+        }
+        byte[] image = cardImageBytes(character);
+        byte[] card = image == null ? null : CharacterCard.buildCardPng(image, character);
+        if (card == null) {
+            Toast.makeText(this, L10n.s(L10n.s("Dışa aktarılamadı: kart oluşturulamadı.")), Toast.LENGTH_LONG).show();
+            return;
+        }
+        try (java.io.OutputStream output = getContentResolver().openOutputStream(uri)) {
+            if (output == null) throw new java.io.IOException();
+            output.write(card);
+            output.flush();
+            Toast.makeText(this, L10n.s(L10n.s("Karakter dışa aktarıldı.")), Toast.LENGTH_SHORT).show();
+        } catch (java.io.IOException writeFailed) {
+            Toast.makeText(this, L10n.s(L10n.s("Dışa aktarılamadı: dosyaya yazılamadı.")), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /** Writes the SillyTavern V2 JSON card. */
+    private void exportCardJson(Uri uri) {
+        CharacterProfile character = charExportTarget == null ? null : store.character(charExportTarget);
+        charExportTarget = null;
+        if (character == null) {
+            Toast.makeText(this, L10n.s(L10n.s("Dışa aktaramadı: karakter bulunamadı.")), Toast.LENGTH_LONG).show();
+            return;
+        }
+        String json = CharacterCard.toJson(character);
+        if (json.isEmpty()) {
+            Toast.makeText(this, L10n.s(L10n.s("Dışa aktarılamadı: kart oluşturulamadı.")), Toast.LENGTH_LONG).show();
+            return;
+        }
+        try (java.io.OutputStream output = getContentResolver().openOutputStream(uri)) {
+            if (output == null) throw new java.io.IOException();
+            output.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            output.flush();
+            Toast.makeText(this, L10n.s(L10n.s("Karakter dışa aktarıldı.")), Toast.LENGTH_SHORT).show();
+        } catch (java.io.IOException writeFailed) {
+            Toast.makeText(this, L10n.s(L10n.s("Dışa aktarılamadı: dosyaya yazılamadı.")), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /** Card image: the stored avatar re-encoded to PNG, or a generated gradient-letter tile. */
+    private byte[] cardImageBytes(CharacterProfile character) {
+        try {
+            if (!character.avatarPath.isEmpty()) {
+                File avatar = new File(character.avatarPath);
+                if (avatar.isFile()) {
+                    try (java.io.InputStream input = new java.io.FileInputStream(avatar)) {
+                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                        byte[] bufferBytes = new byte[8192];
+                        int read;
+                        while ((read = input.read(bufferBytes)) > 0) buffer.write(bufferBytes, 0, read);
+                        byte[] raw = buffer.toByteArray();
+                        if (CharacterCard.isPng(raw)) return raw;
+                    }
+                    Bitmap decoded = BitmapFactory.decodeFile(character.avatarPath);
+                    if (decoded != null) {
+                        byte[] png = bitmapToPng(decoded);
+                        decoded.recycle();
+                        if (png != null) return png;
+                    }
+                }
+            }
+            return generatedCardImage(character.name);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private byte[] generatedCardImage(String name) {
+        Bitmap bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{Design.accent(), Design.heroA()});
+        background.setBounds(0, 0, bitmap.getWidth(), bitmap.getHeight());
+        background.draw(canvas);
+        android.text.TextPaint paint = new android.text.TextPaint();
+        paint.setColor(0xFFFFFFFF);
+        paint.setTextSize(210);
+        paint.setFakeBoldText(true);
+        paint.setTextAlign(android.graphics.Paint.Align.CENTER);
+        String trimmed = name == null ? "" : name.trim();
+        String letter = trimmed.isEmpty() ? "?" : trimmed.substring(0, 1).toUpperCase(Locale.getDefault());
+        canvas.drawText(letter, bitmap.getWidth() / 2f, bitmap.getHeight() / 2f
+                - (paint.ascent() + paint.descent()) / 2f, paint);
+        byte[] png = bitmapToPng(bitmap);
+        bitmap.recycle();
+        return png;
+    }
+
+    private byte[] bitmapToPng(Bitmap bitmap) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)) return null;
+        return out.toByteArray();
+    }
+
+    /** Adds a SillyTavern card (PNG with embedded JSON, or plain JSON) as a new character. */
+    private void importCharacterCard(Uri uri) {
+        try (java.io.InputStream input = getContentResolver().openInputStream(uri)) {
+            if (input == null) throw new java.io.IOException();
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            int read;
+            while ((read = input.read(chunk)) > 0) {
+                buffer.write(chunk, 0, read);
+                if (buffer.size() > 12 * 1024 * 1024) throw new java.io.IOException("too large");
+            }
+            byte[] bytes = buffer.toByteArray();
+            String json;
+            boolean isPngCard = CharacterCard.isPng(bytes);
+            if (isPngCard) {
+                json = CharacterCard.cardFromPng(bytes);
+            } else {
+                json = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+            }
+            CharacterProfile imported = CharacterCard.fromJson(json);
+            if (imported == null) {
+                Toast.makeText(this, L10n.s(L10n.s("Kart okunamadı: geçerli bir karakter kartı değil.")), Toast.LENGTH_LONG).show();
+                return;
+            }
+            if (!store.saveCharacter(imported)) {
+                Toast.makeText(this, L10n.s(L10n.s("Kart kaydedilemedi: karakter verisi okunamıyor.")), Toast.LENGTH_LONG).show();
+                return;
+            }
+            // PNG cards carry their own image: keep it as the private avatar copy.
+            if (isPngCard) {
+                File avatarCopy = saveAvatarCopy(uri);
+                if (avatarCopy != null) {
+                    imported.avatarPath = avatarCopy.getAbsolutePath();
+                    store.saveCharacter(imported);
+                }
+            }
+            Toast.makeText(this, L10n.s(L10n.s("Karakter kartı içe aktarıldı: ")) + imported.name, Toast.LENGTH_SHORT).show();
+            showCharacters();
+        } catch (Exception e) {
+            Toast.makeText(this, L10n.s(L10n.s("Kart okunamadı: geçerli bir karakter kartı değil.")), Toast.LENGTH_LONG).show();
         }
     }
 

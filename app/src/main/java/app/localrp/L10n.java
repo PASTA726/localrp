@@ -980,5 +980,15 @@ public final class L10n {
         EN.put("Son çökme kaydı yok. Cihaz ve uygulama bilgisi raporda hazır.",
                 "No crash on record. Device and app details are ready in the report.");
         EN.put("Eklenti fotoğrafını kaldır", "Remove attached photo");
+        // v0.21.00 SillyTavern character cards
+        EN.put("PNG kart olarak dışa aktar (SillyTavern)", "Export as PNG card (SillyTavern)");
+        EN.put("JSON kart olarak dışa aktar (SillyTavern)", "Export as JSON card (SillyTavern)");
+        EN.put("Kart içe aktar (PNG / JSON)", "Import card (PNG / JSON)");
+        EN.put("Dışa aktarılamadı: kart oluşturulamadı.", "Could not export: card could not be built.");
+        EN.put("Kart okunamadı: geçerli bir karakter kartı değil.",
+                "Could not read the card: not a valid character card.");
+        EN.put("Kart kaydedilemedi: karakter verisi okunamıyor.",
+                "Could not save the card: character data unreadable.");
+        EN.put("Karakter kartı içe aktarıldı: ", "Character card imported: ");
     }
 }

@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.21.00-alpha1 — 2026-11-12 (Karakter Card V2: SillyTavern uyumluluğu)
+
+P0 önceliği: SillyTavern ekosistemiyle karakter alışverişi.
+
+- **PNG karakter kartı**: karakter görselinin içine V2 JSON `tEXt` chunk (anahtar `chara`, base64) olarak gömülür — SillyTavern'in kendi saklama formatı. Görsel yoksa adın ilk harfinden gradyan kart üretilir; JPEG avatar PNG'ye yeniden kodlanır. Dışa aktarma: karaktere uzun basma menüsünden "PNG kart olarak dışa aktar".
+- **JSON karakter kartı**: `spec: "chara_card_v2"` + `data` sarmalayıcısı ile V2 JSON (`system_prompt` ↔ talimatlar, `mes_example` ↔ örnek diyaloglar, `personality` ↔ kişilik). Long-press menüsünden ayrı seçenek.
+- **İçe aktarma**: Karakterler sayfasındaki "Kart içe aktar (PNG / JSON)" her iki formatı da kabul eder; PNG kendisi import edilen karakterin avatarına kopyalanır. V1 düz kartlar (data sarmalayıcısız) da okunur. `scenario` ve `first_mes` alanları LocalRP'de özel alan olmadığından açıklamaya paragraf olarak eklenir (atılırlar). İçe aktarılan karakter yeni kimlik alır — çakışma yok.
+- **Saf mantık**: `CharacterCard` sınıfı (JSON eşleme + PNG chunk kodlayıcı/çözücü, java.util.zip.CRC32 ile RFC 1950 CRC), JVM testli; chunk sınırları ve PNG imza doğrulaması bozuk dosyalara karşı korur.
+- Eski "JSON dışa aktar" (LocalRP PersistenceCodec formatı) değişmedi — yedek/taşıma yolu aynı kalır.
+- 8 yeni birim testi (`CharacterCard`) → toplam 169.
+- versionCode 54 / 0.21.00-alpha1.
+
 ## v0.20.01-alpha1 — 2026-11-12 (erişilebilirlik + tanılama)
 
 İki dış AI incelemesinin (Codex + DeepSeek) ortak önceliği: dokunma alanları, çökme kaydı ve Ayarlar'da tanılama kartı.
