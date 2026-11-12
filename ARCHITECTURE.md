@@ -1,13 +1,13 @@
 # LocalRP — Architecture
 
-LocalRP is deliberately small: one `MainActivity` (~6.5k lines), one Kotlin runtime object, one extracted `Store`, and a set of small pure-decision classes that carry the JVM-tested logic. There are no XML layouts (all screens are built with platform widgets), no network framework and no database — state is JSON in `SharedPreferences`.
+LocalRP is deliberately small: one `MainActivity` (~6.9k lines), one Kotlin runtime object, one extracted `Store`, and a set of small pure-decision classes that carry the JVM-tested logic. There are no XML layouts (all screens are built with platform widgets), no network framework and no database — state is JSON in `SharedPreferences`.
 
 > Turkish, offline-first roleplay (RP) app. This document describes how the pieces fit; see README for usage and build steps.
 
 ## Modules
 
 ```
-MainActivity.java      ~6.5k lines — all screens, RP flow, personas, speaker selection, generation orchestration, backup UI
+MainActivity.java      ~6.9k lines — all screens, RP flow, personas, speaker selection, generation orchestration, backup UI
 LocalAiRuntime.kt      llama.cpp via com.arm:ai-chat (Apache-2.0, upstream: github.com/arm/ai-chat)
 Store.java             SharedPreferences persistence (extracted from MainActivity in v0.11.x)
 RoleplayPrompt.java    pure engine-prompt assembly (persona/cast/history/rules)
