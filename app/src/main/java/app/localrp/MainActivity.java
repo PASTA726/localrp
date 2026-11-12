@@ -215,6 +215,50 @@ public class MainActivity extends Activity {
     private long downloadBytes, downloadTotal = -1L;
     private final java.util.Map<String, Integer> chainCounts = new java.util.HashMap<>();
 
+    // Comfort tools (v0.19.22): one-shot steering note + regenerate undo stash.
+    /** Chat-scoped one-shot steering note ("Yönlendirerek yeniden üret"); consumed
+     *  by the next beginGeneration in that chat, never persisted. */
+    private final java.util.Map<String, String> pendingSteer = new java.util.HashMap<>();
+    /** Pre-regenerate tail kept in memory so "Eski yanıtı geri getir" can undo a
+     *  regenerate this session; image files stay on disk until the stash is discarded. */
+    private final java.util.Map<String, RegenStash> regenStashes = new java.util.HashMap<>();
+
+    /** In-memory snapshot of the transcript tail a regenerate removed. */
+    private static final class RegenStash {
+        final int index;
+        final String anchorText;
+        final long anchorAt;
+        final java.util.List<Message> tail;
+        RegenStash(int index, String anchorText, long anchorAt, java.util.List<Message> tail) {
+            this.index = index;
+            this.anchorText = anchorText;
+            this.anchorAt = anchorAt;
+            this.tail = tail;
+        }
+    }
+
+    /** Captures the transcript tail at {@code index} for a later restore; replaces
+     *  (and frees) any previous stash for the chat. */
+    private void stashForRegenerate(String chatId, int index, java.util.List<Message> stored) {
+        discardRegenStash(chatId);
+        if (index < 0 || index >= stored.size()) return;
+        java.util.List<Message> tail = new ArrayList<>();
+        for (int i = index; i < stored.size(); i++) tail.add(stored.get(i));
+        String anchorText = index == 0 ? null : stored.get(index - 1).text;
+        long anchorAt = index == 0 ? 0L : stored.get(index - 1).at;
+        regenStashes.put(chatId, new RegenStash(index, anchorText, anchorAt, tail));
+    }
+
+    /** Drops a chat's stash; stashed image files leave the disk with it. */
+    private void discardRegenStash(String chatId) {
+        RegenStash stash = regenStashes.remove(chatId);
+        if (stash == null) return;
+        for (Message m : stash.tail) {
+            if (m.hasImage()) deleteMessageImageFile(m.image);
+        }
+    }
+
+
     @Override public void onCreate(Bundle state) {
         // Window background (GUI review item 18): the cold-start window uses the saved
         // palette family, so dark themes no longer draw a white square before the
@@ -1749,6 +1793,11 @@ public class MainActivity extends Activity {
             return;
         }
         forgetAutoAttempts(group.id);
+        // Comfort tools (v0.19.22): a new user turn invalidates both one-shot tools —
+        // a stale steer must not leak into an unrelated reply, and the pre-regenerate
+        // tail must never be restored over newer messages.
+        pendingSteer.remove(group.id);
+        discardRegenStash(group.id);
         File photo = null;
         if (pendingComposerImage != null && group.id.equals(pendingComposerImageChatId)) {
             photo = pendingComposerImage;
@@ -1793,7 +1842,17 @@ public class MainActivity extends Activity {
     }
 
     private void continueOrRetry(Group group) {
+        continueOrRetry(group, null);
+    }
+
+    /** @param steer one-shot steering note (regenerate-with-note); dropped whenever
+     *  this retry aborts, so it can never leak into a later unrelated turn. */
+    private void continueOrRetry(Group group, String steer) {
         if (generatingChatId != null) return;
+        if (steer != null) {
+            // Consume-or-drop: only the live path below re-applies the note.
+            pendingSteer.remove(group.id);
+        }
         if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) {
             Toast.makeText(this, L10n.s(L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
             return;
@@ -1814,7 +1873,12 @@ public class MainActivity extends Activity {
         if (history.isEmpty()) return;
         Message last = history.get(history.size() - 1);
         CharacterProfile speaker = chooseSpeaker(group, last.user ? last.text : null);
-        if (speaker != null) beginGeneration(group, speaker);
+        if (speaker != null) {
+            if (steer != null && !steer.trim().isEmpty()) {
+                pendingSteer.put(group.id, clip(steer.trim(), 300));
+            }
+            beginGeneration(group, speaker);
+        }
     }
 
     private void maybeAutoGenerate(Group group) {
@@ -1888,14 +1952,17 @@ public class MainActivity extends Activity {
 
         List<OpenAiCompat.Turn> providerTurns = null;
         int maxTokens = chatTokenBudget(group.id);
+        // Comfort tool (v0.19.22): consume the one-shot steering note here so only
+        // this turn's prompt carries it (chain follow-ups rebuild without it).
+        String steer = pendingSteer.remove(group.id);
         if (providerReady()) {
             // Opt-in online engine (DeepSeek item 14/B): the scene identity ships as one
             // system prompt, history as real chat turns; engine context bookkeeping (the
             // llama.cpp shared-context budget) does not apply here.
-            providerTurns = buildProviderTurns(group, speaker, continuation);
+            providerTurns = buildProviderTurns(group, speaker, continuation, steer);
             providerClient = null;
         } else {
-            String prompt = buildRoleplayPrompt(group, speaker, continuation);
+            String prompt = buildRoleplayPrompt(group, speaker, continuation, steer);
             boolean freshContext = !LocalAiRuntime.INSTANCE.hasConversation(group.id);
             int contextBudget = LocalAiRuntime.INSTANCE.contextCharBudget();
             long contextUsed = freshContext ? 0L : Math.max(0L, contextChars.getOrDefault(group.id, 0L));
@@ -1903,7 +1970,7 @@ public class MainActivity extends Activity {
                 // Keep the model's native context bounded; rebuild from stored recent history.
                 LocalAiRuntime.INSTANCE.resetConversation(group.id);
                 contextUsed = 0L;
-                prompt = buildRoleplayPrompt(group, speaker, continuation);
+                prompt = buildRoleplayPrompt(group, speaker, continuation, steer);
             }
             contextChars.put(group.id, contextUsed + prompt.length());
             LocalAiRuntime.INSTANCE.generate(group.id, prompt, maxTokens, pipe(group, speaker, startedAt, thisGeneration));
@@ -4933,8 +5000,13 @@ public class MainActivity extends Activity {
     }
 
     private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation) {
+        return buildRoleplayPrompt(group, speaker, continuation, null);
+    }
+
+    /** Steer-aware variant (v0.19.22 comfort tools); {@code steer} may be null. */
+    private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation, String steer) {
         return buildRoleplayPrompt(group, speaker, continuation,
-                LocalAiRuntime.INSTANCE.hasConversation(group.id), chatHistoryDepth(group.id));
+                LocalAiRuntime.INSTANCE.hasConversation(group.id), chatHistoryDepth(group.id), steer);
     }
 
     /** Provider mode (DeepSeek item 14/B) assembles a history-free system prompt:
@@ -4942,6 +5014,11 @@ public class MainActivity extends Activity {
      *  engine's shared-context flag is forced fresh. */
     private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation,
                                        boolean continuingFlag, int historyDepth) {
+        return buildRoleplayPrompt(group, speaker, continuation, continuingFlag, historyDepth, null);
+    }
+
+    private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation,
+                                       boolean continuingFlag, int historyDepth, String steer) {
         // Prompt assembly lives in the pure, unit-tested RoleplayPrompt; MainActivity only
         // resolves the Android-backed inputs (store lookups, prefs, engine context flag).
         boolean english = L10n.english;
@@ -4964,11 +5041,17 @@ public class MainActivity extends Activity {
                 historyCharBudget(),
                 personaText,
                 english,
-                store.lore(group.id));
+                store.lore(group.id),
+                steer);
     }
 
     /** System prompt + transcript turns for the online provider (DeepSeek item 14/B). */
     private List<OpenAiCompat.Turn> buildProviderTurns(Group group, CharacterProfile speaker, boolean continuation) {
+        return buildProviderTurns(group, speaker, continuation, null);
+    }
+
+    private List<OpenAiCompat.Turn> buildProviderTurns(Group group, CharacterProfile speaker,
+                                                       boolean continuation, String steer) {
         boolean english = L10n.english;
         List<Message> history = store.messages(group.id);
         String continuationPrompt = english
@@ -4986,7 +5069,7 @@ public class MainActivity extends Activity {
             finalUserText = continuationPrompt;
         }
         return OpenAiCompat.assembleTurns(
-                buildRoleplayPrompt(group, speaker, continuation, false, 0), history, finalUserText, providerTurnDepth());
+                buildRoleplayPrompt(group, speaker, continuation, false, 0, steer), history, finalUserText, providerTurnDepth());
     }
 
     /** General AI instruction: shipped default (chosen by language) or the user's custom text. */
@@ -6292,7 +6375,20 @@ public class MainActivity extends Activity {
         actions.add(() -> confirmDeleteMessage(index));
         if (!message.user && index == chatHistory.size() - 1 && !isGeneratingHere()) {
             labels.add(L10n.s(L10n.s("Yeniden üret")));
-            actions.add(() -> regenerateLastAction(index));
+            actions.add(() -> regenerateLastAction(index, null));
+            labels.add(L10n.s(L10n.s("Yönlendirerek yeniden üret")));
+            actions.add(() -> regenerateWithNote(index));
+            // Comfort tool (v0.19.22): the tail a regenerate removed can come back
+            // until the next user turn invalidates it. The chat id is captured here —
+            // the menu is modal, but the action must never touch a different chat.
+            String stashChatId = visibleChatId;
+            RegenStash stash = regenStashes.get(stashChatId);
+            Group stashGroup = store.group(stashChatId);
+            if (stash != null && stashGroup != null && RegenUndo.canRestore(
+                    stash.index, stash.anchorText, stash.anchorAt, store.messages(stashGroup.id))) {
+                labels.add(L10n.s(L10n.s("Eski yanıtı geri getir")));
+                actions.add(() -> undoRegenerate(stashChatId));
+            }
         }
         String[] items = labels.toArray(new String[0]);
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle(message.speaker + L10n.s(" · mesaj"))
@@ -6379,11 +6475,76 @@ public class MainActivity extends Activity {
                 });
     }
 
+    /** Plain regenerate (no steering note). */
+    private void regenerateLastAction(int index) {
+        regenerateLastAction(index, null);
+    }
+
+    /** Comfort tool (v0.19.22): regenerate with an optional one-shot steering note
+     *  that guides only the regenerated reply ("daha kısa yaz", …). */
+    private void regenerateWithNote(int index) {
+        if (index < 0 || index >= chatHistory.size()) return;
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(22), dp(16), dp(22), 0);
+        TextView hint = label(L10n.s(L10n.s("Boş bırakılırsa sıradan yeniden üretim yapılır; not yalnızca bu yanıtı yönlendirir, kayda yazılmaz.")), 13, Design.muted());
+        hint.setPadding(0, 0, 0, dp(6));
+        form.addView(hint);
+        EditText input = dialogField(L10n.s(L10n.s("Örn: daha kısa yaz; aksiyona odaklan")));
+        input.setMinLines(2);
+        form.addView(input);
+        new AlertDialog.Builder(this)
+                .setTitle(L10n.s(L10n.s("Yönlendirme notu (yalnızca bu yanıt)")))
+                .setView(form)
+                .setPositiveButton(L10n.s(L10n.s("Yeniden üret")), (dialog, which) ->
+                        regenerateLastAction(index, input.getText().toString()))
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).show();
+    }
+
+    /** Restores the tail a previous regenerate removed (v0.19.22): the regenerated
+     *  reply leaves the transcript, the stashed pre-regenerate tail returns as-is. */
+    private void undoRegenerate(String chatId) {
+        Group group = store.group(chatId);
+        if (group == null) return;
+        if (group.id.equals(generatingChatId)) {
+            Toast.makeText(this, L10n.s(L10n.s("Yanıt üretilirken mesaj değiştirilemez. Önce yanıtı durdur.")), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        RegenStash stash = regenStashes.get(group.id);
+        if (stash == null) return;
+        List<Message> all = store.messages(group.id);
+        if (!RegenUndo.canRestore(stash.index, stash.anchorText, stash.anchorAt, all)) {
+            discardRegenStash(group.id);
+            Toast.makeText(this, L10n.s(L10n.s("Geri alma artık geçerli değil: sohbet değişti.")), Toast.LENGTH_LONG).show();
+            return;
+        }
+        List<Message> restored = new ArrayList<>(all.subList(0, stash.index));
+        restored.addAll(stash.tail);
+        if (!store.replaceMessages(group.id, restored)) {
+            Toast.makeText(this, L10n.s(L10n.s("Eski yanıt geri getirilemedi: sohbet verisi okunamıyor.")), Toast.LENGTH_LONG).show();
+            return;
+        }
+        // Replace succeeded: the discarded post-regenerate tail (and its image
+        // files) leaves now — deleting earlier would orphan the transcript's
+        // references if the write had failed.
+        for (int i = stash.index; i < all.size(); i++) {
+            if (all.get(i).hasImage()) deleteMessageImageFile(all.get(i).image);
+        }
+        regenStashes.remove(group.id); // files stay: the images are back in the transcript
+        chatMetrics.remove(group.id);
+        contextChars.remove(group.id);
+        chainCounts.remove(group.id);
+        LocalAiRuntime.INSTANCE.resetConversation(group.id);
+        forgetAutoAttempts(group.id);
+        Toast.makeText(this, L10n.s(L10n.s("Eski yanıt geri getirildi.")), Toast.LENGTH_SHORT).show();
+        showChat(group);
+    }
+
     /**
      * True regenerate: the chosen last AI message and everything after it leaves the
      * transcript, then the turn restarts from the last user message.
      */
-    private void regenerateLastAction(int index) {
+    private void regenerateLastAction(int index, String steer) {
         Group group = store.group(visibleChatId);
         if (group == null) return;
         if (group.id.equals(generatingChatId)) return;
@@ -6400,10 +6561,14 @@ public class MainActivity extends Activity {
             return;
         }
         List<Message> stored = store.messages(group.id);
-        for (int i = index; i < stored.size(); i++) {
-            if (stored.get(i).hasImage()) deleteMessageImageFile(stored.get(i).image);
-        }
+        // Comfort tools (v0.19.22): the removed tail is stashed for "Eski yanıtı geri
+        // getir" — image files stay on disk until the stash is discarded, so a
+        // restore can put them back into the transcript.
+        stashForRegenerate(group.id, index, stored);
         if (!store.removeMessagesFrom(group.id, index)) {
+            // The transcript is unchanged, so the stash tail is still live in it —
+            // drop the stash WITHOUT deleting its image files.
+            regenStashes.remove(group.id);
             Toast.makeText(this, L10n.s(L10n.s("Yeniden üretilemedi: sohbet verisi okunamıyor.")), Toast.LENGTH_LONG).show();
             return;
         }
@@ -6413,10 +6578,10 @@ public class MainActivity extends Activity {
         LocalAiRuntime.INSTANCE.resetConversation(group.id);
         forgetAutoAttempts(group.id);
         showChat(group);
-        // continueOrRetry starts the fresh turn from the (now last) user message;
-        // it stays synchronous, so the auto-generate post queued by showChat sees
-        // generatingChatId != null and aborts.
-        continueOrRetry(group);
+        // continueOrRetry carries the steering note; it applies the note only when
+        // a generation actually starts, so an aborted retry never leaks it into a
+        // later unrelated turn.
+        continueOrRetry(group, steer);
     }
 
     private void renderMessage(TextView view, String speaker, String text, long at) {

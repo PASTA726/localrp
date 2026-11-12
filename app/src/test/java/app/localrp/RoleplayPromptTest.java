@@ -151,6 +151,37 @@ public class RoleplayPromptTest {
     }
 
     @Test
+    public void steerNote_shipsOnlyWhenProvided_inBothLanguages() {
+        Map<String, CharacterProfile> registry = new HashMap<>();
+        registry.put("spk", speaker("Elif"));
+
+        // Turkish build (english=false): one-shot steering note is present.
+        String steered = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), true, false, "", "", "", 8, 2600, null, false, null,
+                "Daha kısa yaz; aksiyona odaklan");
+        assertTrue(steered.contains("Yönlendirme notu (yalnızca bu yanıt): Daha kısa yaz; aksiyona odaklan"));
+
+        // English build: the note travels with an English label.
+        String steeredEn = RoleplayPrompt.build(
+                "Ship", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), true, false, "", "", "", 8, 2600, null, true, null,
+                "Keep it short");
+        assertTrue(steeredEn.contains("Steering note (this reply only): Keep it short"));
+        assertFalse(steeredEn.contains("Yönlendirme notu"));
+
+        // No note (null) and a blank note both leave no steering line at all.
+        String plain = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), true, false, "", "", "", 8, 2600, null, false, null, null);
+        assertFalse(plain.contains("Yönlendirme notu"));
+        String blank = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), true, false, "", "", "", 8, 2600, null, false, null, "   ");
+        assertFalse(blank.contains("Yönlendirme notu"));
+    }
+
+    @Test
     public void englishMode_assemblesEnglishPromptWithUserReplyRule() {
         Map<String, CharacterProfile> registry = new HashMap<>();
         registry.put("spk", speaker("Elif"));

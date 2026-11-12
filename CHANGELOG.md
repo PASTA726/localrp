@@ -2,6 +2,15 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.22-alpha1 — 2026-11-12 (daha iyi AI rahatlatma araçları)
+
+Yeniden üretim akışına iki rahatlatma aracı: yönlendirme notu ve eski yanıtı geri getirme.
+
+- **Yönlendirerek yeniden üret**: son AI mesajına uzun basınca yeni seçenek — tek seferlik bir yönlendirme notu ("daha kısa yaz", "aksiyona odaklan"…) yalnızca bu yanıtın prompt'una girer (`RoleplayPrompt`'a `steer` parametresi; yerel motor ve online sağlayıcı sistem promptu ikisi de destekler), kayda yazılmaz ve bir sonraki turda otomatik düşer. Not boş bırakılırsa sıradan yeniden üretim yapılır.
+- **Eski yanıtı geri getir**: yeniden üretim artık silinen kuyruğu oturumluk bir stash'e alıyor; yeni yanıt beğenilmezse son AI mesajının menüsünden önceki hâli birebir geri getirilebilir (zaman damgaları ve görseller dahil). Yeni kullanıcı mesajı yazmak, sohbetin yukarısının değişmesi veya düzenlenmesi geri almayı güvenli biçimde devre dışı bırakır (`RegenUndo` saf karar sınıfı, JVM testli). Stash bellekte yaşar: uygulama kapanınca kaybolur — bu durumda kuyruğun görsel dosyaları diskte kalabilir.
+- 8 yeni birim testi (steer prompt'ı TR/EN/boş; `RegenUndo` guard kuralları) → toplam 146.
+- versionCode 51 / 0.19.22-alpha1.
+
 ## v0.19.21-alpha1 — 2026-11-12 (operasyon temizliği · 2)
 
 Temizlik turunun ikinci aşaması: kullanılmayan importlar ve ölü sözlük girdileri.

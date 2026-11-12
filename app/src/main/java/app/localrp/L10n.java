@@ -381,6 +381,17 @@ public final class L10n {
         EN.put("Silinemedi: sohbet verisi okunamıyor.", "Delete failed: the chat data is unreadable.");
         EN.put("Yeniden üretilemedi: sohbet verisi okunamıyor.",
                 "Regeneration failed: the chat data is unreadable.");
+        EN.put("Yönlendirerek yeniden üret", "Regenerate with guidance");
+        EN.put("Yönlendirme notu (yalnızca bu yanıt)", "Guidance note (this reply only)");
+        EN.put("Boş bırakılırsa sıradan yeniden üretim yapılır; not yalnızca bu yanıtı yönlendirir, kayda yazılmaz.",
+                "Leave empty for a plain regeneration; the note steers only this reply and is never written to the transcript.");
+        EN.put("Örn: daha kısa yaz; aksiyona odaklan", "E.g. keep it short; focus on the action");
+        EN.put("Eski yanıtı geri getir", "Restore previous reply");
+        EN.put("Geri alma artık geçerli değil: sohbet değişti.",
+                "Undo is no longer valid: the chat has changed.");
+        EN.put("Eski yanıt geri getirilemedi: sohbet verisi okunamıyor.",
+                "The previous reply could not be restored: the chat data is unreadable.");
+        EN.put("Eski yanıt geri getirildi.", "Previous reply restored.");
         EN.put("Sohbette ara", "Search in chat");
         EN.put("Sohbette ara…", "Search in chat…");
         EN.put("En az iki harf yaz; tüm sohbet geçmişinde aranır.",
