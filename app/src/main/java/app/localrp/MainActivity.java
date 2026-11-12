@@ -156,6 +156,16 @@ public class MainActivity extends Activity {
     private TextView chatSpeakerView;
     private TextView chatModelHint;
     private EditText chatInput;
+    // v0.20.00 chat quick tools: one-touch regenerate / steer / undo above the composer.
+    private LinearLayout chatQuickTools;
+    private TextView chatQuickRegen;
+    private TextView chatQuickSteer;
+    private TextView chatQuickUndo;
+    // v0.20.00 home: live search pill + usage filter chips + the grid they re-render.
+    private String homeSearchQuery = "";
+    private String homeChip = "all";
+    private LinearLayout gridHost;
+    private LinearLayout chipHost;
     private String chatInputChatId;
     private final java.util.Map<String, String> chatDrafts = new java.util.HashMap<>();
     // Live link from a chat id to its in-flight draft balloon (task G0): re-entering a
@@ -334,7 +344,13 @@ public class MainActivity extends Activity {
     private void showHome() {
         visibleChatId = null;
         backAction = null;
-        setPage("LocalRP", L10n.s("Yerel hikâyelerin, senin kontrolünde"), "home");
+        // v0.20.00: the subtitle becomes a personalized greeting when a default
+        // persona has a name; the static tagline stays the neutral fallback.
+        Persona persona = store.defaultPersona();
+        String greeting = persona != null && !persona.name.trim().isEmpty()
+                ? L10n.s("Selam, ") + persona.name.trim() + L10n.s(" — hikâyen seni bekliyor")
+                : L10n.s("Yerel hikâyelerin, senin kontrolünde");
+        setPage("LocalRP", greeting, "home");
         addHero();
         addHomeActions();
         List<Group> groups = store.groups();
@@ -346,7 +362,99 @@ public class MainActivity extends Activity {
         addSection("Karakterlerin", L10n.s("Yönet"), this::showCharacters);
         List<CharacterProfile> characters = store.characters();
         if (characters.isEmpty()) addEmpty("Hikâyene karakter ekle", L10n.s("Kişiliğini ve konuşma tarzını birlikte tanımla."), L10n.s("＋  Karakter oluştur"), v -> showCharacterEditor(null));
-        else addCharacterGrid(characters);
+        else {
+            // v0.20.00: live search pill + usage filter chips + a re-renderable grid host.
+            homeSearchQuery = "";
+            homeChip = "all";
+            addHomeSearch();
+            addHomeChips();
+            LinearLayout host = new LinearLayout(this);
+            host.setOrientation(LinearLayout.VERTICAL);
+            content.addView(host, fullWidth());
+            gridHost = host;
+            renderHomeGrid();
+        }
+    }
+
+    /** v0.20.00: pill-shaped search box that filters the home character grid live. */
+    private void addHomeSearch() {
+        EditText search = new EditText(this);
+        search.setHint(L10n.s("Karakter ara…"));
+        search.setSingleLine(true);
+        search.setTextSize(14);
+        search.setTextColor(Design.text());
+        search.setHintTextColor(Design.muted());
+        search.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
+        search.setPadding(dp(14), dp(10), dp(14), dp(10));
+        LinearLayout.LayoutParams params = fullWidth();
+        params.setMargins(0, dp(12), 0, 0);
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                homeSearchQuery = s.toString();
+                renderHomeGrid();
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+            }
+        });
+        content.addView(search, params);
+    }
+
+    /** v0.20.00: usage filter chip row; the selected chip takes the accent. */
+    private void addHomeChips() {
+        chipHost = new LinearLayout(this);
+        chipHost.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams params = fullWidth();
+        params.setMargins(0, dp(10), 0, 0);
+        content.addView(chipHost, params);
+        renderHomeChips();
+    }
+
+    private void renderHomeChips() {
+        if (chipHost == null) return;
+        chipHost.removeAllViews();
+        addHomeChip("Tümü", "all");
+        addHomeChip("Grup RP'de", "grup");
+        addHomeChip("Tek sohbette", "tek");
+    }
+
+    private void addHomeChip(String title, String value) {
+        boolean selected = value.equals(homeChip);
+        TextView chip = label(L10n.s(title), 13, selected ? Design.accent() : Design.muted());
+        chip.setPadding(dp(14), dp(7), dp(14), dp(7));
+        chip.setBackground(rounded(selected ? Design.accentSoft() : Design.cardBg(),
+                selected ? Design.accentSoft() : Design.cardBg(), 16));
+        chip.setOnClickListener(v -> {
+            homeChip = value;
+            renderHomeChips();
+            renderHomeGrid();
+        });
+        LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        chipParams.setMargins(0, 0, dp(8), 0);
+        chipHost.addView(chip, chipParams);
+    }
+
+    /** Rebuilds only the home grid host — the rest of the page (and the window)
+     *  stays put while the user types or switches chips (GUI item 14 lesson). */
+    private void renderHomeGrid() {
+        if (gridHost == null) return;
+        gridHost.removeAllViews();
+        List<CharacterProfile> shown = HomeCards.filterCharacters(
+                store.characters(), store.groups(), homeSearchQuery, homeChip);
+        if (shown.isEmpty()) {
+            TextView empty = label(L10n.s("Eşleşen karakter yok."), 13, Design.muted());
+            empty.setPadding(dp(4), dp(10), dp(4), dp(2));
+            gridHost.addView(empty, fullWidth());
+            return;
+        }
+        addCharacterGridInto(gridHost, shown, store.groups());
     }
 
     // ---- first-launch onboarding (DeepSeek item 13): dil → model → ilk karakter ----
@@ -1233,6 +1341,28 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams continueParams = fullWidth();
         continueParams.setMargins(0, dp(8), 0, 0);
         chatComposer.addView(chatContinueButton, continueParams);
+
+        // v0.20.00 quick tools: one-touch regenerate / steer / undo above the composer,
+        // reusing the v0.19.22 balloon-menu actions. Visibility is managed in
+        // updateChatControls (hidden while busy or when no AI turn is at the tail).
+        chatQuickTools = new LinearLayout(this);
+        chatQuickTools.setOrientation(LinearLayout.HORIZONTAL);
+        chatQuickRegen = addQuickTool(chatQuickTools, L10n.s("↻  ") + L10n.s("Yeniden üret"), () -> {
+            int index = lastAiMessageIndex();
+            if (index >= 0) regenerateLastAction(index, null);
+        });
+        chatQuickSteer = addQuickTool(chatQuickTools, L10n.s("✎  ") + L10n.s("Yönlendir"), () -> {
+            int index = lastAiMessageIndex();
+            if (index >= 0) regenerateWithNote(index);
+        });
+        chatQuickUndo = addQuickTool(chatQuickTools, L10n.s("↩  ") + L10n.s("Geri getir"), () -> {
+            // The chat id is captured now — the action must never touch another chat.
+            String chatId = visibleChatId;
+            if (chatId != null) undoRegenerate(chatId);
+        });
+        LinearLayout.LayoutParams quickParams = fullWidth();
+        quickParams.setMargins(0, dp(6), 0, 0);
+        chatComposer.addView(chatQuickTools, quickParams);
 
         EditText input = new EditText(this);
         input.setHint(L10n.s(L10n.s("Hikâyeye bir şey yaz…")));
@@ -2191,6 +2321,29 @@ public class MainActivity extends Activity {
         }
         if (chatStatusView != null) chatStatusView.setText(chatStatusText(group));
         if (chatModelHint != null) chatModelHint.setVisibility(modelCanRespond() ? View.GONE : View.VISIBLE);
+        // v0.20.00 quick tools: visible only when idle, the model can answer and there
+        // is an AI turn at the tail (regenerate/steer) or a restorable stash (undo).
+        if (chatQuickTools != null) {
+            int lastAi = -1;
+            if (!busy && modelCanRespond()) {
+                List<Message> messages = store.messages(group.id);
+                for (int i = messages.size() - 1; i >= 0; i--) {
+                    if (!messages.get(i).user) {
+                        lastAi = i;
+                        break;
+                    }
+                }
+            }
+            boolean canRegen = lastAi >= 0;
+            RegenStash stash = regenStashes.get(group.id);
+            Group stashGroup = store.group(group.id);
+            boolean canUndo = !busy && stash != null && stashGroup != null && RegenUndo.canRestore(
+                    stash.index, stash.anchorText, stash.anchorAt, store.messages(stashGroup.id));
+            chatQuickTools.setVisibility(canRegen || canUndo ? View.VISIBLE : View.GONE);
+            if (chatQuickRegen != null) chatQuickRegen.setVisibility(canRegen ? View.VISIBLE : View.GONE);
+            if (chatQuickSteer != null) chatQuickSteer.setVisibility(canRegen ? View.VISIBLE : View.GONE);
+            if (chatQuickUndo != null) chatQuickUndo.setVisibility(canUndo ? View.VISIBLE : View.GONE);
+        }
         if (chatContinueButton == null) return;
 
         List<Message> history = store.messages(group.id);
@@ -5463,8 +5616,9 @@ public class MainActivity extends Activity {
         }
 
         if (!chat) {
-            // Floating bottom navigation: a detached rounded bar with quiet text-only
-            // items — the selected label takes the accent, everyone else stays muted.
+            // Floating bottom navigation (v0.20.00 restyle): each item stacks its glyph
+            // over the label; the selected item takes the accent on both, everyone
+            // else stays muted.
             FrameLayout navWrap = new FrameLayout(this);
             navWrap.setPadding(dp(14), dp(4), dp(14), dp(12));
             LinearLayout nav = new LinearLayout(this);
@@ -5498,23 +5652,28 @@ public class MainActivity extends Activity {
     }
 
     private void addNavItem(LinearLayout nav, String icon, String title, boolean selected, Runnable action) {
-        // Text-only item: the icon parameter is kept for callers but intentionally unused.
-        TextView item = label(title, 13, selected ? Design.accent() : Design.muted());
+        // v0.20.00: glyph stacked over the label (FigCraft proposal). The icon
+        // parameter is finally in use; the selected item keeps the wider weight.
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
         item.setGravity(Gravity.CENTER);
-        item.setTypeface(android.graphics.Typeface.SANS_SERIF, selected
+        TextView glyph = label(icon, 15, selected ? Design.accent() : Design.muted());
+        glyph.setGravity(Gravity.CENTER);
+        item.addView(glyph);
+        TextView text = label(title, 10, selected ? Design.accent() : Design.muted());
+        text.setGravity(Gravity.CENTER);
+        text.setTypeface(android.graphics.Typeface.SANS_SERIF, selected
                 ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+        text.setPadding(0, dp(2), 0, 0);
+        item.addView(text);
+        item.setPadding(dp(4), dp(6), dp(4), dp(6));
+        item.setOnClickListener(v -> action.run());
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, selected ? 1.35f : 1f);
         if (selected) {
-            LinearLayout.LayoutParams highlight = new LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.35f);
             item.setBackground(rounded(Design.accentSoft(), Design.accentSoft(), 22));
-            item.setPadding(dp(4), dp(9), dp(4), dp(9));
-            item.setOnClickListener(v -> action.run());
-            nav.addView(item, highlight);
-        } else {
-            item.setPadding(dp(4), dp(9), dp(4), dp(9));
-            item.setOnClickListener(v -> action.run());
-            nav.addView(item, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         }
+        nav.addView(item, params);
     }
 
     private void addHero() {
@@ -5634,6 +5793,15 @@ public class MainActivity extends Activity {
     }
 
     private void addCharacterGrid(List<CharacterProfile> characters) {
+        addCharacterGridInto(content, characters, null);
+    }
+
+    /**
+     * v0.20.00: two-column cAI-like cards into an explicit host. {@code groups}
+     * non-null turns on the home card footer (usage tag pill + chat count); the
+     * characters page passes {@code null} and keeps the plain card.
+     */
+    private void addCharacterGridInto(LinearLayout host, List<CharacterProfile> characters, List<Group> groups) {
         // Two-column cAI-like cards; simple pairs of weight-1 cards, no complex layout.
         int rows = (characters.size() + 1) / 2;
         for (int i = 0; i < rows; i++) {
@@ -5645,18 +5813,18 @@ public class MainActivity extends Activity {
                         0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
                 if (j == 1) cell.setMargins(dp(6), 0, 0, 0);
                 if (index < characters.size()) {
-                    row.addView(characterCell(characters.get(index)), cell);
+                    row.addView(characterCell(characters.get(index), groups), cell);
                 } else {
                     row.addView(new View(this), cell); // keeps rows square when the count is odd
                 }
             }
             LinearLayout.LayoutParams rowParams = fullWidth();
             rowParams.setMargins(0, 0, 0, dp(8));
-            content.addView(row, rowParams);
+            host.addView(row, rowParams);
         }
     }
 
-    private LinearLayout characterCell(CharacterProfile character) {
+    private LinearLayout characterCell(CharacterProfile character, List<Group> groups) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER);
@@ -5677,6 +5845,31 @@ public class MainActivity extends Activity {
         desc.setEllipsize(TextUtils.TruncateAt.END);
         desc.setPadding(0, dp(3), 0, 0);
         card.addView(desc);
+        // v0.20.00 home footer: usage tag pill (GRUP/TEK) + how many chats feature
+        // this character. Only when the card sits on the home screen (groups != null)
+        // and the character actually has a conversation.
+        if (groups != null) {
+            String tag = HomeCards.usageTag(character.id, groups);
+            int count = HomeCards.chatCount(character.id, groups);
+            if (tag != null && count > 0) {
+                boolean grouped = "grup".equals(tag);
+                LinearLayout foot = new LinearLayout(this);
+                foot.setGravity(Gravity.CENTER);
+                foot.setPadding(0, dp(7), 0, 0);
+                TextView pill = label(grouped ? L10n.s("GRUP") : L10n.s("TEK"), 9,
+                        grouped ? Design.accent() : Design.muted());
+                pill.setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD);
+                pill.setLetterSpacing(0.08f);
+                pill.setPadding(dp(8), dp(3), dp(8), dp(3));
+                pill.setBackground(rounded(grouped ? Design.accentSoft() : Design.cardBg(),
+                        grouped ? Design.accentSoft() : Design.cardBg(), 10));
+                foot.addView(pill);
+                TextView countText = label(count + L10n.s(" sohbet"), 11, Design.muted());
+                countText.setPadding(dp(8), 0, 0, 0);
+                foot.addView(countText);
+                card.addView(foot, fullWidth());
+            }
+        }
         // Tap opens the editor; long-press opens quick actions (copy / JSON export),
         // restoring the interaction the earlier list→grid rework had orphaned.
         card.setOnClickListener(v -> showCharacterEditor(character));
@@ -6403,6 +6596,27 @@ public class MainActivity extends Activity {
     /** A generation is either running anywhere or targeting the visible chat. */
     private boolean isGeneratingHere() {
         return generatingChatId != null;
+    }
+
+    /** v0.20.00 quick tools: transcript index of the last AI turn, -1 when absent. */
+    private int lastAiMessageIndex() {
+        for (int i = chatHistory.size() - 1; i >= 0; i--) {
+            if (!chatHistory.get(i).user) return i;
+        }
+        return -1;
+    }
+
+    /** v0.20.00: a small accent pill in the chat quick-tools row. */
+    private TextView addQuickTool(LinearLayout host, String title, Runnable action) {
+        TextView tool = label(title, 12, Design.accent());
+        tool.setPadding(dp(12), dp(8), dp(12), dp(8));
+        tool.setBackground(rounded(Design.cardBg(), Design.cardBg(), 18));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, 0, dp(8), 0);
+        tool.setOnClickListener(v -> action.run());
+        host.addView(tool, params);
+        return tool;
     }
 
     private void editMessage(int index) {
