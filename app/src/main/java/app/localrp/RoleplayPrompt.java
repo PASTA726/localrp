@@ -67,6 +67,22 @@ final class RoleplayPrompt {
                         String aiInstructions, String themeName, String themeInstruction,
                         int historyDepth, int historyCharBudget, String[] persona, boolean english,
                         List<Lorebook.Entry> lorebook) {
+        return build(sceneName, speaker, castIds, castLookup, history, continuing, continuation,
+                aiInstructions, themeName, themeInstruction, historyDepth, historyCharBudget,
+                persona, english, lorebook, null);
+    }
+
+    /**
+     * @param steer optional one-shot steering note ("Yönlendirerek yeniden üret",
+     *              v0.19.22): guides only the reply this prompt builds — callers
+     *              consume it right after use, so later turns rebuild without it.
+     */
+    static String build(String sceneName, CharacterProfile speaker, List<String> castIds,
+                        Function<String, CharacterProfile> castLookup, List<Message> history,
+                        boolean continuing, boolean continuation,
+                        String aiInstructions, String themeName, String themeInstruction,
+                        int historyDepth, int historyCharBudget, String[] persona, boolean english,
+                        List<Lorebook.Entry> lorebook, String steer) {
         StringBuilder prompt = new StringBuilder();
         String speakerName = clip(speaker.name, 80);
         Message last = history.isEmpty() ? null : history.get(history.size() - 1);
@@ -77,6 +93,10 @@ final class RoleplayPrompt {
         if (themeInstruction != null && !themeInstruction.isEmpty()) {
             prompt.append(english ? "Scene tone (" : "Sahne teması (").append(themeName == null ? "" : themeName).append("): ")
                     .append(themeInstruction).append("\n");
+        }
+        if (steer != null && !steer.trim().isEmpty()) {
+            prompt.append(english ? "Steering note (this reply only): " : "Yönlendirme notu (yalnızca bu yanıt): ")
+                    .append(oneLine(steer, 300)).append("\n");
         }
         prompt.append(english ? "Scene: " : "Sahne: ").append(oneLine(sceneName, 160)).append("\n");
         if (english) {
