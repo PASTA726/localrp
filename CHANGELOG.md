@@ -2,6 +2,15 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.19.21-alpha1 — 2026-11-12 (operasyon temizliği · 2)
+
+Temizlik turunun ikinci aşaması: kullanılmayan importlar ve ölü sözlük girdileri.
+
+- **Kullanılmayan importlar**: `MainActivity`'den `android.graphics.Color` (tüm renk erişimi `Design.*` üzerinden) ve `org.json.JSONArray` (başka dosyada kullanılıyor) kaldırıldı; diğer tüm kaynak dosyalar tarandı, temiz.
+- **Ölü sözlük girdileri**: `EN` tablosundan 25 doğrulanmış ölü anahtar silindi (617+ → 723 girdi tablosunda). Doğrulama yöntemi: anahtarın birebir dize kaynağı tüm kaynak kodda (`L10n.java` hariç) hiçbir yerde geçmiyorsa ölüdür — bu kural dinamik sarmaları (`L10n.s(theme[1])`, `L10n.s(model.why)`) ve kaçış dizili anahtarları (`\n`, `\"`) korur. Silinenler yalnızca yenilemelerde bölünen birleşik cümleler ve eski etiketler ("Sıra: Otomatik", "Profili kaydet", eski yaş uyarısı metni…); canlı parçaları ayriyeten sözlükte.
+- Ölü alan taraması: 111 alan denetlendi, hiçbiri ölü değil.
+- versionCode 50 / 0.19.21-alpha1.
+
 ## v0.19.20-alpha1 — 2026-11-12 (operasyon temizliği)
 
 Ölü kod çıkarma + bir GUI geçişinde sessizce erişilemez olmuş özelliğin geri bağlanması.
