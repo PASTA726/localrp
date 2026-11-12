@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.20.00-alpha1 — 2026-11-12 (yeni arayüz: FigCraft önerisi koda döküldü)
+
+Onaylanan FigCraft UI önerisinin ilk dört parçası native olarak uygulandı.
+
+- **Alt navigasyon yeniden stil**: her öğe artık glifi etiketin üstünde yığıyor (FigCraft mockup'ındaki gibi); seçili öğe hem glifte hem etikette vurgu rengi alıyor, diğerleri sönük kalıyor. `addNavItem`'in baştan beri kullanılmayan icon parametresi artık gerçekten kullanılıyor.
+- **Ana sayfa karşılama**: varsayılan kullanıcı kişiliğinin adı varsa sayfa alt başlığı "Selam, {ad} — hikâyen seni bekliyor" oluyor; ad yoksa eski statik slogan korunuyor.
+- **Ana sayfa arama hapı + filtre çipleri**: karakter bölümünde canlı arama ("Karakter ara…") ve kullanım çipleri (Tümü / Grup RP'de / Tek sohbette). Yazarken ve çip değişirken yalnızca grid host yeniden inşa ediliyor — sayfanın geri kalanı ve pencere dokunulmuyor (önceki flicker dersleri). Karar mantığı JVM testli yeni `HomeCards` sınıfında: sohbet sayısı, kullanım etiketi (grup/tek) ve sorgu+çip filtresi; `Locale.ROOT` küçültme artı Türkçe `İ` için U+0307 temizliği.
+- **Kart alt bilgisi**: ana sayfa kartlarında karakterin sohbet kullanımını gösteren etiket şeridi (GRUP/TEK hapı + "N sohbet"); yalnızca sohbeti olan karakterlerde görünür. Karakterler sayfası aynı grid'i footersız kullanıyor.
+- **Sohbet hızlı araç şeridi**: composer'ın üstünde tek dokunuşlu üç hap — `↻ Yeniden üret`, `✎ Yönlendir`, `↩ Geri getir` — v0.19.22 balon menüsündeki aksiyonları yeniden kullanıyor. Üretim/model yükleme/benchmark sırasında, model yanıtlayamıyorken ya da kuyruğun sonunda AI mesajı yokken gizlenir; geri getirme hapı yalnızca stash geri yüklenebilir durumdaysa görünür.
+- 8 yeni birim testi (`HomeCards`) → toplam 155.
+- versionCode 52 / 0.20.00-alpha1.
+
 ## v0.19.22-alpha1 — 2026-11-12 (daha iyi AI rahatlatma araçları)
 
 Yeniden üretim akışına iki rahatlatma aracı: yönlendirme notu ve eski yanıtı geri getirme.

@@ -958,5 +958,17 @@ public final class L10n {
         EN.put(" token", " tokens");
         EN.put(" adım", " steps");
         EN.put(" · ", " · ");
+        // v0.20.00 home + chat quick tools
+        EN.put("Selam, ", "Hi, ");
+        EN.put(" — hikâyen seni bekliyor", " — your story awaits");
+        EN.put("Karakter ara…", "Search characters…");
+        EN.put("Eşleşen karakter yok.", "No matching characters.");
+        EN.put("Tümü", "All");
+        EN.put("Grup RP'de", "In group RP");
+        EN.put("Tek sohbette", "In solo chats");
+        EN.put("GRUP", "GROUP");
+        EN.put("TEK", "SOLO");
+        EN.put("Yönlendir", "Steer");
+        EN.put("Geri getir", "Restore");
     }
 }
