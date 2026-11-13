@@ -997,5 +997,16 @@ public final class L10n {
         EN.put("Bu cihazda ses tanıma yok.", "Speech recognition is not available on this device.");
         EN.put("Bu cihazda sesli okuma yok.", "Text-to-speech is not available on this device.");
         EN.put("Ses motoru hazırlanıyor; bir kez daha dokun.", "The speech engine is starting; tap once more.");
+        // v0.23.00 memory
+        EN.put("🧠  Hafızaya ekle", "🧠  Remember this");
+        EN.put("🧠  Hafıza", "🧠  Memory");
+        EN.put("Hafıza", "Memory");
+        EN.put("Anı kaydedildi: önemli anlar her turda hatırlanır.",
+                "Event pinned: important moments are recalled every turn.");
+        EN.put("Anı kaydedilemedi: saklı veri okunamıyor.",
+                "Could not pin the event: stored data unreadable.");
+        EN.put("Anı silindi.", "Event removed from memory.");
+        EN.put("Henüz anı yok. Mesaja uzun basıp \"Hafızaya ekle\" diyerek önemli olayları kaydet; model her turda en ilgili anları hatırlar.",
+                "No pinned events yet. Long-press a message and choose \"Remember this\"; the most relevant events are recalled every turn.");
     }
 }

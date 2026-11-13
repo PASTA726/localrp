@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.23.00-alpha1 — 2026-11-13 (gelişmiş hafıza)
+
+P1 önceliği: hikâye ne kadar uzarsa uzasın model önemli olayları hatırlar. Hepsi çevrimdışı ve deterministik — model çağrısı gerektirmez.
+
+- **Önemli olayları saklama**: depolanan mesaja uzun bas → "🧠 Hafızaya ekle". Sabitlenen olaylar sohbet başına saklanır (`memory_<chatId>`, lorebook kalıbıyla; en fazla 40 anı, anı başına 600 karakter, bozuk kayıtlara karşı bütünlük koruması).
+- **İlgili anıların geri çağrılması**: her turda sabitlenen anılar son mesajlara karşı kelime-örtüşme puanıyla puanlanır; en ilgili 5 anı (700 karakter bütçesi) prompt'a "Hatırlanan önemli anlar" bloğu olarak girer. Örtüşme yoksa blok girmez — gürültü yaratmaz.
+- **Otomatik özet (çıkarımsal)**: prompt penceresinden (geçmiş derinliği) taşan eski mesajlar, konuşmacı + ilk cümle biçiminde sıkıştırılır ve "Hikâyede şimdiye kadar olanlar" bloğu olarak taze kurulumlara girer. Sağlayıcı modunda geçmiş gerçek tur olarak gittiğinden recap kullanılmaz. Model-üretimli özet ileri bir geliştirme olarak değerlendirilecek.
+- **Yönetim**: hızlı araç şeridinde "🧠 Hafıza" — anıları listeler, dokununca siler. Anı varken şerit her zaman görünür.
+- Saf mantık `ChatMemory` (7 test) + `RoleplayPrompt` hafıza enjeksiyonu (1 test) → toplam 184.
+- versionCode 56 / 0.23.00-alpha1.
+
 ## v0.22.00-alpha1 — 2026-11-12 (ses sistemi · ilk parti: TTS okuma + sesli giriş)
 
 P1 önceliğinin ilk partisi: mesajları dinlemek ve mikrofonla yazmak. (Otomatik özet/anı hafızası sonraki partide.)

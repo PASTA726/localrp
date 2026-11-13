@@ -151,6 +151,38 @@ public class RoleplayPromptTest {
     }
 
     @Test
+    public void memory_injectsRecapAndRelevantEvents_onFreshScenesOnly() {
+        Map<String, CharacterProfile> registry = new HashMap<>();
+        registry.put("spk", speaker("Elif"));
+        List<String> memories = new ArrayList<>();
+        memories.add("Elif: fenerin fenercisiyle konuştu.");
+        String prompt = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), false, false, "", "", "", 2, 2600, null, false, null,
+                null, "Elif: Gece limana yanaştı.", memories);
+        assertTrue(prompt.contains("Hikâyede şimdiye kadar olanlar"));
+        assertTrue(prompt.contains("Gece limana yanaştı."));
+        assertTrue(prompt.contains("Hatırlanan önemli anlar:"));
+        assertTrue(prompt.contains("- Elif: fenerin fenercisiyle konuştu."));
+
+        // English mode swaps the headers.
+        String english = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), false, false, "", "", "", 2, 2600, null, true, null,
+                null, "Elif: They docked at night.", memories);
+        assertTrue(english.contains("Story so far"));
+        assertTrue(english.contains("Remembered important events:"));
+
+        // Continuing turns must not duplicate: the engine's saved context carries them.
+        String continuing = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), registry::get,
+                history(), true, false, "", "", "", 2, 2600, null, false, null,
+                null, "Elif: Gece limana yanaştı.", memories);
+        assertFalse(continuing.contains("Hatırlanan önemli anlar"));
+        assertFalse(continuing.contains("Hikâyede şimdiye kadar olanlar"));
+    }
+
+    @Test
     public void steerNote_shipsOnlyWhenProvided_inBothLanguages() {
         Map<String, CharacterProfile> registry = new HashMap<>();
         registry.put("spk", speaker("Elif"));
