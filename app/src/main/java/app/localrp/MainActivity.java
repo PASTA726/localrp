@@ -174,6 +174,9 @@ public class MainActivity extends Activity {
     private boolean ttsFailed;
     // v0.20.00 home: live search pill + usage filter chips + the grid they re-render.
     private String homeSearchQuery = "";
+    // v0.26.00 usability: chats-list live search state.
+    private String chatsSearchQuery = "";
+    private LinearLayout chatsListHost;
     private String homeChip = "all";
     private LinearLayout gridHost;
     private LinearLayout chipHost;
@@ -447,18 +450,17 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** v0.20.00: pill-shaped search box that filters the home character grid live. */
-    private void addHomeSearch() {
+    /** v0.20.00: pill-shaped search box that filters the home character grid live.
+     *  v0.26.00: the pill construction is shared with the chats-list search. */
+    private EditText makeSearchPill(String hint, java.util.function.Consumer<String> onQuery) {
         EditText search = new EditText(this);
-        search.setHint(L10n.s("Karakter ara…"));
+        search.setHint(L10n.s(hint));
         search.setSingleLine(true);
         search.setTextSize(14);
         search.setTextColor(Design.text());
         search.setHintTextColor(Design.muted());
         search.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
         search.setPadding(dp(14), dp(10), dp(14), dp(10));
-        LinearLayout.LayoutParams params = fullWidth();
-        params.setMargins(0, dp(12), 0, 0);
         search.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -466,14 +468,23 @@ public class MainActivity extends Activity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                homeSearchQuery = s.toString();
-                renderHomeGrid();
+                onQuery.accept(s.toString());
             }
 
             @Override
             public void afterTextChanged(android.text.Editable s) {
             }
         });
+        return search;
+    }
+
+    private void addHomeSearch() {
+        EditText search = makeSearchPill("Karakter ara…", query -> {
+            homeSearchQuery = query;
+            renderHomeGrid();
+        });
+        LinearLayout.LayoutParams params = fullWidth();
+        params.setMargins(0, dp(12), 0, 0);
         content.addView(search, params);
     }
 
@@ -1091,26 +1102,33 @@ public class MainActivity extends Activity {
         if (editing) {
             addSection(L10n.s("Sohbet"), null, null);
             addDangerButton(L10n.s("Sohbet geçmişini temizle"), v -> clearChat(existing));
-            addDangerButton("Grubu sil", v -> confirm(existing.name + " ve sohbeti silinsin mi?", L10n.s("Sil"), () -> {
-                LocalAiRuntime.INSTANCE.stopGeneration();
-                // Snapshots must come off the store BEFORE deleteGroup wipes the record;
-                // image files are kept until the undo window closes so restore can win.
-                Group snapshot = store.group(existing.id);
-                List<Message> transcript = new ArrayList<>(store.messages(existing.id));
-                store.deleteGroup(existing.id);
-                showHome();
-                if (snapshot != null) {
-                    showUndoBar(existing.name + L10n.s(" silindi."), () -> {
-                        if (!store.saveGroup(snapshot) || !store.replaceMessages(snapshot.id, transcript)) {
-                            store.deleteGroup(snapshot.id); // compensating: no half-restored chat stays visible
-                            Toast.makeText(this, L10n.s(L10n.s("Geri alınamadı: sohbet verisi okunamıyor.")), Toast.LENGTH_LONG).show();
-                            return;
-                        }
-                        Toast.makeText(this, existing.name + L10n.s(" geri getirildi."), Toast.LENGTH_SHORT).show();
-                        showChats();
-                    }, () -> deleteMessageImages(snapshot.id));
+            addDangerButton("Grubu sil", v -> confirm(existing.name + " ve sohbeti silinsin mi?", L10n.s("Sil"), () ->
+                    deleteGroupWithUndo(existing, this::showHome)));
+        }
+    }
+
+    /**
+     * v0.26.00 usability: shared delete-with-undo used by both the group editor and
+     * the chats-list long-press quick menu. Snapshots must come off the store BEFORE
+     * deleteGroup wipes the record; image files are kept until the undo window
+     * closes so restore can win.
+     */
+    private void deleteGroupWithUndo(Group existing, Runnable after) {
+        LocalAiRuntime.INSTANCE.stopGeneration();
+        Group snapshot = store.group(existing.id);
+        List<Message> transcript = new ArrayList<>(store.messages(existing.id));
+        store.deleteGroup(existing.id);
+        after.run();
+        if (snapshot != null) {
+            showUndoBar(existing.name + L10n.s(" silindi."), () -> {
+                if (!store.saveGroup(snapshot) || !store.replaceMessages(snapshot.id, transcript)) {
+                    store.deleteGroup(snapshot.id); // compensating: no half-restored chat stays visible
+                    Toast.makeText(this, L10n.s(L10n.s("Geri alınamadı: sohbet verisi okunamıyor.")), Toast.LENGTH_LONG).show();
+                    return;
                 }
-            }));
+                Toast.makeText(this, existing.name + L10n.s(" geri getirildi."), Toast.LENGTH_SHORT).show();
+                showChats();
+            }, () -> deleteMessageImages(snapshot.id));
         }
     }
 
@@ -1239,7 +1257,12 @@ public class MainActivity extends Activity {
         chatOlderButton = null;
         chatEmptyState = null;
         if (chatHistory.isEmpty()) {
-            chatEmptyState = addEmpty(L10n.s("RP sahnesi burada başlıyor"), L10n.s("Mesajını yaz; seçili karakter otomatik yanıtlasın."), null, null);
+            // v0.26.00 usability: the long-press message menu (copy/edit/memory/read)
+            // is invisible until discovered — name it in the empty state.
+            chatEmptyState = addEmpty(L10n.s("RP sahnesi burada başlıyor"),
+                    L10n.s("Mesajını yaz; seçili karakter otomatik yanıtlasın. ")
+                            + L10n.s("Depolanan mesaja uzun bas: kopyala, düzenle, hafızaya ekle, sesli oku."),
+                    null, null);
             addStarterChips(group);
         } else {
             addOlderMessagesButton();
@@ -2980,9 +3003,53 @@ public class MainActivity extends Activity {
         backAction = this::showHome;
         setPage("RP Sohbetleri", "Bire bir ve grup hikâyelerin", "chats");
         addHomeActions();
+        // v0.26.00 usability: live search pill — with many RPs, one tap to find a chat.
+        chatsSearchQuery = "";
+        chatsListHost = new LinearLayout(this);
+        chatsListHost.setOrientation(LinearLayout.VERTICAL);
+        EditText search = makeSearchPill("RP ara…", query -> {
+            chatsSearchQuery = query;
+            renderChatsList();
+        });
+        LinearLayout.LayoutParams pillParams = fullWidth();
+        pillParams.setMargins(0, dp(12), 0, 0);
+        content.addView(search, pillParams);
+        content.addView(chatsListHost, fullWidth());
+        renderChatsList();
+    }
+
+    /** v0.26.00: re-renders the chats list against the current search query. */
+    private void renderChatsList() {
+        LinearLayout host = chatsListHost;
+        if (host == null) return;
+        host.removeAllViews();
+        String query = chatsSearchQuery == null ? "" : chatsSearchQuery.trim().toLowerCase(java.util.Locale.ROOT);
         List<Group> groups = store.groups();
-        if (groups.isEmpty()) addEmpty(L10n.s("Burada henüz RP yok"), L10n.s("Bire bir hikâye başlat veya grup kur."), null, null);
-        for (Group group : recentChats(groups, Integer.MAX_VALUE)) addGroupCard(group, this::showChats);
+        if (!query.isEmpty()) {
+            List<Group> filtered = new ArrayList<>();
+            for (Group group : groups) {
+                if (group.name != null && group.name.toLowerCase(java.util.Locale.ROOT).contains(query)) {
+                    filtered.add(group);
+                    continue;
+                }
+                // Character names count too: a chat is found by who is in it.
+                for (String id : group.characterIds) {
+                    CharacterProfile profile = store.character(id);
+                    if (profile != null && profile.name != null
+                            && profile.name.toLowerCase(java.util.Locale.ROOT).contains(query)) {
+                        filtered.add(group);
+                        break;
+                    }
+                }
+            }
+            groups = filtered;
+        }
+        if (groups.isEmpty()) {
+            addEmptyInto(host, query.isEmpty() ? L10n.s("Burada henüz RP yok") : L10n.s("Eşleşen RP yok"),
+                    query.isEmpty() ? L10n.s("Bire bir hikâye başlat veya grup kur.") : L10n.s("Farklı bir ad veya karakter ara."), null, null);
+            return;
+        }
+        for (Group group : recentChats(groups, Integer.MAX_VALUE)) addGroupCardInto(host, group, this::showChats);
     }
 
     /**
@@ -6112,6 +6179,11 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout addEmpty(String title, String detail, String actionText, View.OnClickListener action) {
+        return addEmptyInto(content, title, detail, actionText, action);
+    }
+
+    /** v0.26.00: "into" variant so the chats-list search can re-render in place. */
+    private LinearLayout addEmptyInto(LinearLayout host, String title, String detail, String actionText, View.OnClickListener action) {
         LinearLayout box = new LinearLayout(this);
         box.setGravity(Gravity.CENTER);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -6135,11 +6207,16 @@ public class MainActivity extends Activity {
         }
         LinearLayout.LayoutParams p = fullWidth();
         p.setMargins(0, 0, 0, dp(14));
-        content.addView(box, p);
+        host.addView(box, p);
         return box;
     }
 
     private void addGroupCard(Group group, Runnable openBack) {
+        addGroupCardInto(content, group, openBack);
+    }
+
+    /** v0.26.00: "into" variant so the chats-list search can re-render in place. */
+    private void addGroupCardInto(LinearLayout host, Group group, Runnable openBack) {
         Message last = store.lastMessage(group.id);
         String preview;
         String when = "";
@@ -6183,7 +6260,26 @@ public class MainActivity extends Activity {
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         card.addView(row);
         card.setOnClickListener(v -> showChat(group, openBack));
-        addCardToPage(card);
+        // v0.26.00 usability: long-press quick menu — rename/delete without opening
+        // the chat first (same delete-with-undo path as the group editor).
+        card.setOnLongClickListener(v -> {
+            showGroupCardQuickMenu(group, openBack);
+            return true;
+        });
+        addCardInto(host, card);
+    }
+
+    /** v0.26.00: quick actions for a chat card without entering the conversation. */
+    private void showGroupCardQuickMenu(Group group, Runnable openBack) {
+        String[] items = {L10n.s("Sohbeti aç"), L10n.s(L10n.s("RP ayarları")), "Grubu sil"};
+        AlertDialog dialog = new AlertDialog.Builder(this).setItems(items, (d, which) -> {
+            if (which == 0) showChat(group, openBack);
+            else if (which == 1) showGroupEditor(group, openBack == null ? this::showChats : openBack);
+            else confirm(group.name + " ve sohbeti silinsin mi?", L10n.s("Sil"),
+                    () -> deleteGroupWithUndo(group, openBack == null ? this::showChats : openBack));
+        }).create();
+        tintDialog(dialog);
+        dialog.show();
     }
 
     private void addCharacterGrid(List<CharacterProfile> characters) {
@@ -6634,9 +6730,14 @@ public class MainActivity extends Activity {
     }
 
     private void addCardToPage(View card) {
+        addCardInto(content, card);
+    }
+
+    /** v0.26.00: host-targeted card append (chats-list search re-renders in place). */
+    private void addCardInto(LinearLayout host, View card) {
         LinearLayout.LayoutParams p = fullWidth();
         p.setMargins(0, 0, 0, dp(10));
-        content.addView(card, p);
+        host.addView(card, p);
     }
 
     private TextView label(String text, int size, int color) {

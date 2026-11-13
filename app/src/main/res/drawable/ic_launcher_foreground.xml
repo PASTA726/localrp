@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- LocalRP launcher foreground (v0.19.15): dark-stage drama scene — a clown in a
-     spotlight holds up the tragedy (sad) mask. User-chosen concept; essential
-     content stays inside the 66dp safe zone, the light beam may crop at the mask
-     edge (natural for light). -->
+<!-- LocalRP launcher foreground (v0.19.15 concept, v0.26.00 legibility pass):
+     dark-stage drama scene — a clown in a spotlight holds up the tragedy (sad)
+     mask. Kept the user-chosen concept; refreshed for small-size legibility:
+     bolder facial features, bigger mask, stronger beam, fewer tiny details.
+     Essential content stays inside the 66dp safe zone (22..86); the light beam
+     may crop at the mask edge (natural for light). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- spotlight beam -->
-    <path android:pathData="M48.5,20 L59.5,20 L79,86 L29,86 Z">
+    <!-- spotlight beam (stronger than v0.19.15: visible on tinted launchers too) -->
+    <path android:pathData="M47,20 L61,20 L82,86 L26,86 Z">
         <aapt:attr name="android:fillColor">
             <gradient
                 android:type="linear"
@@ -18,93 +20,93 @@
                 android:startY="20"
                 android:endX="54"
                 android:endY="86">
-                <item android:offset="0.0" android:color="#52FFC24B" />
-                <item android:offset="1.0" android:color="#05FFC24B" />
+                <item android:offset="0.0" android:color="#7DFFC24B" />
+                <item android:offset="1.0" android:color="#12FFC24B" />
             </gradient>
         </aapt:attr>
     </path>
     <!-- stage floor glow -->
     <path
-        android:fillColor="#29FFC24B"
-        android:pathData="M37,85 a17,4 0 1,0 34,0 a17,4 0 1,0 -34,0" />
-    <!-- clown legs -->
+        android:fillColor="#3DFFC24B"
+        android:pathData="M35,85 a19,4.5 0 1,0 38,0 a19,4.5 0 1,0 -38,0" />
+    <!-- clown legs (bolder) -->
     <path
         android:strokeColor="#FF241451"
-        android:strokeWidth="5"
+        android:strokeWidth="6"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M50,74 L50,83 M58,74 L58,83" />
+        android:pathData="M50,73 L50,83 M58,73 L58,83" />
     <!-- clown body -->
     <path
         android:fillColor="#FF3B2A7A"
-        android:pathData="M47,52 Q47,48 54,48 Q61,48 61,52 L62,74 Q62,77 54,77 Q46,77 46,74 Z" />
-    <!-- ruff collar -->
+        android:pathData="M46.5,52 Q46.5,47 54,47 Q61.5,47 61.5,52 L62.5,74 Q62.5,77.5 54,77.5 Q45.5,77.5 45.5,74 Z" />
+    <!-- ruff collar (three bold beads) -->
     <path
         android:fillColor="#FFEAE2FF"
-        android:pathData="M48,52 m-3.2,0 a3.2,3.2 0 1,1 6.4,0 a3.2,3.2 0 1,1 -6.4,0" />
+        android:pathData="M47.5,52 m-3.6,0 a3.6,3.6 0 1,1 7.2,0 a3.6,3.6 0 1,1 -7.2,0" />
     <path
         android:fillColor="#FFFFC24B"
-        android:pathData="M53.5,53 m-3.2,0 a3.2,3.2 0 1,1 6.4,0 a3.2,3.2 0 1,1 -6.4,0" />
+        android:pathData="M53.5,53.2 m-3.6,0 a3.6,3.6 0 1,1 7.2,0 a3.6,3.6 0 1,1 -7.2,0" />
     <path
         android:fillColor="#FFEAE2FF"
-        android:pathData="M59,52 m-3.2,0 a3.2,3.2 0 1,1 6.4,0 a3.2,3.2 0 1,1 -6.4,0" />
+        android:pathData="M59.5,52 m-3.6,0 a3.6,3.6 0 1,1 7.2,0 a3.6,3.6 0 1,1 -7.2,0" />
     <!-- clown head -->
     <path
         android:fillColor="#FFF5F1FF"
-        android:pathData="M45,40 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
-    <!-- face -->
+        android:pathData="M44.5,39.5 a9.5,9.5 0 1,0 19,0 a9.5,9.5 0 1,0 -19,0" />
+    <!-- face (bolder: filled oval eyes, thick smile) -->
     <path
         android:fillColor="#FF241451"
-        android:pathData="M50.8,38.6 m-1.5,0 a1.5,1.5 0 1,1 3,0 a1.5,1.5 0 1,1 -3,0" />
+        android:pathData="M50.4,38.4 m-1.9,0 a1.9,1.9 0 1,1 3.8,0 a1.9,1.9 0 1,1 -3.8,0" />
     <path
         android:fillColor="#FF241451"
-        android:pathData="M57.2,38.6 m-1.5,0 a1.5,1.5 0 1,1 3,0 a1.5,1.5 0 1,1 -3,0" />
+        android:pathData="M57.6,38.4 m-1.9,0 a1.9,1.9 0 1,1 3.8,0 a1.9,1.9 0 1,1 -3.8,0" />
     <path
         android:strokeColor="#FFB33A5B"
-        android:strokeWidth="1.8"
+        android:strokeWidth="2.4"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M50.5,43.5 Q54,46 57.5,43.5" />
+        android:pathData="M50.2,43.4 Q54,46.4 57.8,43.4" />
     <!-- hat + pompom -->
     <path
         android:fillColor="#FFFFC24B"
-        android:pathData="M46,34 Q50,24 58,26 L56,32 Z" />
+        android:pathData="M45.5,34 Q50,23.5 58.5,25.5 L56.5,32 Z" />
     <path
         android:fillColor="#FFEAE2FF"
-        android:pathData="M59,26 m-2.4,0 a2.4,2.4 0 1,1 4.8,0 a2.4,2.4 0 1,1 -4.8,0" />
-    <!-- raised arm -->
+        android:pathData="M59.5,25 m-2.8,0 a2.8,2.8 0 1,1 5.6,0 a2.8,2.8 0 1,1 -5.6,0" />
+    <!-- raised arm (bolder) -->
     <path
         android:strokeColor="#FF3B2A7A"
-        android:strokeWidth="4.6"
+        android:strokeWidth="5.4"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M48,55 Q42,54 38,50" />
-    <!-- tragedy mask (tilted) -->
+        android:pathData="M48,55 Q41.5,54 37.5,49.5" />
+    <!-- tragedy mask (tilted, enlarged ~15% for legibility at launcher size) -->
     <group
         android:rotation="-12"
-        android:pivotX="37"
-        android:pivotY="44">
+        android:pivotX="36.5"
+        android:pivotY="45">
         <path
             android:fillColor="#FFEFE9FF"
-            android:pathData="M30,38 Q37,35.5 44,38 Q46,39 46,45 Q46,53 41,57.5 Q37,61 33,57.5 Q28,53 28,45 Q28,39 30,38 Z" />
+            android:pathData="M28.5,37 Q36.5,34 44.5,37 Q47,38 47,45 Q47,54 41.8,59 Q37,63 32,59 Q26.5,54 26.5,45 Q26.5,38 28.5,37 Z" />
         <path
             android:strokeColor="#FF3B2384"
-            android:strokeWidth="2"
+            android:strokeWidth="2.4"
             android:strokeLineCap="round"
             android:fillColor="#00000000"
-            android:pathData="M32,45.5 Q34,47.2 36,45.5 M42,45.5 Q40,47.2 38,45.5" />
+            android:pathData="M31,45 Q33.2,47.2 35.4,45 M42.4,45 Q40.2,47.2 38,45" />
         <path
             android:fillColor="#FF7AB8E8"
-            android:pathData="M34,49.6 Q34.9,51.6 34,52.4 Q33.1,51.6 34,49.6 Z" />
+            android:pathData="M33.7,49.6 Q34.8,52 33.7,53 Q32.6,52 33.7,49.6 Z" />
         <path
             android:strokeColor="#FF3B2384"
-            android:strokeWidth="2"
+            android:strokeWidth="2.4"
             android:strokeLineCap="round"
             android:fillColor="#00000000"
-            android:pathData="M33,54.5 Q37,51.5 41,54.5" />
+            android:pathData="M32,55.5 Q36.8,52 41.6,55.5" />
     </group>
-    <!-- tiny spark -->
+    <!-- tiny spark (slightly bigger) -->
     <path
         android:fillColor="#FFFFC24B"
-        android:pathData="M30,28 Q30.8,31.4 34,32.2 Q30.8,33 30,36 Q29.2,33 26,32.2 Q29.2,31.4 30,28 Z" />
+        android:pathData="M29.5,27.5 Q30.5,31.5 34.5,32.4 Q30.5,33.3 29.5,37.3 Q28.5,33.3 24.5,32.4 Q28.5,31.5 29.5,27.5 Z" />
 </vector>
