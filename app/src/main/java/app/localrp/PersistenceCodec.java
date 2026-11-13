@@ -715,6 +715,20 @@ final class PersistenceCodec {
     }
 
     /**
+     * Backup-restore transcript decision (Codex bug-hunt v0.26.00): returns the list
+     * to write, or null when a corrupt stored payload must stay untouched — the
+     * rescued/partial decode would destroy the raw bytes, so the caller leaves the
+     * pref alone and surfaces it through integrity reporting. A strictly longer
+     * incoming transcript (a good backup) repairs even corrupt stored data.
+     */
+    static List<Message> mergeStoredTranscript(Decode<Message> stored, List<Message> incoming) {
+        boolean corrupt = stored.rootCorrupt || stored.droppedRecords > 0;
+        if (corrupt && (incoming == null || incoming.size() <= stored.items.size())) return null;
+        if (incoming != null && incoming.size() > stored.items.size()) return incoming;
+        return stored.items;
+    }
+
+    /**
      * Deterministic chat union: a transcript is replaced only when the imported copy is
      * strictly longer (a genuine continuation); otherwise the stored one stays.
      * Concatenating message lists would duplicate every message after a re-import, so

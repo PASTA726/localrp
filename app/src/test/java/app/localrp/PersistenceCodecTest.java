@@ -3,6 +3,7 @@ package app.localrp;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -49,6 +50,40 @@ public class PersistenceCodecTest {
         PersistenceCodec.Decode<CharacterProfile> withoutSampler =
                 PersistenceCodec.decodeCharacters(PersistenceCodec.encodeCharacters(java.util.Collections.singletonList(c)));
         assertEquals("", withoutSampler.items.get(0).samplerTemp);
+    }
+
+    @Test
+    public void mergeStoredTranscript_neverReencodesCorruptStorage() {
+        // Codex bug-hunt v0.26.00: restore must not replace a corrupt local transcript
+        // with its rescued/partial decode — raw bytes stay until a good backup repairs.
+        PersistenceCodec.Decode<Message> clean = PersistenceCodec.decodeMessages("[{\"speaker\":\"A\",\"text\":\"merhaba\",\"user\":true}]");
+
+        // Healthy stored + no incoming → stored stays.
+        assertSame(clean.items, PersistenceCodec.mergeStoredTranscript(clean, null));
+        // Healthy stored + longer incoming → incoming repairs forward.
+        List<Message> longer = new ArrayList<>();
+        longer.add(new Message("A", "merhaba", true, 1L));
+        longer.add(new Message("B", "selam", false, 2L));
+        assertSame(longer, PersistenceCodec.mergeStoredTranscript(clean, longer));
+        // Healthy stored + same-length incoming → stored stays (no duplicate churn).
+        assertSame(clean.items, PersistenceCodec.mergeStoredTranscript(clean, new ArrayList<>(clean.items)));
+
+        // Root-corrupt stored with rescued items and no incoming → untouched (null).
+        PersistenceCodec.Decode<Message> corruptRoot = PersistenceCodec.decodeMessages("{\"bozuk\":true");
+        List<Message> rescued = corruptRoot.items;
+        assertNull(PersistenceCodec.mergeStoredTranscript(corruptRoot, null));
+        // Same length as the rescue → still untouched.
+        assertNull(PersistenceCodec.mergeStoredTranscript(corruptRoot, new ArrayList<>(rescued)));
+        // Strictly longer incoming → repairs the corrupt record deliberately.
+        List<Message> repair = new ArrayList<>(rescued);
+        repair.add(new Message("C", "yeni", true, 3L));
+        assertSame(repair, PersistenceCodec.mergeStoredTranscript(corruptRoot, repair));
+
+        // Dropped records also count as corrupt.
+        PersistenceCodec.Decode<Message> dropped = PersistenceCodec.decodeMessages(
+                "[{\"speaker\":\"A\",\"text\":\"x\",\"user\":true},{\"bozuk\"}]");
+        assertTrue(dropped.droppedRecords > 0);
+        assertNull(PersistenceCodec.mergeStoredTranscript(dropped, null));
     }
 
     @Test

@@ -2,6 +2,16 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.26.00-alpha1 — 2026-11-13 (kullanım kolaylığı + ikon + tam kod tabanı bug avı)
+
+- **Uygulama ikonu yenilendi**: palyaço konsepti korunarak küçük boyut okunabilirliği geçişi — daha kalın yüz detayları, %15 büyütülmüş trajedi maskesi, daha güçlü sahne ışığı. Yeni **monokrom katman** (themed icon): Android 13+ duvar kağıdına göre renklenen tema ikonu artık destekleniyor (minSdk 33).
+- **Sohbet listesi canlı arama**: RP adına veya sohbetteki karakter adına göre anlık filtre (karakter adıyla da bulunur); eşleşme yoksa yönlendirici boş durum.
+- **Sohbet kartı uzun basma hızlı menüsü**: Sohbeti aç / RP ayarları / Grubu sil — sohbeti açmadan silme/yeniden adlandırma keşfedilebilirliği. Silme akışı (duraklat + anlık görüntü + geri alınabilir sil) grup editörüyle paylaşılan tek metoda çıkarıldı (`deleteGroupWithUndo`).
+- **Boş sohbet ipucu**: mesaj menüsü (kopyala/düzenle/hafızaya ekle/sesli oku) keşfedilemez bir uzun basma olduğundan boş sohbet durumunda adıyla belirtiliyor.
+- **Codex tam kod tabanı bug avı** (v0.21–v0.25 sınıfları arası etkileşimler dahil): 1 yüksek bulgu → düzeltildi. **Yedek geri yükleme** bozuk yerel sohbet kaydını, kurtarılan/kısmi çözümle sessizce üzerine yazabiliyordu; artık bozuk kayıt yalnızca kesinlikle daha uzun gelen bir yedekle onarılır, aksi halde ham veri korunur ve bütünlük raporuna girer. Karar mantığı saf `PersistenceCodec.mergeStoredTranscript` olarak çıkarıldı ve testlendi.
+- 1 yeni birim testi (`mergeStoredTranscript`: temiz/bozuk/kurtarılmış kayıt + gelen yedek kombinasyonları) → toplam 192.
+- versionCode 59 / 0.26.00-alpha1.
+
 ## v0.25.00-alpha1 — 2026-11-13 (gelişmiş prompt kontrolü · sampler + karakter başına ayar)
 
 P2'nin son kalemi. Not: harici llama.cpp motor kütüphanesi (`com.arm.aichat`) sampler API'si sunmuyor — bu ayarlar **sağlayıcı yolunda** geçerlidir; yerel motor mevcut davranışını korur. Instruct şablon değiştirme de motor desteği gerektirdiğinden sonraki partilere bırakıldı (mevcut prompt kaynakları: genel talimat özel metni + karakter başına talimatlar + sohbet profili şablonu zaten genişletilebilir özelleştirmeyi kapsıyor).
