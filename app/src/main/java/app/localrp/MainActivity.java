@@ -5340,6 +5340,13 @@ public class MainActivity extends Activity {
         List<Message> history = store.messages(group.id);
         String recap = historyDepth > 0
                 ? ChatMemory.recap(history, historyDepth, ChatMemory.RECAP_CHAR_BUDGET) : "";
+        // Token economy (Codex review v0.23.00): the recap rides on top of the
+        // transcript, so on fresh builds it pays for itself out of the history
+        // budget instead of enlarging the effective prompt.
+        int historyBudget = historyCharBudget();
+        if (!recap.isEmpty() && !continuingFlag) {
+            historyBudget = Math.max(400, historyBudget - recap.length());
+        }
         List<Message> tail = history.size() > 3
                 ? history.subList(history.size() - 3, history.size()) : history;
         StringBuilder query = new StringBuilder();
@@ -5359,7 +5366,7 @@ public class MainActivity extends Activity {
                 aiThemeName(themeId),
                 aiThemeInstruction(themeId),
                 historyDepth,
-                historyCharBudget(),
+                historyBudget,
                 personaText,
                 english,
                 store.lore(group.id),
@@ -6966,8 +6973,11 @@ public class MainActivity extends Activity {
         labels.add(L10n.s(L10n.s("Sil")));
         actions.add(() -> confirmDeleteMessage(index));
         // v0.23.00 memory: pin this message as an important event for recall.
+        // The chat id is captured now — the menu is modal, but the action must
+        // never touch another chat (same guard as the regenerate stash).
+        String memoryChatId = visibleChatId;
         labels.add(L10n.s("🧠  Hafızaya ekle"));
-        actions.add(() -> pinMessageToMemory(message));
+        actions.add(() -> pinMessageToMemory(memoryChatId, message));
         // v0.22.00 voice: read the message aloud; a running read can be stopped
         // from the same menu (isSpeaking is evaluated when the menu opens).
         labels.add(L10n.s("🔊  Sesli oku"));
@@ -7009,8 +7019,7 @@ public class MainActivity extends Activity {
     }
 
     /** v0.23.00 memory: stores the message as a pinned important event of its chat. */
-    private void pinMessageToMemory(Message message) {
-        String chatId = visibleChatId;
+    private void pinMessageToMemory(String chatId, Message message) {
         if (chatId == null) return;
         String body = message.text == null || message.text.isEmpty()
                 ? (message.hasImage() ? L10n.s(L10n.s("[görsel]")) : "") : message.text;

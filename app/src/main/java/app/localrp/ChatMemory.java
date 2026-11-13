@@ -43,7 +43,7 @@ final class ChatMemory {
         if (clean.isEmpty()) return out;
         if (clean.length() > MAX_ENTRY_CHARS) clean = clean.substring(0, MAX_ENTRY_CHARS - 1) + "…";
         for (String existing : out) {
-            if (clean.equals(existing)) return out; // no duplicates
+            if (existing != null && clean.equals(existing)) return out; // no duplicates
         }
         out.add(clean);
         while (out.size() > MAX_ENTRIES) out.remove(0); // oldest fall off first
@@ -75,27 +75,41 @@ final class ChatMemory {
 
     /**
      * Picks the pinned memories most relevant to {@code currentText} by word
-     * overlap. Ties keep stored order (earlier pin = stronger position). Result
-     * respects both the entry cap and a character budget.
+     * overlap, ranked by score (stored order breaks ties). Result respects both
+     * the entry cap and a character budget.
      */
     static List<String> relevant(List<String> memories, String currentText) {
         List<String> out = new ArrayList<>();
         if (memories == null || memories.isEmpty()) return out;
         Set<String> query = words(currentText);
         if (query.isEmpty()) return out;
-        List<String> scored = new ArrayList<>();
-        int bestScore = 0;
+        List<String> candidates = new ArrayList<>();
+        List<Integer> scores = new ArrayList<>();
         for (String memory : memories) {
+            if (memory == null) continue;
             Set<String> memoryWords = words(memory);
             memoryWords.retainAll(query);
             int score = memoryWords.size();
-            if (score > bestScore) bestScore = score;
-            if (score > 0) scored.add(memory);
+            if (score > 0) {
+                candidates.add(memory);
+                scores.add(score);
+            }
         }
-        // Only memories that actually share words qualify; keep stored order.
-        if (scored.isEmpty() || bestScore <= 0) return out;
+        // Stable descending sort: highest overlap first, earlier pin wins ties.
+        for (int i = 1; i < candidates.size(); i++) {
+            String candidate = candidates.get(i);
+            int score = scores.get(i);
+            int j = i - 1;
+            while (j >= 0 && scores.get(j) < score) {
+                candidates.set(j + 1, candidates.get(j));
+                scores.set(j + 1, scores.get(j));
+                j--;
+            }
+            candidates.set(j + 1, candidate);
+            scores.set(j + 1, score);
+        }
         int budget = RECALL_CHAR_BUDGET;
-        for (String memory : scored) {
+        for (String memory : candidates) {
             if (out.size() >= RECALL_MAX || budget <= 20) break;
             if (memory.length() <= budget) {
                 out.add(memory);

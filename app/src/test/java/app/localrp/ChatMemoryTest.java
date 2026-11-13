@@ -56,6 +56,14 @@ public class ChatMemoryTest {
         assertTrue(hit.get(0).contains("Fener"));
         assertTrue(ChatMemory.relevant(memory, "selam").isEmpty());
         assertTrue(ChatMemory.relevant(null, "fener").isEmpty());
+        // Higher overlap ranks first even when the stronger match was pinned later;
+        // the weaker entry shares no words with this query, so only one returns.
+        List<String> ranked = new ArrayList<>();
+        ranked = ChatMemory.add(ranked, "Anahtar arka bahçede gizli.");
+        ranked = ChatMemory.add(ranked, "Fener yeşil yanar ve fenerin fenercisi gece bekçidir.");
+        List<String> order = ChatMemory.relevant(ranked, "fenerin fenercisiyle konuştuk, fener yeşildi");
+        assertEquals(1, order.size());
+        assertTrue(order.get(0).contains("fenercisi"));
     }
 
     @Test
