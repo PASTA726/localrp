@@ -38,6 +38,17 @@ public class PersistenceCodecTest {
         assertEquals("Atılgan", out.items.get(0).personality);
         assertEquals("Kendine has gülüş", out.items.get(0).instructions);
         assertEquals("Elif: Rüzgar iyi.", out.items.get(0).examples);
+        // v0.25.00: per-character sampler temperature survives the round trip.
+        c.samplerTemp = "0.6";
+        PersistenceCodec.Decode<CharacterProfile> withSampler =
+                PersistenceCodec.decodeCharacters(PersistenceCodec.encodeCharacters(java.util.Collections.singletonList(c)));
+        assertFalse(withSampler.rootCorrupt);
+        assertEquals("0.6", withSampler.items.get(0).samplerTemp);
+        // Unset stays empty, never a crash.
+        c.samplerTemp = "";
+        PersistenceCodec.Decode<CharacterProfile> withoutSampler =
+                PersistenceCodec.decodeCharacters(PersistenceCodec.encodeCharacters(java.util.Collections.singletonList(c)));
+        assertEquals("", withoutSampler.items.get(0).samplerTemp);
     }
 
     @Test

@@ -70,6 +70,25 @@ public class OpenAiCompatTest {
     }
 
     @Test
+    public void requestBody_sampler_fieldsRideOnlyWhenSet() throws Exception {
+        // v0.25.00: set sampler fields are serialized; unset fields are omitted so
+        // the provider's own default applies.
+        SamplerSettings.Values full = SamplerSettings.resolve(null, null, "0.7", "0.9", null);
+        JSONObject parsed = new JSONObject(OpenAiCompat.requestBody("m", List.of(turn("user", "x")), 64, full));
+        assertEquals(0.7, parsed.getDouble("temperature"), 1e-9);
+        assertEquals(0.9, parsed.getDouble("top_p"), 1e-9);
+
+        JSONObject plain = new JSONObject(OpenAiCompat.requestBody("m", List.of(turn("user", "x")), 64, null));
+        assertFalse(plain.has("temperature"));
+        assertFalse(plain.has("top_p"));
+
+        SamplerSettings.Values empty = SamplerSettings.resolve(null, null, null, null, null);
+        JSONObject none = new JSONObject(OpenAiCompat.requestBody("m", List.of(turn("user", "x")), 64, empty));
+        assertFalse(none.has("temperature"));
+        assertFalse(none.has("top_p"));
+    }
+
+    @Test
     public void sseData_recognizesTerminator() {
         assertTrue(OpenAiCompat.isDone("[DONE]"));
         assertFalse(OpenAiCompat.isDone("{\"choices\":[]}"));

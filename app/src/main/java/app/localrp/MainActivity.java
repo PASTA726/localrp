@@ -972,6 +972,12 @@ public class MainActivity extends Activity {
         EditText personality = field(L10n.s("Kişilik ve konuşma tarzı"), editing ? existing.personality : "", 3);
         EditText instructions = field(L10n.s("Karakter talimatları"), editing ? existing.instructions : "", 4);
         EditText examples = field(L10n.s("Örnek diyalog"), editing ? existing.examples : "", 3);
+        // v0.25.00 sampler: per-character provider temperature override; blank = follow.
+        addSection(L10n.s("Üretim ayarı (sağlayıcı)"), null, null);
+        addBody(L10n.s("Bu karakter konuşurken sağlayıcı sıcaklığı: boş bırakılırsa sohbet profili/genel ayar izlenir. Yerel motor bu ayarı desteklemez."));
+        EditText samplerTemp = field(L10n.s("Sıcaklık (0.0–2.0)"), editing ? existing.samplerTemp : "");
+        samplerTemp.setSingleLine(true);
+        content.addView(samplerTemp, fullWidth());
 
         addSection(L10n.s("Profil fotoğrafı"), null, null);
         addBody(L10n.s("Fotoğraf gizli depoya küçük kopya olarak yazılır; seçtiğin kaynak dosya silinmez. Sohbetlerde karakterin avatarı bu foto olur ve Kaydet ile saklanır."));
@@ -999,6 +1005,7 @@ public class MainActivity extends Activity {
             character.personality = personality.getText().toString().trim();
             character.instructions = instructions.getText().toString().trim();
             character.examples = examples.getText().toString().trim();
+            character.samplerTemp = samplerTemp.getText().toString().trim();
             // Delete a replaced persisted avatar only after the save succeeded.
             String replacedAvatar = editing
                     && pickedAvatarPath != null && !pickedAvatarPath.isEmpty()
@@ -2214,9 +2221,9 @@ public class MainActivity extends Activity {
             OpenAiCompat client = new OpenAiCompat(providerEndpoint(),
                     ApiKeyStore.INSTANCE.load(this), providerModel());
             final GenerationBackend.Listener real = pipe(group, speaker, startedAt, thisGeneration);
-            // Provider callbacks arrive on the client's reader thread (review finding);
-            // every UI touch is forwarded to the main thread like LocalAiRuntime does.
-            client.stream(providerTurns, maxTokens, new GenerationBackend.Listener() {
+            // v0.25.00 sampler: character > chat profile > global, provider turns only.
+            client.stream(providerTurns, maxTokens,
+                    resolveSampler(group.id, speaker), new GenerationBackend.Listener() {
                 @Override public void onToken(String token) {
                     runOnUiThread(() -> real.onToken(token));
                 }
@@ -2624,6 +2631,46 @@ public class MainActivity extends Activity {
             showChatProfile(group);
         });
 
+        // v0.25.00 sampler: provider-side sampling knobs for this conversation only.
+        addSection(L10n.s("Örnekleyici (sağlayıcı)"), null, null);
+        addBody(L10n.s("Yalnızca sağlayıcı yanıtlarında geçerli: sıcaklık yaratıcılığı, top-p çeşitliliği kontrol eder. Yerel motor bu ayarları desteklemez."));
+        SamplerSettings.Values current = resolveSampler(id, null);
+        double shownTemp = current.temperature != null ? current.temperature
+                : SamplerSettings.parse(prefs.getString("sampler_temp", null),
+                        SamplerSettings.TEMP_MIN, SamplerSettings.TEMP_MAX) != null
+                        ? SamplerSettings.parse(prefs.getString("sampler_temp", null), SamplerSettings.TEMP_MIN, SamplerSettings.TEMP_MAX)
+                        : 1.0;
+        boolean tempOverride = prefs.getString("profile_temp_" + id, null) != null;
+        addBody((tempOverride ? L10n.s("Bu sohbet: ") : L10n.s(L10n.s("Genel ayarı izler: ")))
+                + String.format(Locale.ROOT, "%.1f", shownTemp));
+        addSlider(L10n.s("Sıcaklık"), (int) Math.round(shownTemp * 10), 0, 20, 1,
+                value -> prefs.edit().putString("profile_temp_" + id, String.valueOf(value / 10.0)).apply(),
+                value -> String.format(Locale.ROOT, "%.1f", value / 10.0));
+        addSecondary(L10n.s("Sıcaklığı genel ayara döndür"), v -> {
+            prefs.edit().remove("profile_temp_" + id).apply();
+            showChatProfile(group);
+        });
+        double shownTopP = current.topP != null ? current.topP
+                : (prefs.getString("sampler_topp", null) != null
+                        && SamplerSettings.parse(prefs.getString("sampler_topp", null),
+                                SamplerSettings.TOPP_MIN, SamplerSettings.TOPP_MAX) != null
+                        ? SamplerSettings.parse(prefs.getString("sampler_topp", null), SamplerSettings.TOPP_MIN, SamplerSettings.TOPP_MAX)
+                        : 1.0);
+        boolean toppOverride = prefs.getString("profile_topp_" + id, null) != null;
+        addBody((toppOverride ? L10n.s("Bu sohbet: ") : L10n.s(L10n.s("Genel ayarı izler: ")))
+                + String.format(Locale.ROOT, "%.2f", shownTopP));
+        addSlider(L10n.s("Top-p"), (int) Math.round(shownTopP * 100), 0, 100, 5,
+                value -> prefs.edit().putString("profile_topp_" + id, String.valueOf(value / 100.0)).apply(),
+                value -> String.format(Locale.ROOT, "%.2f", value / 100.0));
+        addSecondary(L10n.s("Top-p'yi genel ayara döndür"), v -> {
+            prefs.edit().remove("profile_topp_" + id).apply();
+            showChatProfile(group);
+        });
+        addSecondary(L10n.s("Örnekleyiciyi genel ayara döndür"), v -> {
+            prefs.edit().remove("profile_temp_" + id).remove("profile_topp_" + id).apply();
+            showChatProfile(group);
+        });
+
         addSection(L10n.s("Sahne teması"), null, null);
         boolean themeOverride = prefs.getString("profile_theme_" + id, null) != null;
         addBody((themeOverride ? L10n.s("Bu sohbet: ") : L10n.s(L10n.s("Genel ayarı izler: ")))
@@ -2667,7 +2714,8 @@ public class MainActivity extends Activity {
                 L10n.s(L10n.s("Bu sohbetin üretim profili sıfırlansın mı?")), L10n.s(L10n.s("Sıfırla")), () -> {
                     if (chatProfileBusy(group)) return;
                     prefs.edit().remove("profile_tokens_" + id)
-                            .remove("profile_depth_" + id).remove("profile_theme_" + id).apply();
+                            .remove("profile_depth_" + id).remove("profile_theme_" + id)
+                            .remove("profile_temp_" + id).remove("profile_topp_" + id).apply();
                     contextChars.remove(id);
                     chatMetrics.remove(id);
                     LocalAiRuntime.INSTANCE.resetConversation(id);
@@ -4248,6 +4296,39 @@ public class MainActivity extends Activity {
         addSection(L10n.s("Bağlam davranışı"), null, null);
         addBudgetRow(prefs);
 
+        // v0.25.00 sampler: global provider defaults; "" = field omitted so the
+        // provider's own default applies. Local engine has no sampler API.
+        addSection(L10n.s("Örnekleyici (sağlayıcı)"), null, null);
+        addBody(L10n.s("Sağlayıcı yanıtları için genel varsayılan: sıcaklık yaratıcılığı, top-p çeşitliliği kontrol eder. Ayarlanmamışsa sağlayıcının kendi varsayılanı geçerlidir; yerel motor bu ayarları desteklemez."));
+        double globalTemp = 1.0;
+        Double parsedTemp = SamplerSettings.parse(prefs.getString("sampler_temp", null),
+                SamplerSettings.TEMP_MIN, SamplerSettings.TEMP_MAX);
+        if (parsedTemp != null) globalTemp = parsedTemp;
+        boolean globalTempSet = parsedTemp != null;
+        addBody((globalTempSet ? L10n.s("Genel varsayılan: ") : L10n.s("Ayarlanmadı — sağlayıcının kendi varsayılanı geçerli. "))
+                + (globalTempSet ? String.format(Locale.ROOT, "%.1f", globalTemp) : ""));
+        addSlider(L10n.s("Genel sıcaklık"), (int) Math.round(globalTemp * 10), 0, 20, 1,
+                value -> prefs.edit().putString("sampler_temp", String.valueOf(value / 10.0)).apply(),
+                value -> String.format(Locale.ROOT, "%.1f", value / 10.0));
+        addSecondary(L10n.s("Sıcaklığı sağlayıcı varsayılanına döndür"), v -> {
+            prefs.edit().remove("sampler_temp").apply();
+            showAiAdvanced();
+        });
+        double globalTopP = 1.0;
+        Double parsedTopP = SamplerSettings.parse(prefs.getString("sampler_topp", null),
+                SamplerSettings.TOPP_MIN, SamplerSettings.TOPP_MAX);
+        if (parsedTopP != null) globalTopP = parsedTopP;
+        boolean globalTopPSet = parsedTopP != null;
+        addBody((globalTopPSet ? L10n.s("Genel varsayılan: ") : L10n.s("Ayarlanmadı — sağlayıcının kendi varsayılanı geçerli. "))
+                + (globalTopPSet ? String.format(Locale.ROOT, "%.2f", globalTopP) : ""));
+        addSlider(L10n.s("Genel top-p"), (int) Math.round(globalTopP * 100), 0, 100, 5,
+                value -> prefs.edit().putString("sampler_topp", String.valueOf(value / 100.0)).apply(),
+                value -> String.format(Locale.ROOT, "%.2f", value / 100.0));
+        addSecondary(L10n.s("Top-p'yi sağlayıcı varsayılanına döndür"), v -> {
+            prefs.edit().remove("sampler_topp").apply();
+            showAiAdvanced();
+        });
+
         addSection(L10n.s("Karakter zinciri"), null, null);
         int autoChain = prefs.getInt("auto_chain", 0);
         addSlider(L10n.s("Kendiliğinden devam sayısı"), autoChain, 0, 3, 1, value -> {
@@ -5482,8 +5563,18 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** General AI instruction: shipped default (chosen by language) or the user's custom text. */
-    private String resolveGeneralInstructions(boolean english) {
+    /** v0.25.00 sampler: character override > chat profile > global default. */
+    private SamplerSettings.Values resolveSampler(String chatId, CharacterProfile speaker) {
+        SharedPreferences prefs = prefs();
+        return SamplerSettings.resolve(
+                prefs.getString("sampler_temp", null),
+                prefs.getString("sampler_topp", null),
+                prefs.getString("profile_temp_" + chatId, null),
+                prefs.getString("profile_topp_" + chatId, null),
+                speaker != null ? speaker.samplerTemp : null);
+    }
+
+    /** General AI instruction: shipped default (chosen by language) or the user's custom text. */    private String resolveGeneralInstructions(boolean english) {
         String mode = prefs().getString("general_prompt_source", "default");
         if ("custom".equals(mode)) return clip(prefs().getString("ai_instructions", ""), 600);
         return clip(english ? DEFAULT_AI_INSTRUCTIONS_EN : DEFAULT_AI_INSTRUCTIONS, 600);

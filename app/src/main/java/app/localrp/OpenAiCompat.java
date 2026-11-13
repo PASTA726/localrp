@@ -63,6 +63,18 @@ final class OpenAiCompat implements GenerationBackend {
 
     /** Streams a full turn list; the routing batch maps history onto turns. */
     public void stream(List<Turn> turns, int maxTokens, Listener listener) {
+        streamWith(turns, maxTokens, null, listener);
+    }
+
+    /** Sampler overload (v0.25.00): provider-side sampling knobs for this turn. */
+    public void stream(List<Turn> turns, int maxTokens, SamplerSettings.Values sampler, Listener listener) {
+        streamWith(turns, maxTokens, sampler, listener);
+    }
+
+    /** Shared implementation; the sampler travels as a local — never an instance
+     *  field — so concurrent stream calls can never see each other's knobs. */
+    private void streamWith(List<Turn> turns, int maxTokens,
+                            SamplerSettings.Values sampler, Listener listener) {
         if (!allowsEndpoint(endpoint)) {
             listener.onError("Adres güvenli değil: yalnızca https:// kabul edilir; API anahtarı düz bağlantıda sızabilir.");
             return;
@@ -74,7 +86,7 @@ final class OpenAiCompat implements GenerationBackend {
         stopped = false; // one instance per turn; stop() before stream() is a requester bug
         Thread worker = new Thread(() -> {
             try {
-                HttpURLConnection opened = connect(turns, maxTokens);
+                HttpURLConnection opened = connect(turns, maxTokens, sampler);
                 connection = opened;
                 if (stopped) { // stop() won the race before the request body was even sent
                     opened.disconnect();
@@ -136,7 +148,8 @@ final class OpenAiCompat implements GenerationBackend {
         return "Hazır · " + model + " · sorun: onay gerektirir";
     }
 
-    private HttpURLConnection connect(List<Turn> turns, int maxTokens) throws Exception {
+    private HttpURLConnection connect(List<Turn> turns, int maxTokens,
+                                      SamplerSettings.Values sampler) throws Exception {
         URL url = new URL(endpoint);
         HttpURLConnection opened = (HttpURLConnection) url.openConnection();
         opened.setRequestMethod("POST");
@@ -145,7 +158,7 @@ final class OpenAiCompat implements GenerationBackend {
         opened.setDoOutput(true);
         opened.setRequestProperty("Content-Type", "application/json");
         if (!apiKey.isEmpty()) opened.setRequestProperty("Authorization", "Bearer " + apiKey);
-        byte[] body = requestBody(model, turns, maxTokens).getBytes(StandardCharsets.UTF_8);
+        byte[] body = requestBody(model, turns, maxTokens, sampler).getBytes(StandardCharsets.UTF_8);
         // Streaming length must precede getOutputStream: it implicitly connects, and
         // afterwards the streaming mode throws IllegalStateException (review finding).
         opened.setFixedLengthStreamingMode(body.length);
@@ -171,11 +184,21 @@ final class OpenAiCompat implements GenerationBackend {
 
     /** Request body for chat/completions with streaming on. */
     static String requestBody(String model, List<Turn> turns, int maxTokens) {
+        return requestBody(model, turns, maxTokens, null);
+    }
+
+    /** Sampler overload (v0.25.00): non-null fields ride on the request body. */
+    static String requestBody(String model, List<Turn> turns, int maxTokens, SamplerSettings.Values sampler) {
         try {
             JSONObject root = new JSONObject();
             root.put("model", model == null ? "" : model);
             root.put("stream", true);
             root.put("max_tokens", maxTokens);
+            if (sampler != null) {
+                // Omitted when unset: the provider's own default then applies.
+                if (sampler.temperature != null) root.put("temperature", sampler.temperature);
+                if (sampler.topP != null) root.put("top_p", sampler.topP);
+            }
             JSONArray messages = new JSONArray();
             if (turns != null) {
                 for (Turn turn : turns) {
