@@ -3182,6 +3182,16 @@ public class MainActivity extends Activity {
         EditText depthField = field(L10n.s(L10n.s("Geçmiş mesaj sayısı")), String.valueOf(turnDepth));
         depthField.setSingleLine(true);
         content.addView(depthField, fullWidth());
+        // v0.24.00 vision: attached photos travel as real image parts when the
+        // provider's model supports them; off keeps the old placeholder behaviour.
+        boolean visionOn = prefs.getString("provider_vision", "on").equals("on");
+        addSecondary(L10n.s("Görselleri sağlayıcıya gönder") + (visionOn ? "  ✓" : ""), v -> {
+            prefs.edit().putString("provider_vision", visionOn ? "off" : "on").apply();
+            showProvider();
+        });
+        addBody(visionOn
+                ? L10n.s("Görseller açık: mesaja eklenen fotoğraf vision destekli modellere gerçek görsel olarak gider; model desteklemiyorsa sağlayıcı hata verir.")
+                : L10n.s("Görseller kapalı: fotoğraflar [görsel] notu olarak gider, hiçbir resim verisi gönderilmez."));
         addPrimary(L10n.s(L10n.s("Bağlantı bilgilerini kaydet")), v -> {
             String endpoint = endpointField.getText().toString().trim();
             String model = modelField.getText().toString().trim();
@@ -5388,6 +5398,7 @@ public class MainActivity extends Activity {
                 ? "The scene continues; react naturally to this moment and speak as " + speaker.name + "."
                 : "Sahne devam ediyor; bu tur " + speaker.name + L10n.s(" olarak doğal bir tepki ver.");
         String finalUserText;
+        String trailingImageDataUrl = null;
         if (!history.isEmpty() && history.get(history.size() - 1).user) {
             Message trailing = history.get(history.size() - 1);
             finalUserText = trailing.text;
@@ -5395,11 +5406,54 @@ public class MainActivity extends Activity {
                 // Image-only trailing note keeps the same placeholder the transcript uses.
                 finalUserText = trailing.hasImage() ? L10n.s("[görsel]") : continuationPrompt;
             }
+            // v0.24.00 vision: the trailing attached photo travels as a real image
+            // part for vision-capable providers; the local engine still uses text.
+            if (trailing.hasImage() && providerVisionEnabled()) {
+                trailingImageDataUrl = providerImageDataUrl(trailing.image);
+            }
         } else {
             finalUserText = continuationPrompt;
         }
         return OpenAiCompat.assembleTurns(
-                buildRoleplayPrompt(group, speaker, continuation, false, 0, steer), history, finalUserText, providerTurnDepth());
+                buildRoleplayPrompt(group, speaker, continuation, false, 0, steer), history, finalUserText, providerTurnDepth(), trailingImageDataUrl);
+    }
+
+    /** v0.24.00: images ride to the provider unless the user switched them off. */
+    private boolean providerVisionEnabled() {
+        return prefs().getString("provider_vision", "on").equals("on");
+    }
+
+    /**
+     * Encodes a stored message image as a base64 JPEG data URL, downscaled to keep
+     * the request body reasonable (≤1024px, ~quality 80). Null when unreadable —
+     * the turn then ships as text-only instead of failing the whole generation.
+     */
+    private String providerImageDataUrl(String path) {
+        try {
+            if (path == null || path.isEmpty()) return null;
+            File image = new File(path);
+            if (!image.isFile()) return null;
+            android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(path, bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+            int sample = 1;
+            while (bounds.outWidth / (sample * 2) >= 1024 || bounds.outHeight / (sample * 2) >= 1024) sample *= 2;
+            android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+            options.inSampleSize = sample;
+            Bitmap bitmap = BitmapFactory.decodeFile(path, options);
+            if (bitmap == null) return null;
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 80, buffer)) {
+                bitmap.recycle();
+                return null;
+            }
+            bitmap.recycle();
+            return "data:image/jpeg;base64,"
+                    + android.util.Base64.encodeToString(buffer.toByteArray(), android.util.Base64.NO_WRAP);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** General AI instruction: shipped default (chosen by language) or the user's custom text. */

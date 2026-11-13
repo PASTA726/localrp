@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.24.00-alpha1 — 2026-11-13 (görsel anlama · sağlayıcı yolu)
+
+P2 önceliğinin ilk partisi: mesaja eklenen fotoğraf, vision destekli OpenAI-uyumlu modellere gerçek görsel olarak gider.
+
+- **Sağlayıcıya görsel gönderimi**: son kullanıcı mesajına ekli fotoğraf, base64 JPEG veri URL'si (≤1024px, kalite 80 — istek gövdesini makul tutar) olarak son `user` turuna biner; istek gövdesi OpenAI vision biçimini kullanır (`content` dizisi: `text` + `image_url` parçaları). Metin turları değişmez — eski uyumluluk korunur. Geçmişteki eski görseller yer tutucu kalır (token ekonomisi).
+- **Anahtar**: Sağlayıcı ayarlarında "Görselleri sağlayıcıya gönder" (varsayılan açık). Kapalıyken fotoğraflar eski `[görsel]` notu olarak gider, hiçbir resim verisi gönderilmez. Model vision desteklemiyorsa sağlayıcının hata mesajı açıkça görünür.
+- **Gizlilik**: görseller yalnızca sağlayıcı zaten açıkken ve mesajla birlikte gönderilir; hiçbir resim otomatik dışarı çıkmaz. Yerel (llama.cpp) yolda davranış değişmez — yerel vision (mmproj'lı GGUF'lar) ileri bir parti.
+- **Kodlanamayan görsel** (bozuk dosya/okunamayan yol): tur metin-only gider — üretim başarısızlığa düşmez.
+- 3 yeni birim testi (`OpenAiCompat`: vision content parçaları, boş veri URL'si, trailing görsel yerleşimi) → toplam 187.
+- versionCode 57 / 0.24.00-alpha1.
+
 ## v0.23.00-alpha1 — 2026-11-13 (gelişmiş hafıza)
 
 P1 önceliği: hikâye ne kadar uzarsa uzasın model önemli olayları hatırlar. Hepsi çevrimdışı ve deterministik — model çağrısı gerektirmez.

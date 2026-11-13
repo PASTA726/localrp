@@ -41,6 +41,35 @@ public class OpenAiCompatTest {
     }
 
     @Test
+    public void requestBody_visionTurn_sendsTypedContentParts() throws Exception {
+        // v0.24.00: a turn with an image ships content as a typed parts array —
+        // text part plus image_url with the data URL; text-only turns stay strings.
+        OpenAiCompat.Turn vision = new OpenAiCompat.Turn("user", "Bu resmi incele",
+                "data:image/jpeg;base64,QUJD");
+        String body = OpenAiCompat.requestBody("gpt-x", List.of(turn("system", "s"), vision), 256);
+        JSONObject parsed = new JSONObject(body);
+        JSONObject visionTurn = parsed.getJSONArray("messages").getJSONObject(1);
+        assertEquals("user", visionTurn.getString("role"));
+        assertEquals(2, visionTurn.getJSONArray("content").length());
+        JSONObject textPart = visionTurn.getJSONArray("content").getJSONObject(0);
+        assertEquals("text", textPart.getString("type"));
+        assertEquals("Bu resmi incele", textPart.getString("text"));
+        JSONObject imagePart = visionTurn.getJSONArray("content").getJSONObject(1);
+        assertEquals("image_url", imagePart.getString("type"));
+        assertEquals("data:image/jpeg;base64,QUJD",
+                imagePart.getJSONObject("image_url").getString("url"));
+        // Text-only turns keep the plain-string shape providers already know.
+        assertEquals("s", parsed.getJSONArray("messages").getJSONObject(0).getString("content"));
+    }
+
+    @Test
+    public void requestBody_blankDataUrl_isTextOnly() throws Exception {
+        OpenAiCompat.Turn blank = new OpenAiCompat.Turn("user", "metin", "");
+        JSONObject parsed = new JSONObject(OpenAiCompat.requestBody("m", List.of(blank), 64));
+        assertEquals("metin", parsed.getJSONArray("messages").getJSONObject(0).getString("content"));
+    }
+
+    @Test
     public void sseData_recognizesTerminator() {
         assertTrue(OpenAiCompat.isDone("[DONE]"));
         assertFalse(OpenAiCompat.isDone("{\"choices\":[]}"));
@@ -151,6 +180,26 @@ public class OpenAiCompatTest {
         assertEquals("[görsel]", imageTurns.get(1).content);
         assertEquals("assistant", imageTurns.get(2).role);
         assertEquals("bak kedi", imageTurns.get(2).content);
+    }
+
+    @Test
+    public void assembleTurns_trailingImage_ridesOnFinalUserTurn() {
+        // v0.24.00 vision: only the final user turn carries the data URL; mid-history
+        // images stay placeholders (token economy).
+        List<Message> history = new ArrayList<>();
+        history.add(new Message("Evren", "", true, 1L, "/tmp/old.jpg"));
+        history.add(new Message("A", "güzel", false, 2L));
+        history.add(new Message("Evren", "Bu kedi nereye bakıyor?", true, 3L, "/tmp/new.jpg"));
+        List<OpenAiCompat.Turn> turns = OpenAiCompat.assembleTurns(
+                "s", history, "Bu kedi nereye bakıyor?", 8, "data:image/jpeg;base64,QUJD");
+        OpenAiCompat.Turn finalTurn = turns.get(turns.size() - 1);
+        assertTrue(finalTurn.hasImage());
+        assertEquals("data:image/jpeg;base64,QUJD", finalTurn.imageDataUrl);
+        assertEquals("Bu kedi nereye bakıyor?", finalTurn.content);
+        assertTrue(turns.stream().limit(turns.size() - 1).noneMatch(OpenAiCompat.Turn::hasImage));
+        // Null data URL keeps the old text-only shape.
+        List<OpenAiCompat.Turn> plain = OpenAiCompat.assembleTurns("s", history, "merhaba", 8, null);
+        assertFalse(plain.get(plain.size() - 1).hasImage());
     }
 
     @Test
