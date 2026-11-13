@@ -294,6 +294,38 @@ public class RoleplayPromptTest {
     }
 
     @Test
+    public void zeroHistoryDepth_shipsNoHistoryBlock() {
+        // v0.27.00 edge: provider mode passes depth 0 (history travels as real
+        // turns) — the fresh-build history block must disappear entirely, not
+        // degrade into a heading with no lines.
+        List<Message> history = new ArrayList<>();
+        history.add(new Message("Sen", "merhaba", true, 1L));
+        history.add(new Message("Elif", "selam", false, 2L));
+        String prompt = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), EMPTY_LOOKUP,
+                history, false, false, "", "", "", 0, 2600);
+        assertFalse(prompt.contains("Yakın sahne geçmişi"));
+    }
+
+    @Test
+    public void tinyBudget_dropsWholeLinesNeverMidSentence() {
+        // v0.27.00 edge: with a budget too small for even one line, the history
+        // block must disappear entirely — no dangling header, no truncated line.
+        // (The final user message legitimately echoes as the turn's input.)
+        List<Message> history = new ArrayList<>();
+        history.add(new Message("Sen", "birinci satır bütçeden uzun", true, 1L));
+        history.add(new Message("Elif", "ikinci satır da bütçeden uzun", false, 2L));
+        history.add(new Message("Sen", "kısa", true, 3L));
+        String prompt = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), EMPTY_LOOKUP,
+                history, false, false, "", "", "", 8, 10);
+        assertFalse(prompt.contains("Yakın sahne geçmişi"));
+        assertFalse(prompt.contains("birinci satır bütçeden uzun"));
+        assertFalse(prompt.contains("ikinci satır da bütçeden uzun"));
+        assertTrue(prompt.contains("kısa"));
+    }
+
+    @Test
     public void deletedCastMemberIsSkippedWithoutCrash() {
         // cast id points at a deleted profile → lookup yields null → prompt still builds
         String prompt = RoleplayPrompt.build(

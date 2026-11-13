@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.27.00-alpha1 — 2026-11-13 (test derinleştirme · kenar durumları)
+
+"Daha iyi testlerle dene" partisi: mevcut 192 testin karartmadığı kenar durumlarına odaklanıp 10 yeni test eklendi — testler **2 gerçek davranış kusuru** yakalayıp düzeltti.
+
+- **SpeechText (TTS bölme) — 2 düzeltme**: (1) nokta/ünlem ünlem işaretinden sonra boşluk yoksa artık bölünmez — "3.14", "github.com/a" gibi terimler ortadan bölünmüyordu (boşluklu sınır kuralı); (2) boşluksuz taşan cümlede sabit kesim noktası bir emoji'yi (surrogate pair) ortadan bölebiliyordu — kesim artık çifti korur. Yeni testler: ondalık/URL bütünlüğü, emoji taşması (ayrık surrogate yok, içerik kaybı yok), boşluksuz taşma.
+- **RoleplayPrompt — 1 düzeltme**: geçmiş karakter bütçesi tek bir satıra bile yetmediğinde "Yakın sahne geçmişi" başlığı boş olarak prompt'a girebiliyordu (token israfı + model kafa karışıklığı) — başlık artık yalnızca en az bir satır sığdığında girer. Yeni testler: depth 0 (sağlayıcı modu), küçük bütçe.
+- **PersistenceBundle — unicode yuvarlama**: emoji, Türkçe, CJK, satır sonu, tırnak ve ters bölü karakterlerinin karakter/yedek alanlarının tamamında hayatta kaldığı doğrulandı (kendi bozulma taramalarımızın risk yüzeyi).
+- **ChatMemory — 3 test**: Türkçe tokenizasyon + stopword filtresi, bütçe sınırı davranışı, bütçeyi aşan (yalnızca decode yoluyla girebilen) kaydın atlanıp küçük adayın yine de prompt'a girmesi.
+- **OpenAiCompat — egzotik SSE yükleri**: boş/eksik choices, sayısal/boolean content, JSON null message.content, unicode escape'li content — hiçbiri çökmez, metin olarak güvenli işlenir.
+- Toplam **202 test / 0 hata** (10 yeni). versionCode 60 / 0.27.00-alpha1.
+
 ## v0.26.00-alpha1 — 2026-11-13 (kullanım kolaylığı + ikon + tam kod tabanı bug avı)
 
 - **Uygulama ikonu yenilendi**: palyaço konsepti korunarak küçük boyut okunabilirliği geçişi — daha kalın yüz detayları, %15 büyütülmüş trajedi maskesi, daha güçlü sahne ışığı. Yeni **monokrom katman** (themed icon): Android 13+ duvar kağıdına göre renklenen tema ikonu artık destekleniyor (minSdk 33).

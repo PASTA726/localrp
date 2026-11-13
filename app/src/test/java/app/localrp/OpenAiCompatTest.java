@@ -120,6 +120,25 @@ public class OpenAiCompatTest {
     }
 
     @Test
+    public void sseData_exoticPayloads_neverCrashNeverAppend() {
+        // v0.27.00: providers ship surprising shapes; every one must be null (nothing
+        // to append) rather than an exception or garbage text.
+        assertNull(OpenAiCompat.deltaFromSseData("{\"choices\":[]}"));               // empty choices
+        assertNull(OpenAiCompat.deltaFromSseData("{}"));                            // no choices at all
+        assertNull(OpenAiCompat.deltaFromSseData("{\"choices\":[{}]}"));             // bare choice
+        // Non-string content: numeric/boolean payloads toString into text (defensive
+        // append, still must not throw).
+        assertEquals("42", OpenAiCompat.deltaFromSseData("{\"choices\":[{\"delta\":{\"content\":42}}]}"));
+        assertEquals("true", OpenAiCompat.deltaFromSseData("{\"choices\":[{\"delta\":{\"content\":true}}]}"));
+        // message.content JSON null: non-streaming shape padding with null.
+        assertNull(OpenAiCompat.deltaFromSseData(
+                "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null}}]}"));
+        // Unicode escapes decode into real characters.
+        assertEquals("Elif 😀", OpenAiCompat.deltaFromSseData(
+                "{\"choices\":[{\"delta\":{\"content\":\"Elif \\ud83d\\ude00\"}}]}"));
+    }
+
+    @Test
     public void errorMessage_digsNestedAndFlatPayloads() {
         assertEquals("no quota", OpenAiCompat.errorMessage("{\"error\":{\"message\":\"no quota\"}}"));
         assertEquals("flat message", OpenAiCompat.errorMessage("{\"message\":\"flat message\"}"));

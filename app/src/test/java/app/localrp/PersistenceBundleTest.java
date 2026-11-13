@@ -59,6 +59,41 @@ public class PersistenceBundleTest {
     }
 
     @Test
+    public void bundleRoundTrip_unicodeSurvivesEveryField() {
+        // v0.27.00: this app's own corruption scans exist because non-ASCII text is
+        // a risk surface — assert emoji, Turkish, CJK, newlines and quotes survive
+        // the full v2 bundle round trip in every text field they can appear in.
+        PersistenceCodec.Bundle bundle = new PersistenceCodec.Bundle();
+        CharacterProfile c = character("c1", "Elif 🎭");
+        c.description = "Denizci — \"kaptan\"\n2. satır ✨ 日本語も";
+        c.personality = "Atılgan… 🤔 'alıntı' \\ters\\";
+        c.instructions = "Türkçe konuş ⇄ 简体中文";
+        c.examples = "Elif: (E+ 😀 → 🙂) emoji testi";
+        bundle.characters.add(c);
+        bundle.groups.add(group("g1"));
+        List<Message> transcript = new ArrayList<>();
+        transcript.add(new Message("Elif 😀", "merhaba\nikinci satır 🌊", false, 1L));
+        transcript.add(new Message("Sen", "сюрприз 『括弧』 \"tırnak\"", true, 2L));
+        bundle.chats.put("g1", transcript);
+
+        String encoded = PersistenceCodec.encodeBundle(bundle);
+        PersistenceCodec.Bundle decoded = PersistenceCodec.decodeBundle(encoded);
+        assertNotNull(decoded);
+        assertEquals(1, decoded.characters.size());
+        CharacterProfile out = decoded.characters.get(0);
+        assertEquals("Elif 🎭", out.name);
+        assertEquals("Denizci — \"kaptan\"\n2. satır ✨ 日本語も", out.description);
+        assertEquals("Atılgan… 🤔 'alıntı' \\ters\\", out.personality);
+        assertEquals("Türkçe konuş ⇄ 简体中文", out.instructions);
+        assertEquals("Elif: (E+ 😀 → 🙂) emoji testi", out.examples);
+        List<Message> messages = decoded.chats.get("g1");
+        assertEquals(2, messages.size());
+        assertEquals("Elif 😀", messages.get(0).speaker);
+        assertEquals("merhaba\nikinci satır 🌊", messages.get(0).text);
+        assertEquals("сюрприз 『括弧』 \"tırnak\"", messages.get(1).text);
+    }
+
+    @Test
     public void decodeBundle_rejectsNonBackupValues() {
         assertNull(PersistenceCodec.decodeBundle(null));
         assertNull(PersistenceCodec.decodeBundle("[]")); // old array backups are not bundles

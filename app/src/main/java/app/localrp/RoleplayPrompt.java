@@ -193,8 +193,13 @@ final class RoleplayPrompt {
             if (historyDepth > 0 && history.size() > 1) {
                 // historyDepth 0 is the online provider's system prompt (DeepSeek item 14/B):
                 // history travels as real chat turns, so a bare header would dangle empty.
-                prompt.append(english ? "\nRecent scene history:\n" : "\nYakın sahne geçmişi:\n");
-                appendHistory(prompt, history, last != null && last.user, historyDepth, historyCharBudget, english);
+                // v0.27.00: the header itself is emitted only when at least one line
+                // fits the budget — an empty heading wastes tokens and misleads the model.
+                String historyBlock = historyBlock(history, last != null && last.user, historyDepth, historyCharBudget, english);
+                if (!historyBlock.isEmpty()) {
+                    prompt.append(english ? "\nRecent scene history:\n" : "\nYakın sahne geçmişi:\n")
+                            .append(historyBlock);
+                }
             }
         } else {
             // The engine keeps ONE shared context per conversation; on continuing turns the
@@ -256,6 +261,14 @@ final class RoleplayPrompt {
         prompt.append(english ? "User identity: " : "Kullanıcı kimliği: ").append(name.isEmpty() ? (english ? "You" : "Sen") : name);
         if (!description.isEmpty()) prompt.append(" — ").append(oneLine(description, 400));
         prompt.append("\n");
+    }
+
+    /** Builds the history lines; the caller emits the header only when non-empty. */
+    private static String historyBlock(List<Message> history, boolean skipLastUser,
+                                       int historyDepth, int historyCharBudget, boolean english) {
+        StringBuilder out = new StringBuilder();
+        appendHistory(out, history, skipLastUser, historyDepth, historyCharBudget, english);
+        return out.toString();
     }
 
     private static void appendHistory(StringBuilder prompt, List<Message> history, boolean skipLastUser,
