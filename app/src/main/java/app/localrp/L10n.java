@@ -1014,5 +1014,26 @@ public final class L10n {
                 "Images on: an attached photo travels to vision-capable models as a real image; unsupported models return a provider error.");
         EN.put("Görseller kapalı: fotoğraflar [görsel] notu olarak gider, hiçbir resim verisi gönderilmez.",
                 "Images off: photos travel as an [image] note; no image data is sent.");
+        // v0.25.00 sampler / prompt control
+        EN.put("Örnekleyici (sağlayıcı)", "Sampler (provider)");
+        EN.put("Yalnızca sağlayıcı yanıtlarında geçerli: sıcaklık yaratıcılığı, top-p çeşitliliği kontrol eder. Yerel motor bu ayarları desteklemez.",
+                "Applies to provider replies only: temperature tunes creativity, top-p tunes diversity. The local engine has no such controls.");
+        EN.put("Sıcaklık", "Temperature");
+        EN.put("Top-p", "Top-p");
+        EN.put("Sıcaklığı genel ayara döndür", "Reset temperature to the global setting");
+        EN.put("Top-p'yi genel ayara döndür", "Reset top-p to the global setting");
+        EN.put("Örnekleyiciyi genel ayara döndür", "Reset sampler to the global setting");
+        EN.put("Sağlayıcı yanıtları için genel varsayılan: sıcaklık yaratıcılığı, top-p çeşitliliği kontrol eder. Ayarlanmamışsa sağlayıcının kendi varsayılanı geçerlidir; yerel motor bu ayarları desteklemez.",
+                "Global default for provider replies: temperature tunes creativity, top-p tunes diversity. Unset, the provider's own default applies; the local engine has no such controls.");
+        EN.put("Ayarlanmadı — sağlayıcının kendi varsayılanı geçerli. ", "Not set — the provider's own default applies. ");
+        EN.put("Genel varsayılan: ", "Global default: ");
+        EN.put("Genel sıcaklık", "Global temperature");
+        EN.put("Genel top-p", "Global top-p");
+        EN.put("Sıcaklığı sağlayıcı varsayılanına döndür", "Reset temperature to the provider default");
+        EN.put("Top-p'yi sağlayıcı varsayılanına döndür", "Reset top-p to the provider default");
+        EN.put("Üretim ayarı (sağlayıcı)", "Generation setting (provider)");
+        EN.put("Bu karakter konuşurken sağlayıcı sıcaklığı: boş bırakılırsa sohbet profili/genel ayar izlenir. Yerel motor bu ayarı desteklemez.",
+                "Provider temperature while this character speaks: leave blank to follow the chat profile/global setting. The local engine has no such control.");
+        EN.put("Sıcaklık (0.0–2.0)", "Temperature (0.0–2.0)");
     }
 }

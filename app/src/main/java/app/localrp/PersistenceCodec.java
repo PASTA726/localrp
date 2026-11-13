@@ -56,6 +56,7 @@ final class PersistenceCodec {
                 o.put("personality", c.personality);
                 o.put("instructions", c.instructions);
                 o.put("examples", c.examples);
+                if (c.samplerTemp != null && !c.samplerTemp.isEmpty()) o.put("samplerTemp", c.samplerTemp);
                 if (c.avatarPath != null && !c.avatarPath.isEmpty()) o.put("avatar", c.avatarPath);
                 data.put(o);
             }
@@ -97,6 +98,7 @@ final class PersistenceCodec {
         c.personality = o.optString("personality");
         c.instructions = o.optString("instructions");
         c.examples = o.optString("examples");
+        c.samplerTemp = o.optString("samplerTemp");
         c.avatarPath = o.optString("avatar");
         return c;
     }
@@ -447,6 +449,9 @@ final class PersistenceCodec {
                 o.put("personality", c.personality);
                 o.put("instructions", c.instructions);
                 o.put("examples", c.examples);
+                if (bundle.version >= 2 && c.samplerTemp != null && !c.samplerTemp.isEmpty()) {
+                    o.put("samplerTemp", c.samplerTemp);
+                }
                 if (bundle.version >= 2) {
                     String avatar = toMediaRelative(c.avatarPath, bundle.avatarsRoot, bundle.imagesRoot);
                     if (!avatar.isEmpty()) o.put("avatar", avatar);
@@ -541,6 +546,7 @@ final class PersistenceCodec {
                         c.personality = o.optString("personality");
                         c.instructions = o.optString("instructions");
                         c.examples = o.optString("examples");
+                        c.samplerTemp = o.optString("samplerTemp");
                         c.avatarPath = o.optString("avatar");
                         bundle.characters.add(c);
                     } catch (JSONException badRecord) { }

@@ -2,6 +2,18 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.25.00-alpha1 — 2026-11-13 (gelişmiş prompt kontrolü · sampler + karakter başına ayar)
+
+P2'nin son kalemi. Not: harici llama.cpp motor kütüphanesi (`com.arm.aichat`) sampler API'si sunmuyor — bu ayarlar **sağlayıcı yolunda** geçerlidir; yerel motor mevcut davranışını korur. Instruct şablon değiştirme de motor desteği gerektirdiğinden sonraki partilere bırakıldı (mevcut prompt kaynakları: genel talimat özel metni + karakter başına talimatlar + sohbet profili şablonu zaten genişletilebilir özelleştirmeyi kapsıyor).
+
+- **Örnekleyici (global)**: AI gelişmiş ayarlarında genel sıcaklık (0.0–2.0) ve top-p (0.0–1.0) — ayarlanmamışsa alan istek gövdesine hiç girmez, sağlayıcının kendi varsayılanı geçerli kalır.
+- **Sohbet profili örnekleyicisi**: her sohbet için sıcaklık/top-p override'ı + "genel ayara döndür" + "tüm profili sıfırla" bu alanları da sıfırlar.
+- **Karakter başına üretim ayarı**: karakter editöründe isteğe bağlı sıcaklık — o karakter konuşurken sohbet profilini/geneli geçer. `CharacterProfile`'a yeni alan (`samplerTemp`), yedek v2'ye opsiyonel alan olarak taşınır (eski yedekler uyumlu).
+- **Çözümleme sırası** (saf, testli): karakter > sohbet profili > genel > (yok) sağlayıcı varsayılanı. Geçersiz/aralık dışı değerler sessizce yok sayılır.
+- İstek gövdesi yalnızca ayarlı alanları taşır (`temperature`, `top_p`) — mevcut sağlayıcı davranışı değişmez.
+- 4 yeni birim testi (`SamplerSettings` 3, `OpenAiCompat` sampler 1; ayrıca `PersistenceCodec` yuvarlama testi genişletildi) → toplam 191.
+- versionCode 58 / 0.25.00-alpha1.
+
 ## v0.24.00-alpha1 — 2026-11-13 (görsel anlama · sağlayıcı yolu)
 
 P2 önceliğinin ilk partisi: mesaja eklenen fotoğraf, vision destekli OpenAI-uyumlu modellere gerçek görsel olarak gider.
