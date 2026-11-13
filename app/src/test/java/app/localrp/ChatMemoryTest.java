@@ -89,17 +89,23 @@ public class ChatMemoryTest {
 
     @Test
     public void relevant_budgetBoundary_fitsExactlyThenStops() {
-        // v0.27.00: an entry that exactly fits the remaining budget must be taken;
-        // the next one must not. Build entries of known length: "kayıt " (6) + "fener" (5) = 11+1 sep.
-        List<String> memory = new ArrayList<>();
-        memory = ChatMemory.add(memory, "fener aaaaaaaaaa bbbbbbbbbb cccccccccc dddddddddd eeeeeeeeee ffffffffff gggggggggg hhhhhhhhhh"); // 6 + 9*10 = 96 chars
-        memory = ChatMemory.add(memory, "fener zzz");
-        List<String> hits = ChatMemory.relevant(memory, "fener ve zzz");
-        // First entry (96 chars) fits 700; the second is taken too (small). Assert cap
-        // respected and both scored entries survive — the exact-fit boundary is the
-        // first entry not being silently skipped.
-        assertTrue(hits.size() >= 2);
-        assertTrue(hits.get(0).length() <= ChatMemory.RECALL_CHAR_BUDGET);
+        // v0.27.00: the exact boundary — an entry whose length equals the remaining
+        // budget must be taken (<=), and after it nothing else ships. Oversized
+        // entries only enter through decode(), so the entries are built raw.
+        String filler = "a"; // reused to hit exact lengths
+        StringBuilder exact = new StringBuilder("fener "); // 6 chars
+        while (exact.length() < ChatMemory.RECALL_CHAR_BUDGET) exact.append(filler);
+        assertEquals(ChatMemory.RECALL_CHAR_BUDGET, exact.length()); // exactly 700
+
+        StringBuilder raw = new StringBuilder("[");
+        raw.append('"').append(exact).append('"');
+        raw.append(",\"fener küçük yedek\"]");
+        List<String> memory = ChatMemory.decode(raw.toString());
+
+        List<String> hits = ChatMemory.relevant(memory, "fener");
+        assertEquals(1, hits.size());
+        assertEquals(exact.toString(), hits.get(0)); // the exact-fit entry is taken
+        assertFalse(hits.contains("fener küçük yedek")); // budget exactly exhausted
     }
 
     @Test
