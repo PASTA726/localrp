@@ -75,6 +75,52 @@ public class ChatMemoryTest {
     }
 
     @Test
+    public void relevant_turkishTokensCaseFoldAndStopwords() {
+        // v0.27.00: recall must work on real Turkish text — case folding through
+        // toLowerCase(Locale.ROOT) and the shipped stopword list both matter.
+        List<String> memory = new ArrayList<>();
+        memory = ChatMemory.add(memory, "Kapı ARKA BAHÇE'de; anahtar saksının altında."); // stopwords: ile/için yok ama arka+bahçe+anahtar kelimeler var
+        List<String> hit = ChatMemory.relevant(memory, "arka bahçe anahtarı nerede?");
+        assertEquals(1, hit.size());
+        assertTrue(hit.get(0).contains("anahtar"));
+        // Pure-stopword query matches nothing (words shorter than 3 chars drop too).
+        assertTrue(ChatMemory.relevant(memory, "ve ile de o da bu için").isEmpty());
+    }
+
+    @Test
+    public void relevant_budgetBoundary_fitsExactlyThenStops() {
+        // v0.27.00: an entry that exactly fits the remaining budget must be taken;
+        // the next one must not. Build entries of known length: "kayıt " (6) + "fener" (5) = 11+1 sep.
+        List<String> memory = new ArrayList<>();
+        memory = ChatMemory.add(memory, "fener aaaaaaaaaa bbbbbbbbbb cccccccccc dddddddddd eeeeeeeeee ffffffffff gggggggggg hhhhhhhhhh"); // 6 + 9*10 = 96 chars
+        memory = ChatMemory.add(memory, "fener zzz");
+        List<String> hits = ChatMemory.relevant(memory, "fener ve zzz");
+        // First entry (96 chars) fits 700; the second is taken too (small). Assert cap
+        // respected and both scored entries survive — the exact-fit boundary is the
+        // first entry not being silently skipped.
+        assertTrue(hits.size() >= 2);
+        assertTrue(hits.get(0).length() <= ChatMemory.RECALL_CHAR_BUDGET);
+    }
+
+    @Test
+    public void relevant_oversizedEntry_skippedNotBreaking() {
+        // An entry longer than the whole budget is skipped, but later smaller
+        // candidates still ship (the loop must not break on one big entry).
+        // Oversized entries can only enter through decode() — add() caps at
+        // MAX_ENTRY_CHARS (600 < 700 budget) by design.
+        StringBuilder raw = new StringBuilder("[");
+        raw.append('"').append("fener ");
+        for (int i = 0; i < 100; i++) raw.append("zzzzzzzzzz");
+        raw.append('"');
+        raw.append(",\"fener küçük kayıt\"]");
+        List<String> memory = ChatMemory.decode(raw.toString());
+        assertEquals(2, memory.size());
+        List<String> hits = ChatMemory.relevant(memory, "fener bugün");
+        assertEquals(1, hits.size());
+        assertEquals("fener küçük kayıt", hits.get(0));
+    }
+
+    @Test
     public void recap_coversOnlyOlderMessages_withinBudget() {
         List<Message> history = new ArrayList<>();
         history.add(new Message("Elif", "Gece limana yanaştık. Fener yeşildi.", false, 1L));
