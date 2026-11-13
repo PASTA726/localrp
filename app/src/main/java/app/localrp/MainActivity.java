@@ -167,6 +167,7 @@ public class MainActivity extends Activity {
     private TextView chatQuickRegen;
     private TextView chatQuickSteer;
     private TextView chatQuickUndo;
+    private TextView chatQuickMemory;
     // v0.22.00 voice: lazy TTS engine for reading messages aloud + STT dictation.
     private android.speech.tts.TextToSpeech tts;
     private boolean ttsReady;
@@ -1439,6 +1440,8 @@ public class MainActivity extends Activity {
             String chatId = visibleChatId;
             if (chatId != null) undoRegenerate(chatId);
         });
+        // v0.23.00 memory: pinned important events, reviewable and removable.
+        chatQuickMemory = addQuickTool(chatQuickTools, L10n.s("🧠  ") + L10n.s("Hafıza"), this::showMemoryManager);
         LinearLayout.LayoutParams quickParams = fullWidth();
         quickParams.setMargins(0, dp(6), 0, 0);
         chatComposer.addView(chatQuickTools, quickParams);
@@ -2441,10 +2444,11 @@ public class MainActivity extends Activity {
             Group stashGroup = store.group(group.id);
             boolean canUndo = !busy && stash != null && stashGroup != null && RegenUndo.canRestore(
                     stash.index, stash.anchorText, stash.anchorAt, store.messages(stashGroup.id));
-            chatQuickTools.setVisibility(canRegen || canUndo ? View.VISIBLE : View.GONE);
+            chatQuickTools.setVisibility(canRegen || canUndo || !store.memory(group.id).isEmpty() ? View.VISIBLE : View.GONE);
             if (chatQuickRegen != null) chatQuickRegen.setVisibility(canRegen ? View.VISIBLE : View.GONE);
             if (chatQuickSteer != null) chatQuickSteer.setVisibility(canRegen ? View.VISIBLE : View.GONE);
             if (chatQuickUndo != null) chatQuickUndo.setVisibility(canUndo ? View.VISIBLE : View.GONE);
+            if (chatQuickMemory != null) chatQuickMemory.setVisibility(View.VISIBLE);
         }
         if (chatContinueButton == null) return;
 
@@ -5330,12 +5334,25 @@ public class MainActivity extends Activity {
         String themeId = chatThemeId(group.id);
         // v0.19.16: the chat's own persona wins; otherwise the global default identity.
         String[] personaText = store.personaTextForChat(group.id);
+        // v0.23.00 memory: the recap covers what fell outside the history window
+        // (fresh builds only — provider mode already carries history as real turns);
+        // relevant recall scores pinned events against the transcript's tail.
+        List<Message> history = store.messages(group.id);
+        String recap = historyDepth > 0
+                ? ChatMemory.recap(history, historyDepth, ChatMemory.RECAP_CHAR_BUDGET) : "";
+        List<Message> tail = history.size() > 3
+                ? history.subList(history.size() - 3, history.size()) : history;
+        StringBuilder query = new StringBuilder();
+        for (Message message : tail) {
+            if (message.text != null) query.append(message.text).append('\n');
+        }
+        List<String> memories = ChatMemory.relevant(store.memory(group.id), query.toString());
         return RoleplayPrompt.build(
                 group.name,
                 speaker,
                 group.characterIds,
                 id -> store.character(id),
-                store.messages(group.id),
+                history,
                 continuingFlag,
                 continuation,
                 instructions,
@@ -5346,7 +5363,9 @@ public class MainActivity extends Activity {
                 personaText,
                 english,
                 store.lore(group.id),
-                steer);
+                steer,
+                recap,
+                memories);
     }
 
     /** System prompt + transcript turns for the online provider (DeepSeek item 14/B). */
@@ -6946,6 +6965,9 @@ public class MainActivity extends Activity {
         actions.add(() -> editMessage(index));
         labels.add(L10n.s(L10n.s("Sil")));
         actions.add(() -> confirmDeleteMessage(index));
+        // v0.23.00 memory: pin this message as an important event for recall.
+        labels.add(L10n.s("🧠  Hafızaya ekle"));
+        actions.add(() -> pinMessageToMemory(message));
         // v0.22.00 voice: read the message aloud; a running read can be stopped
         // from the same menu (isSpeaking is evaluated when the menu opens).
         labels.add(L10n.s("🔊  Sesli oku"));
@@ -6984,6 +7006,50 @@ public class MainActivity extends Activity {
     /** A generation is either running anywhere or targeting the visible chat. */
     private boolean isGeneratingHere() {
         return generatingChatId != null;
+    }
+
+    /** v0.23.00 memory: stores the message as a pinned important event of its chat. */
+    private void pinMessageToMemory(Message message) {
+        String chatId = visibleChatId;
+        if (chatId == null) return;
+        String body = message.text == null || message.text.isEmpty()
+                ? (message.hasImage() ? L10n.s(L10n.s("[görsel]")) : "") : message.text;
+        if (body.isEmpty()) {
+            Toast.makeText(this, L10n.s(L10n.s("Bu mesajın metni yok; görsel kayıtta saklanır.")), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<String> memory = store.memory(chatId);
+        List<String> updated = ChatMemory.add(memory, message.speaker + ": " + body);
+        if (store.saveMemory(chatId, updated)) {
+            Toast.makeText(this, L10n.s(L10n.s("Anı kaydedildi: önemli anlar her turda hatırlanır.")), Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, L10n.s(L10n.s("Anı kaydedilemedi: saklı veri okunamıyor.")), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /** v0.23.00 memory: review and remove pinned events of the open chat. */
+    private void showMemoryManager() {
+        String chatId = visibleChatId;
+        if (chatId == null) return;
+        List<String> memory = store.memory(chatId);
+        if (memory.isEmpty()) {
+            new AlertDialog.Builder(this).setTitle(L10n.s("Hafıza"))
+                    .setMessage(L10n.s(L10n.s("Henüz anı yok. Mesaja uzun basıp \"Hafızaya ekle\" diyerek önemli olayları kaydet; model her turda en ilgili anları hatırlar.")))
+                    .setPositiveButton(L10n.s(L10n.s("Anlaşıldı")), null).show();
+            return;
+        }
+        List<String> labels = new ArrayList<>();
+        for (String entry : memory) labels.add(entry);
+        new AlertDialog.Builder(this).setTitle(L10n.s("Hafıza") + L10n.s(" · "))
+                .setItems(labels.toArray(new String[0]), (d, which) -> {
+                    List<String> updated = new ArrayList<>(store.memory(chatId));
+                    if (which >= 0 && which < updated.size()) {
+                        updated.remove(which);
+                        store.saveMemory(chatId, updated);
+                        Toast.makeText(this, L10n.s(L10n.s("Anı silindi.")), Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton(L10n.s(L10n.s("Kapat")), null).show();
     }
 
     /** v0.20.00 quick tools: transcript index of the last AI turn, -1 when absent. */

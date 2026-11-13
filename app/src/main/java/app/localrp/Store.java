@@ -304,6 +304,19 @@ class Store {
         return true;
     }
 
+    /** Per-conversation pinned memories (v0.23.00); empty list when nothing is pinned. */
+    List<String> memory(String groupId) {
+        return ChatMemory.decode(preferences.getString("memory_" + groupId, null));
+    }
+
+    /** Overwrites the conversation's pinned memories; refuses on unreadable stored state. */
+    boolean saveMemory(String groupId, List<String> memories) {
+        String raw = preferences.getString("memory_" + groupId, null);
+        if (!PersistenceCodec.overwriteAllowed(raw)) { integrityIssues.add("memory_" + groupId); return false; }
+        preferences.edit().putString("memory_" + groupId, ChatMemory.encode(memories)).apply();
+        return true;
+    }
+
     /** Replaces one stored message's text (speaker/reader/image/timestamp preserved). */
     boolean updateMessage(String id, int index, String newText) {
         String raw = preferences.getString("chat_" + id, null);

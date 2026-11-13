@@ -83,6 +83,25 @@ final class RoleplayPrompt {
                         String aiInstructions, String themeName, String themeInstruction,
                         int historyDepth, int historyCharBudget, String[] persona, boolean english,
                         List<Lorebook.Entry> lorebook, String steer) {
+        return build(sceneName, speaker, castIds, castLookup, history, continuing, continuation,
+                aiInstructions, themeName, themeInstruction, historyDepth, historyCharBudget,
+                persona, english, lorebook, steer, null, null);
+    }
+
+    /**
+     * Full overload with memory (v0.23.00 "Gelişmiş hafıza"): {@code recap} is the
+     * extractive summary of transcript beyond the history window and
+     * {@code memories} the relevant pinned events; both are injected on fresh
+     * builds only (continuing turns already carry them inside the engine's
+     * saved context), like the lorebook.
+     */
+    static String build(String sceneName, CharacterProfile speaker, List<String> castIds,
+                        Function<String, CharacterProfile> castLookup, List<Message> history,
+                        boolean continuing, boolean continuation,
+                        String aiInstructions, String themeName, String themeInstruction,
+                        int historyDepth, int historyCharBudget, String[] persona, boolean english,
+                        List<Lorebook.Entry> lorebook, String steer,
+                        String recap, List<String> memories) {
         StringBuilder prompt = new StringBuilder();
         String speakerName = clip(speaker.name, 80);
         Message last = history.isEmpty() ? null : history.get(history.size() - 1);
@@ -151,6 +170,25 @@ final class RoleplayPrompt {
             if (!otherCharacter) prompt.append(english ? "- None (solo scene)\n" : "- Yok (bire bir sahne)\n");
 
             appendPersona(prompt, persona, english);
+
+            // Memory (v0.23.00): the automatic recap of what fell outside the
+            // history window, then the pinned events relevant to this turn.
+            if (recap != null && !recap.isEmpty()) {
+                prompt.append(english
+                        ? "\nStory so far (earlier events, summarized):\n"
+                        : "\nHikâyede şimdiye kadar olanlar (eski olayların özeti):\n")
+                        .append(recap).append("\n");
+            }
+            if (memories != null && !memories.isEmpty()) {
+                prompt.append(english
+                        ? "Remembered important events:\n"
+                        : "Hatırlanan önemli anlar:\n");
+                for (String memory : memories) {
+                    if (memory != null && !memory.isEmpty()) {
+                        prompt.append("- ").append(oneLine(memory, ChatMemory.MAX_ENTRY_CHARS)).append("\n");
+                    }
+                }
+            }
 
             if (historyDepth > 0 && history.size() > 1) {
                 // historyDepth 0 is the online provider's system prompt (DeepSeek item 14/B):
