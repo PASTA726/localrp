@@ -25,11 +25,20 @@ final class OpenAiCompat implements GenerationBackend {
     static final class Turn {
         final String role;
         final String content;
+        /** Optional data URL ("data:image/jpeg;base64,…") for vision turns; null = text-only. */
+        final String imageDataUrl;
 
         Turn(String role, String content) {
+            this(role, content, null);
+        }
+
+        Turn(String role, String content, String imageDataUrl) {
             this.role = role == null ? "user" : role;
             this.content = content == null ? "" : content;
+            this.imageDataUrl = (imageDataUrl == null || imageDataUrl.isEmpty()) ? null : imageDataUrl;
         }
+
+        boolean hasImage() { return imageDataUrl != null; }
     }
 
     private final String endpoint;   // full URL, e.g. https://host/v1/chat/completions
@@ -172,7 +181,24 @@ final class OpenAiCompat implements GenerationBackend {
                 for (Turn turn : turns) {
                     JSONObject o = new JSONObject();
                     o.put("role", turn.role);
-                    o.put("content", turn.content);
+                    if (turn.hasImage()) {
+                        // Vision shape (v0.24.00): content is a typed parts array —
+                        // text plus the image as a base64 data URL.
+                        JSONArray parts = new JSONArray();
+                        JSONObject textPart = new JSONObject();
+                        textPart.put("type", "text");
+                        textPart.put("text", turn.content);
+                        parts.put(textPart);
+                        JSONObject imageUrlValue = new JSONObject();
+                        imageUrlValue.put("url", turn.imageDataUrl);
+                        JSONObject imagePart = new JSONObject();
+                        imagePart.put("type", "image_url");
+                        imagePart.put("image_url", imageUrlValue);
+                        parts.put(imagePart);
+                        o.put("content", parts);
+                    } else {
+                        o.put("content", turn.content);
+                    }
                     messages.put(o);
                 }
             }
@@ -213,6 +239,16 @@ final class OpenAiCompat implements GenerationBackend {
      * the same "[görsel]/[image]" placeholder the engine transcript uses.
      */
     static List<Turn> assembleTurns(String systemPrompt, List<Message> history, String finalUserText, int depth) {
+        return assembleTurns(systemPrompt, history, finalUserText, depth, null);
+    }
+
+    /**
+     * Vision overload (v0.24.00): {@code trailingImageDataUrl} (may be null) rides on
+     * the final user turn, so an attached photo reaches vision-capable providers as a
+     * real image part instead of a placeholder. Mid-history images keep placeholders.
+     */
+    static List<Turn> assembleTurns(String systemPrompt, List<Message> history, String finalUserText,
+                                    int depth, String trailingImageDataUrl) {
         List<Turn> turns = new ArrayList<>();
         turns.add(new Turn("system", systemPrompt == null ? "" : systemPrompt));
         int end = history == null ? 0 : history.size();
@@ -224,7 +260,7 @@ final class OpenAiCompat implements GenerationBackend {
                     ? "[görsel]" : (message.text == null ? "" : message.text);
             turns.add(new Turn(message.user ? "user" : "assistant", body));
         }
-        turns.add(new Turn("user", finalUserText == null ? "" : finalUserText));
+        turns.add(new Turn("user", finalUserText == null ? "" : finalUserText, trailingImageDataUrl));
         return turns;
     }
 

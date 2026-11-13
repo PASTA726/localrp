@@ -1008,5 +1008,11 @@ public final class L10n {
         EN.put("Anı silindi.", "Event removed from memory.");
         EN.put("Henüz anı yok. Mesaja uzun basıp \"Hafızaya ekle\" diyerek önemli olayları kaydet; model her turda en ilgili anları hatırlar.",
                 "No pinned events yet. Long-press a message and choose \"Remember this\"; the most relevant events are recalled every turn.");
+        // v0.24.00 provider vision
+        EN.put("Görselleri sağlayıcıya gönder", "Send images to the provider");
+        EN.put("Görseller açık: mesaja eklenen fotoğraf vision destekli modellere gerçek görsel olarak gider; model desteklemiyorsa sağlayıcı hata verir.",
+                "Images on: an attached photo travels to vision-capable models as a real image; unsupported models return a provider error.");
+        EN.put("Görseller kapalı: fotoğraflar [görsel] notu olarak gider, hiçbir resim verisi gönderilmez.",
+                "Images off: photos travel as an [image] note; no image data is sent.");
     }
 }
