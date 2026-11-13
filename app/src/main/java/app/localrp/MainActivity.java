@@ -5425,34 +5425,60 @@ public class MainActivity extends Activity {
 
     /**
      * Encodes a stored message image as a base64 JPEG data URL, downscaled to keep
-     * the request body reasonable (≤1024px, ~quality 80). Null when unreadable —
-     * the turn then ships as text-only instead of failing the whole generation.
+     * the request body reasonable (≤1024px, ~quality 80). Null when unreadable or
+     * over the payload cap — the turn then ships as text-only instead of failing
+     * the whole generation. Results are memoized per path: a photo stays attached
+     * for several turns, and re-encoding it every turn is pure waste.
      */
+    private final java.util.Map<String, String> providerImageCache = new java.util.HashMap<>();
+
     private String providerImageDataUrl(String path) {
+        if (path == null || path.isEmpty()) return null;
+        synchronized (providerImageCache) {
+            String cached = providerImageCache.get(path);
+            if (cached != null) return cached;
+        }
+        String encoded = encodeProviderImage(path);
+        if (encoded != null) {
+            synchronized (providerImageCache) {
+                if (providerImageCache.size() > 4) providerImageCache.clear();
+                providerImageCache.put(path, encoded);
+            }
+        }
+        return encoded;
+    }
+
+    private String encodeProviderImage(String path) {
+        Bitmap bitmap = null;
         try {
-            if (path == null || path.isEmpty()) return null;
             File image = new File(path);
             if (!image.isFile()) return null;
             android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(path, bounds);
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+            // outWidth is an int, so this terminates long before sample*2 overflows;
+            // the sample cap is defence against a crafted huge header (Codex review).
             int sample = 1;
-            while (bounds.outWidth / (sample * 2) >= 1024 || bounds.outHeight / (sample * 2) >= 1024) sample *= 2;
+            while (sample < (1 << 20)
+                    && (bounds.outWidth / (sample * 2) >= 1024 || bounds.outHeight / (sample * 2) >= 1024)) {
+                sample *= 2;
+            }
             android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
             options.inSampleSize = sample;
-            Bitmap bitmap = BitmapFactory.decodeFile(path, options);
+            bitmap = BitmapFactory.decodeFile(path, options);
             if (bitmap == null) return null;
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 80, buffer)) {
-                bitmap.recycle();
-                return null;
-            }
-            bitmap.recycle();
+            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 80, buffer)) return null;
+            // Payload cap: an uncompressible image must not balloon the request
+            // body; text-only is the graceful fallback (Codex review v0.24.00).
+            if (buffer.size() > 3 * 1024 * 1024) return null;
             return "data:image/jpeg;base64,"
                     + android.util.Base64.encodeToString(buffer.toByteArray(), android.util.Base64.NO_WRAP);
         } catch (Exception e) {
             return null;
+        } finally {
+            if (bitmap != null) bitmap.recycle();
         }
     }
 
