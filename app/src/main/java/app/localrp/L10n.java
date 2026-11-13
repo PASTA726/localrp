@@ -1035,5 +1035,12 @@ public final class L10n {
         EN.put("Bu karakter konuşurken sağlayıcı sıcaklığı: boş bırakılırsa sohbet profili/genel ayar izlenir. Yerel motor bu ayarı desteklemez.",
                 "Provider temperature while this character speaks: leave blank to follow the chat profile/global setting. The local engine has no such control.");
         EN.put("Sıcaklık (0.0–2.0)", "Temperature (0.0–2.0)");
+        // v0.26.00 usability
+        EN.put("RP ara…", "Search RPs…");
+        EN.put("Eşleşen RP yok", "No matching RP");
+        EN.put("Farklı bir ad veya karakter ara.", "Try a different name or character.");
+        EN.put("Sohbeti aç", "Open chat");
+        EN.put("Depolanan mesaja uzun bas: kopyala, düzenle, hafızaya ekle, sesli oku.",
+                "Long-press a stored message: copy, edit, remember, read aloud.");
     }
 }

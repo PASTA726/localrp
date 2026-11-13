@@ -411,9 +411,19 @@ class Store {
         }
         java.util.Map<String, List<Message>> mergedChats = new java.util.HashMap<>();
         for (String id : knownGroups) {
-            List<Message> stored = PersistenceCodec.decodeMessages(preferences.getString("chat_" + id, "[]")).items;
+            String storedRaw = preferences.getString("chat_" + id, "[]");
+            PersistenceCodec.Decode<Message> storedDecode = PersistenceCodec.decodeMessages(storedRaw);
             List<Message> incoming = importedChats.get(id);
-            mergedChats.put(id, incoming != null && incoming.size() > stored.size() ? incoming : stored);
+            // Codex bug-hunt v0.26.00: a corrupt local payload must never be re-encoded
+            // over itself. The pure decision returns null → keep the raw bytes and
+            // surface it through integrity reporting; only a strictly longer incoming
+            // transcript (a good backup) may repair it.
+            List<Message> decision = PersistenceCodec.mergeStoredTranscript(storedDecode, incoming);
+            if (decision == null) {
+                integrityIssues.add("chat_" + id);
+                continue;
+            }
+            mergedChats.put(id, decision);
         }
         String encodedChars = PersistenceCodec.encodeCharacters(mergedChars);
         String encodedGroups = PersistenceCodec.encodeGroups(mergedGroups);

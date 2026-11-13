@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LocalRP launcher monochrome (v0.26.00): themed-icon glyph for Android 13+.
+     One evenOdd path: the tragedy mask silhouette with eye/tear/frown CUT OUT as
+     real transparent holes (system tints by alpha channel — filled dark features
+     would vanish into the mask), plus the spotlight beam hint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- spotlight beam hint -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M47,20 L61,20 L82,86 L26,86 Z M33,86 a21,3.5 0 1,0 42,0 a21,3.5 0 1,0 -42,0 Z" />
+    <!-- tragedy mask: silhouette with carved features -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M38,36 Q45,32.5 52,36 Q54.5,37 54.5,44.5 Q54.5,54 49.5,59 Q45,63.5 40.5,59 Q35.5,54 35.5,44.5 Q35.5,37 38,36 Z
+            M39.6,43.4 Q41.8,45.6 44,43.4 Q41.8,48 39.6,43.4 Z
+            M48.4,43.4 Q46.2,45.6 44,43.4 Q46.2,48 48.4,43.4 Z
+            M44,49.4 Q45,51.8 44,53 Q43,51.8 44,49.4 Z
+            M40.6,55.8 Q45,52.4 49.4,55.8 Q45,57.4 40.6,55.8 Z" />
+</vector>
