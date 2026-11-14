@@ -243,6 +243,8 @@ public class MainActivity extends Activity {
     /** Chat-scoped one-shot steering note ("Yönlendirerek yeniden üret"); consumed
      *  by the next beginGeneration in that chat, never persisted. */
     private final java.util.Map<String, String> pendingSteer = new java.util.HashMap<>();
+    // Web araması (v0.29.00): one-shot like pendingSteer — consumed on the next turn only.
+    private final java.util.Map<String, String> pendingWebSearch = new java.util.HashMap<>();
     /** Pre-regenerate tail kept in memory so "Eski yanıtı geri getir" can undo a
      *  regenerate this session; image files stay on disk until the stash is discarded. */
     private final java.util.Map<String, RegenStash> regenStashes = new java.util.HashMap<>();
@@ -1431,6 +1433,22 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         menuParams.setMargins(dp(8), 0, 0, 0);
         tools.addView(menu, menuParams);
+
+        // Web araması (v0.29.00): strictly user-initiated — nothing is sent without
+        // this tap; the results become a one-shot context block for the next reply.
+        Button webSearch = button("🌐");
+        webSearch.setTextSize(16);
+        webSearch.setTextColor(Design.text());
+        webSearch.setMinWidth(dp(44));
+        webSearch.setMinHeight(dp(48));
+        webSearch.setPadding(dp(10), 0, dp(10), 0);
+        webSearch.setContentDescription(L10n.s("Web araması"));
+        webSearch.setBackground(rounded(Design.cardBg(), Design.cardBg(), 30));
+        webSearch.setOnClickListener(v -> showWebSearch(group));
+        LinearLayout.LayoutParams webParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        webParams.setMargins(dp(6), 0, 0, 0);
+        tools.addView(webSearch, webParams);
         chatComposer.addView(tools, fullWidth());
 
         if (!modelCanRespond()) {
@@ -2062,6 +2080,9 @@ public class MainActivity extends Activity {
         // a stale steer must not leak into an unrelated reply, and the pre-regenerate
         // tail must never be restored over newer messages.
         pendingSteer.remove(group.id);
+        // v0.29.00: the same staleness rule — a new user turn drops a pending
+        // web-search block so it can never ride an unrelated later reply.
+        pendingWebSearch.remove(group.id);
         discardRegenStash(group.id);
         File photo = null;
         if (pendingComposerImage != null && group.id.equals(pendingComposerImageChatId)) {
@@ -2117,6 +2138,9 @@ public class MainActivity extends Activity {
         if (steer != null) {
             // Consume-or-drop: only the live path below re-applies the note.
             pendingSteer.remove(group.id);
+            // v0.29.00: a retry with a note also drops any pending web block —
+            // the user chose a steering note instead.
+            pendingWebSearch.remove(group.id);
         }
         if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) {
             Toast.makeText(this, L10n.s(L10n.s("Görsel motoruyla bir işlem sürüyor; bitmesini bekle.")), Toast.LENGTH_SHORT).show();
@@ -2220,14 +2244,16 @@ public class MainActivity extends Activity {
         // Comfort tool (v0.19.22): consume the one-shot steering note here so only
         // this turn's prompt carries it (chain follow-ups rebuild without it).
         String steer = pendingSteer.remove(group.id);
+        // Web araması (v0.29.00): the one-shot search block rides this turn only.
+        String webContext = pendingWebSearch.remove(group.id);
         if (providerReady()) {
             // Opt-in online engine (DeepSeek item 14/B): the scene identity ships as one
             // system prompt, history as real chat turns; engine context bookkeeping (the
             // llama.cpp shared-context budget) does not apply here.
-            providerTurns = buildProviderTurns(group, speaker, continuation, steer);
+            providerTurns = buildProviderTurns(group, speaker, continuation, steer, webContext);
             providerClient = null;
         } else {
-            String prompt = buildRoleplayPrompt(group, speaker, continuation, steer);
+            String prompt = buildRoleplayPrompt(group, speaker, continuation, steer, webContext);
             boolean freshContext = !LocalAiRuntime.INSTANCE.hasConversation(group.id);
             int contextBudget = LocalAiRuntime.INSTANCE.contextCharBudget();
             long contextUsed = freshContext ? 0L : Math.max(0L, contextChars.getOrDefault(group.id, 0L));
@@ -2235,7 +2261,7 @@ public class MainActivity extends Activity {
                 // Keep the model's native context bounded; rebuild from stored recent history.
                 LocalAiRuntime.INSTANCE.resetConversation(group.id);
                 contextUsed = 0L;
-                prompt = buildRoleplayPrompt(group, speaker, continuation, steer);
+                prompt = buildRoleplayPrompt(group, speaker, continuation, steer, webContext);
             }
             contextChars.put(group.id, contextUsed + prompt.length());
             LocalAiRuntime.INSTANCE.generate(group.id, prompt, maxTokens, pipe(group, speaker, startedAt, thisGeneration));
@@ -2533,6 +2559,108 @@ public class MainActivity extends Activity {
         }).create();
         tintDialog(dialog);
         dialog.show();
+    }
+
+    /**
+     * Web araması (v0.29.00): user-typed query → DDG lite over https (10 s timeout,
+     * LocalRP UA) → parsed results in a dialog → picked lines become a one-shot
+     * context block consumed on the very next turn (like the steering note).
+     * Strictly user-initiated: the app never fetches or sends anything on its own,
+     * and conversation text is NOT included in the query.
+     */
+    private void showWebSearch(Group group) {
+        final String chatId = group.id;
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(20);
+        box.setPadding(pad, pad, pad, 0);
+        final android.widget.EditText query = new EditText(this);
+        query.setHint(L10n.s("Aradığın şey…"));
+        query.setSingleLine(true);
+        query.setTextSize(14);
+        query.setTextColor(Design.text());
+        query.setHintTextColor(Design.muted());
+        query.setBackground(rounded(Design.cardBg(), Design.cardBg(), 22));
+        query.setPadding(dp(14), dp(10), dp(14), dp(10));
+        box.addView(query, fullWidth());
+        TextView note = label(L10n.s("Sorgu DuckDuckGo'ya gönderilir; sonuçlar yalnızca sıradaki yanıt için bağlam olur. Sohbet verisi gönderilmez."), 12, Design.muted());
+        note.setPadding(0, dp(10), 0, dp(8));
+        box.addView(note, fullWidth());
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
+                .setTitle(L10n.s("Web araması"))
+                .setView(box)
+                .setPositiveButton(L10n.s("Ara"), null)
+                .setNegativeButton(L10n.s("İptal"), null)
+                .create();
+        tintDialog(dialog);
+        dialog.show();
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String q = query.getText().toString().trim();
+            if (q.isEmpty()) return;
+            Toast.makeText(this, L10n.s("Aranıyor…"), Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+            final String safeQuery = q;
+            new Thread(() -> {
+                String html = fetchDdgLite(safeQuery);
+                List<WebSearch.Result> results = WebSearch.parse(html);
+                runOnUiThread(() -> showWebSearchResults(chatId, safeQuery, results));
+            }, "localrp-websearch").start();
+        });
+    }
+
+    /** Results dialog: tap a result to attach it as the one-shot context block. */
+    private void showWebSearchResults(String chatId, String queryText, List<WebSearch.Result> results) {
+        if (isFinishing() || isDestroyed()) return;
+        if (results == null || results.isEmpty()) {
+            Toast.makeText(this, L10n.s("Sonuç yok — ağ yoksa veya arama başarısız oldu."), Toast.LENGTH_LONG).show();
+            return;
+        }
+        String[] labels = new String[Math.min(results.size(), WebSearch.MAX_RESULTS)];
+        for (int i = 0; i < labels.length; i++) {
+            labels[i] = results.get(i).title + (results.get(i).snippet.isEmpty() ? "" : "\n" + results.get(i).snippet);
+        }
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
+                .setTitle(L10n.s("Web sonuçları") + " — " + queryText)
+                .setItems(labels, (d, which) -> {
+                    WebSearch.Result picked = results.get(which);
+                    List<WebSearch.Result> single = new ArrayList<>();
+                    single.add(picked);
+                    pendingWebSearch.put(chatId, WebSearch.contextBlock(single));
+                    Toast.makeText(this, L10n.s("Sıradaki yanıt bu sonucu bilir."), Toast.LENGTH_SHORT).show();
+                })
+                .setNeutralButton(L10n.s("Tümünü bağlam yap"), (d, which) -> {
+                    pendingWebSearch.put(chatId, WebSearch.contextBlock(results));
+                    Toast.makeText(this, L10n.s("Sıradaki yanıt tüm sonuçları bilir."), Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(L10n.s("İptal"), null)
+                .create();
+        tintDialog(dialog);
+        dialog.show();
+    }
+
+    /** HttpsURLConnection fetch of DDG lite; never throws — "" on any failure. */
+    private String fetchDdgLite(String query) {
+        java.net.HttpURLConnection connection = null;
+        try {
+            String url = "https://lite.duckduckgo.com/lite/?q="
+                    + java.net.URLEncoder.encode(query, "UTF-8");
+            connection = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+            connection.setConnectTimeout(10_000);
+            connection.setReadTimeout(10_000);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("User-Agent", "LocalRP/0.29.00-alpha1 (+android)");
+            connection.setRequestProperty("Accept", "text/html");
+            java.io.InputStream stream = connection.getResponseCode() >= 400
+                    ? connection.getErrorStream() : connection.getInputStream();
+            if (stream == null) return "";
+            java.util.Scanner scanner = new java.util.Scanner(stream, "UTF-8")
+                    .useDelimiter("\\A");
+            return scanner.hasNext() ? scanner.next() : "";
+        } catch (Exception failure) {
+            return "";
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
     }
 
     /**
@@ -5485,6 +5613,13 @@ public class MainActivity extends Activity {
                 LocalAiRuntime.INSTANCE.hasConversation(group.id), chatHistoryDepth(group.id), steer);
     }
 
+    /** v0.29.00: steer + one-shot web context (generation path). */
+    private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation,
+                                       String steer, String webContext) {
+        return buildRoleplayPrompt(group, speaker, continuation,
+                LocalAiRuntime.INSTANCE.hasConversation(group.id), chatHistoryDepth(group.id), steer, webContext);
+    }
+
     /** Provider mode (DeepSeek item 14/B) assembles a history-free system prompt:
      *  history travels as real chat turns, so {@code historyDepth} is 0 and the
      *  engine's shared-context flag is forced fresh. */
@@ -5495,6 +5630,13 @@ public class MainActivity extends Activity {
 
     private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation,
                                        boolean continuingFlag, int historyDepth, String steer) {
+        return buildRoleplayPrompt(group, speaker, continuation, continuingFlag, historyDepth, steer, null);
+    }
+
+    /** v0.29.00: web-aware variant — {@code webContext} is the one-shot search block. */
+    private String buildRoleplayPrompt(Group group, CharacterProfile speaker, boolean continuation,
+                                       boolean continuingFlag, int historyDepth, String steer,
+                                       String webContext) {
         // Prompt assembly lives in the pure, unit-tested RoleplayPrompt; MainActivity only
         // resolves the Android-backed inputs (store lookups, prefs, engine context flag).
         boolean english = L10n.english;
@@ -5541,7 +5683,8 @@ public class MainActivity extends Activity {
                 steer,
                 recap,
                 memories,
-                thinkEnabled());
+                thinkEnabled(),
+                webContext);
     }
 
     /** Think yeteneği (v0.28.00): global pref; default ON — topic loss is the complaint. */
@@ -5556,6 +5699,13 @@ public class MainActivity extends Activity {
 
     private List<OpenAiCompat.Turn> buildProviderTurns(Group group, CharacterProfile speaker,
                                                        boolean continuation, String steer) {
+        return buildProviderTurns(group, speaker, continuation, steer, null);
+    }
+
+    /** v0.29.00: web-aware variant — {@code webContext} rides in the system prompt. */
+    private List<OpenAiCompat.Turn> buildProviderTurns(Group group, CharacterProfile speaker,
+                                                       boolean continuation, String steer,
+                                                       String webContext) {
         boolean english = L10n.english;
         List<Message> history = store.messages(group.id);
         String continuationPrompt = english
@@ -5579,7 +5729,7 @@ public class MainActivity extends Activity {
             finalUserText = continuationPrompt;
         }
         return OpenAiCompat.assembleTurns(
-                buildRoleplayPrompt(group, speaker, continuation, false, 0, steer), history, finalUserText, providerTurnDepth(), trailingImageDataUrl);
+                buildRoleplayPrompt(group, speaker, continuation, false, 0, steer, webContext), history, finalUserText, providerTurnDepth(), trailingImageDataUrl);
     }
 
     /** v0.24.00: images ride to the provider unless the user switched them off. */

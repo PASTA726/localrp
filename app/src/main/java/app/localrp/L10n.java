@@ -1048,5 +1048,18 @@ public final class L10n {
                 "Before writing, the model silently reviews the scene: what it is about, what happened last, which topic is running. Reduces topic drift; replies start a bit slower.");
         EN.put("Düşünme modu: AÇIK — kapat", "Think mode: ON — tap to turn off");
         EN.put("Düşünme modu: KAPALI — aç", "Think mode: OFF — tap to turn on");
+        // v0.29.00 web search
+        EN.put("Web araması", "Web search");
+        EN.put("Aradığın şey…", "What to search for…");
+        EN.put("Sorgu DuckDuckGo'ya gönderilir; sonuçlar yalnızca sıradaki yanıt için bağlam olur. Sohbet verisi gönderilmez.",
+                "The query is sent to DuckDuckGo; results become context for the next reply only. No conversation data is sent.");
+        EN.put("Aranıyor…", "Searching…");
+        EN.put("Sonuç yok — ağ yoksa veya arama başarısız oldu.", "No results — no network or the search failed.");
+        EN.put("Web sonuçları", "Web results");
+        EN.put("Tümünü bağlam yap", "Use all as context");
+        EN.put("Sıradaki yanıt bu sonucu bilir.", "The next reply will know this result.");
+        EN.put("Sıradaki yanıt tüm sonuçları bilir.", "The next reply will know all results.");
+        EN.put("İptal", "Cancel");
+        EN.put("Ara", "Search");
     }
 }

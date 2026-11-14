@@ -2,6 +2,17 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.29.00-alpha1 — 2026-11-14 (Web araması · kullanıcı dokunuşuyla bağlam)
+
+"Think yeteneği + web arama" hedefinin ikinci parçası: sohbet composer'ına 🌐 düğmesi — kullanıcı yazdığı sorgu DuckDuckGo lite üzerinden çekilir, sonuçlar seçilip **tek seferlik bağlam bloğu** olarak sıradaki yanıta verilir.
+
+- **Kullanıcı dokunuşuyla çalışır, gizlilik**: uygulama kendi kendine hiçbir şey çekmez/göndermez; sorguda sohbet metni taşınmaz. Düğmeye basılmadıkça davranış eskisi gibidir.
+- **Saf ayrıştırıcı (`WebSearch.java`)**: DDG lite HTML → başlık + özet + URL; en fazla 5 sonuç, özet 200 krk, bağlam bloğu 800 krk tavan; `uddg=` sarmalayıcı çözülür; `javascript:`/bozuk girdi atlanır. JVM'de test edilir (6 yeni test: ayrıştırma, 5 tavanı, çöp girdi, özet kırpma, blok bütçesi, URL çözümü).
+- **Tek seferlik enjeksiyon**: sonuç (tek ya da tümü) `pendingWebSearch` haritasına girer; üretim yolu onu tükettikten sonra kaybolur — yönlendirme notuyla aynı disiplin. Yeni kullanıcı mesajı ya da notlu yeniden üretim bekleyen bloğu düşürür (bayat bağlam sızıntısı yok).
+- **Yerel + sağlayıcı**: blok prompt'a "Web arama sonuçları (kullanıcı bu yanıt için çekti; doğal biçimde kullan, uydurma)" başlığıyla girer; sağlayıcı yolunda sistem prompt'una biner.
+- **Ağ**: `HttpsURLConnection`, yalnızca https, 10 sn bağlantı/okuma zaman aşımı, LocalRP User-Agent; herhangi bir hata "Sonuç yok" bildirimiyle affedilir (asla çökmez).
+- Toplam **213 test / 0 hata**. versionCode 62 / 0.29.00-alpha1.
+
 ## v0.28.00-alpha1 — 2026-11-13 (Think yeteneği · konu kayması düzeltmesi)
 
 "AI çok hızlı konuyu kaybediyor" şikâyetine iki yönlü çözüm: **düşünme modu** (prompt düzeyi konu çapası) ve `think` etiket temizliği.
