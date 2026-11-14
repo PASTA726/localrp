@@ -2,6 +2,39 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.31.00 — 2026-11-14 (Think 2. tur · imzalı release · LRU önbellek)
+
+Üç iz: düşünme yeteneğinin ikinci turu, imzalı release APK hattı ve yanıt temizlik önbelleğinin LRU'ya dönüştürülmesi.
+
+## Düşünme modu 2. tur
+
+| Özellik | Davranış |
+|---|---|
+| Sohbet-başı geçersiz kılma | Sohbet profiline "Düşünme modu" bölümü eklendi: bu sohbette aç/kapat, genel ayara döndür. `profile_think_<sohbet>` tercihi; ayarlanmamışsa genel `think_mode` izlenir. Yerel motor ve sağlayıcı yollarının ikisi de sohbet tercihine saygı duyar. |
+| Düşünme derinliği | Ayarlar → AI ayarlarında "Kısa / Derin" seçimi (`think_depth`). Derin blok adım adım değerlendirme ister (sahne durumu → son olayların etkisi → süren konu/gerginlikler → uzun vadeli amaç → ton; olası tepkileri tartar). Konu tutmayı güçlendirir, yanıtı yavaşlatır. Her iki varyant Türkçe ve İngilizce prompt'ta test edildi. |
+
+## İmzalı release APK
+
+- Release APK artık kendi anahtarıyla imzalanır (RSA-2048, 10.000 gün). Keystore repo **dışı**ndadır (`~/localrp-keys/`); kimlik bilgileri gitignored `keystore.properties` içinde, commit'e girmez.
+- `app/build.gradle`'da signingConfig dosya varsa bağlanır: CI'da dosya yok, release derlemesi önceki gibi imzasız üretilir ve CI yeşil kalır.
+- R8/minify yok (bilinçli): llama.cpp JNI ve yansıtma yüzeyi için keep-rules denetimi yapılmadan kırpma açılmaz.
+- **İki asset yayımlandı:** `localrp-v0.31.00-release.apk` (imzalı, yeni hattın başlangıcı) ve `localrp-v0.31.00-debug.apk` (eski debug hattından yerinde güncelleme için — imza farklılığından "uygulama kurulamadı" yaşanmamasın için). İmzalı hatta geçiş: eski uygulamayı kaldır → imzalıyı kur → uygulama içi yedekten geri yükle.
+
+## LRU label önbelleği
+
+- `ResponseCleanup`'ın konuşmacı etiketi regex önbelleği "16'da hepsini temizle" yerine **LRU** oldu (access-order `LinkedHashMap`, 16 kapasite): uzun grup oturumlarında en sık kullanılan konuşmacı derlemeleri korunur, akış sırasında yeniden derleme zıplaması azalır. Boyut test kancasıyla sınırda tutulduğu test edildi.
+
+## Kalite
+
+| Kontrol | Sonuç |
+|---|---|
+| Birim testleri | **219 / 0 hata** (2 yeni: think-derinliği çift dil, LRU önbellek sınırı) |
+| CI | Push sonrası doğrulanır |
+| İmza | Release APK apksigner ile doğrulandı (CN=LocalRP, SHA-256 `4a6df389…bd4882b`) |
+| Veri şeması | Değişiklik yok — yedekler uyumlu |
+
+---
+
 ## v0.30.01 — 2026-11-14 (Bağımsız AI denetimi yamaları)
 
 İki bağımsız AI denetçisi (OpenCode subagent — güvenlik + güvenilirlik) tüm kod tabanını taradı; **kritik bulgu yok**, 11 doğrulanmış bulgudan 8'i yamalandı, 3'ü bilinçli kabul (aşağıda).
