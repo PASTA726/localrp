@@ -26,6 +26,11 @@ local.properties
 .DS_Store
 Thumbs.db
 
+# İmza bilgileri (v0.31.00): kimlik bilgileri depoya girmez
+keystore.properties
+*.keystore
+*.jks
+
 # Günlük ve geçici dosyalar
 *.log
 *.tmp

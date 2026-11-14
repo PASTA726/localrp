@@ -2863,6 +2863,25 @@ public class MainActivity extends Activity {
             });
         }
 
+        // v0.31.00: per-chat think override; mirrors the theme override pattern.
+        addSection(L10n.s("Düşünme modu"), null, null);
+        String thinkOverride = prefs.getString("profile_think_" + id, null);
+        boolean chatThink = thinkOverride != null ? thinkOverride.equals("on") : thinkEnabled();
+        addBody((thinkOverride != null ? L10n.s("Bu sohbet: ") : L10n.s(L10n.s("Genel ayarı izler: ")))
+                + (chatThink ? L10n.s("AÇIK") : L10n.s("KAPALI")));
+        addSecondary(chatThink ? L10n.s("Bu sohbette düşünme modunu kapat") : L10n.s("Bu sohbette düşünme modunu aç"), v -> {
+            if (chatProfileBusy(group)) return;
+            prefs.edit().putString("profile_think_" + id, chatThink ? "off" : "on").apply();
+            showChatProfile(group);
+        });
+        if (thinkOverride != null) {
+            addSecondary(L10n.s("Düşünme modunu genel ayara döndür"), v -> {
+                if (chatProfileBusy(group)) return;
+                prefs.edit().remove("profile_think_" + id).apply();
+                showChatProfile(group);
+            });
+        }
+
         // v0.19.16: which user identity plays "Sen" in this conversation.
         addSection(L10n.s("Bu sohbetin kişiliği"), null, null);
         Persona effective = store.personaForChat(id);
@@ -2891,7 +2910,8 @@ public class MainActivity extends Activity {
                     if (chatProfileBusy(group)) return;
                     prefs.edit().remove("profile_tokens_" + id)
                             .remove("profile_depth_" + id).remove("profile_theme_" + id)
-                            .remove("profile_temp_" + id).remove("profile_topp_" + id).apply();
+                            .remove("profile_temp_" + id).remove("profile_topp_" + id)
+                            .remove("profile_think_" + id).apply();
                     contextChars.remove(id);
                     chatMetrics.remove(id);
                     LocalAiRuntime.INSTANCE.resetConversation(id);
@@ -4532,6 +4552,14 @@ public class MainActivity extends Activity {
             prefs.edit().putString("think_mode", think ? "off" : "on").apply();
             showAiAdvanced();
         });
+        // v0.31.00: think depth — how long the silent reasoning block may run.
+        boolean deepThink = prefs.getString("think_depth", "short").equals("deep");
+        addBody(deepThink ? L10n.s("Düşünme derinliği: DERİN — model adım adım, daha uzun bir değerlendirme yazar; konu tutmayı güçlendirir ama yanıtı yavaşlatır.")
+                : L10n.s("Düşünme derinliği: KISA — model kısa bir konu çapası yazar; hızlı başlar."));
+        addSecondary(deepThink ? L10n.s("Düşünme derinliği: DERİN — kısa bloğa döndür") : L10n.s("Düşünme derinliği: KISA — derin bloğa geç"), v -> {
+            prefs.edit().putString("think_depth", deepThink ? "short" : "deep").apply();
+            showAiAdvanced();
+        });
 
         // v0.25.00 sampler: global provider defaults; "" = field omitted so the
         // provider's own default applies. Local engine has no sampler API.
@@ -5753,13 +5781,20 @@ public class MainActivity extends Activity {
                 steer,
                 recap,
                 memories,
-                thinkEnabled(),
-                webContext);
+                chatThinkEnabled(group.id),
+                webContext,
+                prefs().getString("think_depth", "short"));
     }
 
     /** Think yeteneği (v0.28.00): global pref; default ON — topic loss is the complaint. */
     private boolean thinkEnabled() {
         return prefs().getString("think_mode", "on").equals("on");
+    }
+
+    /** v0.31.00: per-chat think override; unset pref = follow the global switch. */
+    private boolean chatThinkEnabled(String groupId) {
+        String override = prefs().getString("profile_think_" + groupId, null);
+        return override != null ? override.equals("on") : thinkEnabled();
     }
 
     /** System prompt + transcript turns for the online provider (DeepSeek item 14/B). */

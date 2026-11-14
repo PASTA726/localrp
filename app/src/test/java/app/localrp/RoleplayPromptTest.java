@@ -372,4 +372,43 @@ public class RoleplayPromptTest {
         assertFalse(prompt.contains("Düşünme modu"));
         assertFalse(prompt.contains("\u003ct\u0068ink\u003e"));
     }
+
+    @Test
+    public void thinkDepth_deep_shipsLongerReasoningInstruction_bothLanguages() {
+        // v0.31.00: "deep" swaps the topic anchor for a step-by-step evaluation
+        // block; the short instruction stays the default through every older overload.
+        List<Message> history = new ArrayList<>();
+        history.add(new Message("Sen", "merhaba", true, 1L));
+        String open = "\u003ct\u0068ink\u003e";
+
+        String trShort = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), EMPTY_LOOKUP,
+                history, false, false, "", "", "", 8, 2600,
+                null, false, null, null, null, null, true);
+        assertTrue(trShort.contains("kısa bir sessiz akıl yürütme"));
+        assertFalse(trShort.contains("derinlemesine"));
+
+        String trDeep = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), EMPTY_LOOKUP,
+                history, false, false, "", "", "", 8, 2600,
+                null, false, null, null, null, null, true, null, "deep");
+        assertTrue(trDeep.contains("derinlemesine"));
+        assertFalse(trDeep.contains("kısa bir sessiz akıl yürütme"));
+        assertTrue(trDeep.contains(open));
+
+        String enDeep = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), EMPTY_LOOKUP,
+                history, false, false, "", "", "", 8, 2600,
+                null, true, null, null, null, null, true, null, "deep");
+        assertTrue(enDeep.contains("Work through, in order"));
+        assertFalse(enDeep.contains("first write a short silent reasoning"));
+
+        // Any unknown depth value falls back to the short block.
+        String fallback = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), EMPTY_LOOKUP,
+                history, false, false, "", "", "", 8, 2600,
+                null, true, null, null, null, null, true, null, "medium");
+        assertTrue(fallback.contains("first write a short silent reasoning"));
+        assertFalse(fallback.contains("Work through, in order"));
+    }
 }

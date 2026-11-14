@@ -124,6 +124,24 @@ public class ResponseCleanupTest {
     }
 
     @Test
+    public void stress_labelCache_lruCapAndReuse() {
+        // v0.31.00: the per-speaker cache is LRU-capped at 16 (recently used entries
+        // survive; the oldest are dropped instead of wiping the whole cache). Churn
+        // beyond the cap must keep results correct and the size bounded.
+        assertTrue("cache starts over cap: " + ResponseCleanup.cachedLabelCount(),
+                ResponseCleanup.cachedLabelCount() <= 16);
+        for (int i = 0; i < 30; i++) {
+            String speaker = "LruKarakter" + i;
+            assertEquals("merhaba", ResponseCleanup.clean(speaker + ": merhaba", speaker));
+        }
+        assertTrue("cache exceeded cap: " + ResponseCleanup.cachedLabelCount(),
+                ResponseCleanup.cachedLabelCount() <= 16);
+        // A re-used speaker recompiles cleanly after being evicted.
+        assertEquals("selam", ResponseCleanup.clean("LruKarakter0: selam", "LruKarakter0"));
+        assertTrue(ResponseCleanup.cachedLabelCount() <= 16);
+    }
+
+    @Test
     public void stress_hugeThinkFlood_noBlowup() {
         // A model that opens many think blocks in one reply (worst-case quadratic
         // substring concern) must stay fast and clean.

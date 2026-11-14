@@ -128,6 +128,24 @@ final class RoleplayPrompt {
                         int historyDepth, int historyCharBudget, String[] persona, boolean english,
                         List<Lorebook.Entry> lorebook, String steer,
                         String recap, List<String> memories, boolean think, String webContext) {
+        return build(sceneName, speaker, castIds, castLookup, history, continuing, continuation,
+                aiInstructions, themeName, themeInstruction, historyDepth, historyCharBudget,
+                persona, english, lorebook, steer, recap, memories, think, webContext, "short");
+    }
+
+    /**
+     * Canonical build (v0.31.00): adds {@code thinkDepth} — "short" (default)
+     * keeps the lightweight topic anchor, "deep" asks for a longer,
+     * step-by-step reasoning block. Any other value falls back to short.
+     */
+    static String build(String sceneName, CharacterProfile speaker, List<String> castIds,
+                        Function<String, CharacterProfile> castLookup, List<Message> history,
+                        boolean continuing, boolean continuation,
+                        String aiInstructions, String themeName, String themeInstruction,
+                        int historyDepth, int historyCharBudget, String[] persona, boolean english,
+                        List<Lorebook.Entry> lorebook, String steer,
+                        String recap, List<String> memories, boolean think, String webContext,
+                        String thinkDepth) {
         StringBuilder prompt = new StringBuilder();
         String speakerName = clip(speaker.name, 80);
         Message last = history.isEmpty() ? null : history.get(history.size() - 1);
@@ -144,11 +162,10 @@ final class RoleplayPrompt {
                     .append(oneLine(steer, 300)).append("\n");
         }
         if (think) {
-            // Think yeteneği (v0.28.00): the model anchors the scene silently BEFORE
-            // writing — fights fast topic drift on fresh AND continuing turns.
-            prompt.append(english
-                    ? "Think mode: first write a short silent reasoning block wrapped in <think> and </think> tags: what is this scene about, what happened in the last few messages, which topic is still running, and what does your character want this turn? Bind your reply tightly to that topic and to the earlier messages. Then close the </think> tag and write ONLY the in-character reply after it; no notes outside the tags.\n"
-                    : "Düşünme modu: Önce kısa bir sessiz akıl yürütme bloğu yaz, bloğu <think> etiketiyle aç ve </think> etiketiyle kapat: bu sahne neyle ilgili, son birkaç mesajda ne oldu, hangi konu hâlâ sürüyor ve karakterin bu turdaki amacı ne? Yanıtını o konuya ve önceki mesajlara sıkı şekilde bağla. Sonra </think> etiketini kapat ve yalnızca rol içi yanıtı yaz; etiketlerin dışında karakter dışı açıklama yapma.\n");
+            // Think yeteneği (v0.28.00): the model anchors the scene silently
+            // BEFORE writing — fights fast topic drift on fresh AND continuing
+            // turns. v0.31.00: the block's depth is a setting (short = default).
+            prompt.append(thinkBlock(english, "deep".equals(thinkDepth)));
         }
         if (webContext != null && !webContext.trim().isEmpty()) {
             // Web araması (v0.29.00): the user fetched these results for THIS turn
@@ -291,6 +308,47 @@ final class RoleplayPrompt {
         }
         return prompt.toString();
     }
+
+    /**
+     * Think-mode instruction (v0.28.00; depth choice v0.31.00). The model
+     * anchors the scene silently before writing; "deep" asks for a longer,
+     * step-by-step evaluation — a setting for users whose model loses the
+     * thread fast, at the cost of slower turn starts.
+     */
+    private static String thinkBlock(boolean english, boolean deep) {
+        if (english) {
+            return deep
+                    ? "Think mode: first write a thorough silent reasoning block wrapped in " + OPEN_TAG
+                    + " and " + CLOSE_TAG + " tags. Work through, in order: the current state of the scene,"
+                    + " how the recent events affect your character, which topic and tensions are still"
+                    + " running, your character's longer-term goal, and the tone that best fits this turn."
+                    + " Briefly weigh how you could react and pick the option most bound to the scene."
+                    + " Then close the " + CLOSE_TAG + " tag and write ONLY the in-character reply after it;"
+                    + " no notes outside the tags.\n"
+                    : "Think mode: first write a short silent reasoning block wrapped in " + OPEN_TAG
+                    + " and " + CLOSE_TAG + " tags: what is this scene about, what happened in the last"
+                    + " few messages, which topic is still running, and what does your character want this"
+                    + " turn? Bind your reply tightly to that topic and to the earlier messages. Then"
+                    + " close the " + CLOSE_TAG + " tag and write ONLY the in-character reply after it; no"
+                    + " notes outside the tags.\n";
+        }
+        return deep
+                ? "Düşünme modu: Yanıttan önce derinlemesine bir sessiz akıl yürütme bloğu yaz, bloğu " + OPEN_TAG
+                + " etiketiyle aç ve " + CLOSE_TAG + " etiketiyle kapat. Blokta sırayla değerlendir: sahnenin şu anki"
+                + " durumu, son olayların karakterine etkisi, hâlâ süren konu ve gerginlikler, karakterinin uzun"
+                + " vadeli amacı ve bu tura en uygun ton. Olası tepki biçimlerini kısaca tart ve sahneye en sıkı"
+                + " bağlı olanı seç. Sonra " + CLOSE_TAG + " etiketini kapat ve yalnızca rol içi yanıtı yaz;"
+                + " etiketlerin dışında karakter dışı açıklama yapma.\n"
+                : "Düşünme modu: Önce kısa bir sessiz akıl yürütme bloğu yaz, bloğu " + OPEN_TAG
+                + " etiketiyle aç ve " + CLOSE_TAG + " etiketiyle kapat: bu sahne neyle ilgili, son birkaç mesajda ne"
+                + " oldu, hangi konu hâlâ sürüyor ve karakterin bu turdaki amacı ne? Yanıtını o konuya ve"
+                + " önceki mesajlara sıkı şekilde bağla. Sonra " + CLOSE_TAG + " etiketini kapat ve yalnızca rol içi"
+                + " yanıtı yaz; etiketlerin dışında karakter dışı açıklama yapma.\n";
+    }
+
+    /** The literal think tags; every depth variant uses identical tokens. */
+    private static final String OPEN_TAG = "\u003cthink\u003e";
+    private static final String CLOSE_TAG = "\u003c\u002fthink\u003e";
 
     /** User identity block: v0.14.0 feature; omitted entirely when no persona is set. */
     private static void appendPersona(StringBuilder prompt, String[] persona, boolean english) {
