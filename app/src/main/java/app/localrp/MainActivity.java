@@ -990,7 +990,6 @@ public class MainActivity extends Activity {
         addBody(L10n.s("Bu karakter konuşurken sağlayıcı sıcaklığı: boş bırakılırsa sohbet profili/genel ayar izlenir. Yerel motor bu ayarı desteklemez."));
         EditText samplerTemp = field(L10n.s("Sıcaklık (0.0–2.0)"), editing ? existing.samplerTemp : "");
         samplerTemp.setSingleLine(true);
-        content.addView(samplerTemp, fullWidth());
 
         addSection(L10n.s("Profil fotoğrafı"), null, null);
         addBody(L10n.s("Fotoğraf gizli depoya küçük kopya olarak yazılır; seçtiğin kaynak dosya silinmez. Sohbetlerde karakterin avatarı bu foto olur ve Kaydet ile saklanır."));
@@ -3464,15 +3463,12 @@ public class MainActivity extends Activity {
         addBody(L10n.s(L10n.s("OpenAI uyumlu sohbet tamamlama adresi. Yalnızca https kabul edilir; örnek: https://api.example.com/v1/chat/completions")));
         EditText endpointField = field(L10n.s("https endpoint"), prefs.getString("provider_endpoint", ""));
         endpointField.setSingleLine(true);
-        content.addView(endpointField, fullWidth());
         EditText modelField = field(L10n.s(L10n.s("Model adı")), prefs.getString("provider_model", ""));
         modelField.setSingleLine(true);
-        content.addView(modelField, fullWidth());
         int turnDepth = prefs.getInt("provider_history_depth", 8);
         addBody(L10n.s(L10n.s("Prompta kaç mesajlık sohbet geçmişi taşınır (2–20): telefonla ayardan değil, bu sayıdan düzenlenir.")));
         EditText depthField = field(L10n.s(L10n.s("Geçmiş mesaj sayısı")), String.valueOf(turnDepth));
         depthField.setSingleLine(true);
-        content.addView(depthField, fullWidth());
         // v0.24.00 vision: attached photos travel as real image parts when the
         // provider's model supports them; off keeps the old placeholder behaviour.
         boolean visionOn = prefs.getString("provider_vision", "on").equals("on");
@@ -3521,7 +3517,6 @@ public class MainActivity extends Activity {
         keyField.setSingleLine(true);
         keyField.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        content.addView(keyField, fullWidth());
         addSecondary(L10n.s(L10n.s("Anahtarı kaydet")), v -> {
             String plain = keyField.getText().toString().trim();
             if (plain.isEmpty()) {

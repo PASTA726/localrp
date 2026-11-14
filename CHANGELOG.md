@@ -2,6 +2,34 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.31.01 — 2026-11-14 (cihaz kabul turunun ilk bulgusu: sağlayıcı ekranı çakılması)
+
+Sürüm notlarındaki bekleyen cihaz kabul turu ilk meyvesini verdi: sağlayıcı (API) ekranı telefonda ilk kez açıldığında **uygulama çakılıyor**. Bulgu kullanıcıdan geldi ("API yeri bozuk").
+
+## Kök neden
+
+`field()` yardımcısı EditText'i zaten `content`'e ekler; `showProvider()` döndürülen alanı **ikinci kez** `content.addView(...)` ile ekliyordu. Android'de bir görünüm ikinci kez üst öğeye eklenemez (`IllegalStateException: child already has a parent`) — ekran açılışında çakılma. Hata **v0.19.12-alpha1'den beri** (faz 5 sağlayıcı UI'sinin ilk gecesi) duruyordu; ekran cihazda hiç açılmadığı için tüm incelemeler ve 219 test kaçırılmıştı (UI çakılması JVM testinin ötesinde, incelemeler de diff odaklıydı).
+
+## Yamalar
+
+| Ekran | Sorunlu alanlar | Durum |
+|---|---|---|
+| Çevrimiçi sağlayıcı | https endpoint, Model adı, Geçmiş mesaj sayısı, API anahtarı (4 alan) | Tekrar ekleme kaldırıldı → ekran artık açılıyor |
+| Karakter düzenleyici | Üretim ayarı → Sıcaklık (sağlayıcı) alanı — **aynı hata sınıfı**, v0.25.00'dan beri koşulsuz çakılma | Tekrar ekleme kaldırıldı |
+
+- Sistematik tarama: 17 `field()` çağrı yerinin tamamı denetlendi; başka tekrar ekleme kalmadı.
+
+## Kalite
+
+| Kontrol | Sonuç |
+|---|---|
+| Birim testleri | **219 / 0 hata** (UI çakılması JVM testinin kapsamı dışında; kod incelemesiyle doğrulandı) |
+| Codex diff incelemesi | Push sonrası doğrulanır |
+| CI | Push sonrası doğrulanır |
+| Veri şeması | Değişiklik yok — yedekler uyumlu |
+
+---
+
 ## v0.31.00 — 2026-11-14 (Think 2. tur · imzalı release · LRU önbellek)
 
 Üç iz: düşünme yeteneğinin ikinci turu, imzalı release APK hattı ve yanıt temizlik önbelleğinin LRU'ya dönüştürülmesi.
