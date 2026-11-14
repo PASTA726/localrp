@@ -2,6 +2,15 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.30.00 — 2026-11-14 (Stabil · optimizasyon · rehber) — İLK STABİL YAYIN
+
+Alfa döneminin kapanışı: sıcak yol optimizasyonu, AI rehberi ve stres testleriyle ilk **stabil** yayın.
+
+- **Sıcak yol optimizasyonu (`ResponseCleanup`)**: akış sırasında **her parçada** çalışan temizleyici, her çağrıda konuşmacı etiketi regex'ini ve boş satır desenini yeniden derliyordu — artık konuşmacı başına derlenmiş regex önbelleği (sınırlı, 8 kayıt + boşaltma) ve tek örneklenmiş sabit desen kullanır. Uzun sohbetlerde parça işleme maliyeti düşer.
+- **AI rehberi ("AI için daha kolay yer")**: "AI ayarları" sayfasının tepesine "AI'nın yanıtını ne şekillendirir?" haritası — karakter kartı, düşünme modu, sahne hafızası, hafızaya eklenen olaylar, dünya kitabı ve örnekleyicinin sırasıyla etkisi. Kullanıcı hangi düğmenin neyi değiştirdiğini tek bakışta görür.
+- **Stres/stabilite testleri (3 yeni)**: 500 akış parçası (doğruluk + hız tavanı), 40 farklı konuşmacıyla önbellek boşaltma döngüsü (sonuçlar bozulmaz), tek yanıtta 200 think bloğu (kötü ihtimal: karesel substring endişesi — bütçede kalır).
+- Toplam **216 test / 0 hata**. versionCode 63 / 0.30.00 — **stabil** etiketiyle yayınlanır (pre-release değil).
+
 ## v0.29.00-alpha1 — 2026-11-14 (Web araması · kullanıcı dokunuşuyla bağlam)
 
 "Think yeteneği + web arama" hedefinin ikinci parçası: sohbet composer'ına 🌐 düğmesi — kullanıcı yazdığı sorgu DuckDuckGo lite üzerinden çekilir, sonuçlar seçilip **tek seferlik bağlam bloğu** olarak sıradaki yanıta verilir.

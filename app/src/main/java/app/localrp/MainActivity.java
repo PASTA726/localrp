@@ -4478,6 +4478,10 @@ public class MainActivity extends Activity {
         backAction = this::showSettings;
         setPage(L10n.s("Sahne hafızası ve zincir"), L10n.s("Geçmiş derinliği, bağlam ve kendiliğinden devam"), "settings");
         SharedPreferences prefs = prefs();
+        // v0.30.00: a map of everything that shapes the AI's reply, so the user can
+        // see where each behavior comes from before tuning the sliders.
+        addInfoCard(L10n.s("AI'nın yanıtını ne şekillendirir?"),
+                L10n.s("1. Karakter kartı ve RP ayarları (ad, kişilik, talimat) — 2. Düşünme modu (konu çapası, aşağıda) — 3. Sahne hafızası: geçmiş mesaj sayısı ve bütçe — 4. Hafızaya eklenen önemli olaylar — 5. Dünya kitabı: anahtar kelime eşleşirse — 6. Örnekleyici (sağlayıcı modda). Ayarları burada düzenle."), L10n.s("Rehber"));
         addSection(L10n.s("Sahne hafızası"), L10n.s("Model bağlamının derinliği"), null);
         int depth = prefs.getInt("history_depth", 8);
         addSlider(L10n.s("Geçmiş mesaj sayısı"), depth, 2, 14, 1, value -> {

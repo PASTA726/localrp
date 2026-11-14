@@ -93,4 +93,47 @@ public class ResponseCleanupTest {
         // Some models echo the speaker label right after the think block.
         assertEquals("Selam!", ResponseCleanup.clean("<think> plan </think>Momy -Ashe-: Selam!", SPEAKER));
     }
+
+    // ---- v0.30.00 stability: hot-path + stress ----
+
+    @Test
+    public void stress_streamingChunks_stayBoundedAndCorrect() {
+        // The cleanup runs on EVERY streaming chunk; a long session must not slow
+        // down or corrupt. 500 chunks, each with a think block + label + blanks.
+        long start = System.nanoTime();
+        for (int i = 0; i < 500; i++) {
+            String out = ResponseCleanup.clean(
+                    "<think> partial reasoning " + i + " </think>" + SPEAKER + ": Yanıt " + i + "\n\n\n\nDevam.",
+                    SPEAKER);
+            assertEquals("Yanıt " + i + "\n\nDevam.", out);
+        }
+        long ms = (System.nanoTime() - start) / 1_000_000;
+        assertTrue("500 chunks took " + ms + "ms — hot path regressed", ms < 2000);
+    }
+
+    @Test
+    public void stress_manySpeakers_cacheNeverGrowsUnbounded() {
+        // > LABEL_CACHE_MAX distinct speakers: cache evicts, results stay correct.
+        for (int i = 0; i < 40; i++) {
+            String speaker = "Karakter" + i;
+            String out = ResponseCleanup.clean(speaker + ": selam", speaker);
+            assertEquals("selam", out);
+        }
+        // Original speaker still correct after the eviction churn.
+        assertEquals("Yanıt.", ResponseCleanup.clean(SPEAKER + ": Yanıt.", SPEAKER));
+    }
+
+    @Test
+    public void stress_hugeThinkFlood_noBlowup() {
+        // A model that opens many think blocks in one reply (worst-case quadratic
+        // substring concern) must stay fast and clean.
+        StringBuilder raw = new StringBuilder("Görünür başlangıç.");
+        for (int i = 0; i < 200; i++) raw.append("<think> blok ").append(i).append(" </think> ara metin");
+        raw.append("Görünür son.");
+        long start = System.nanoTime();
+        String out = ResponseCleanup.clean(raw.toString(), SPEAKER);
+        long ms = (System.nanoTime() - start) / 1_000_000;
+        assertTrue("filler survives closed blocks", out.contains("ara metin") && out.startsWith("Görünür başlangıç.") && out.endsWith("Görünür son."));
+        assertTrue("200 think blocks took " + ms + "ms", ms < 1000);
+    }
 }
