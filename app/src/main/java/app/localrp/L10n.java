@@ -1061,5 +1061,10 @@ public final class L10n {
         EN.put("Sıradaki yanıt tüm sonuçları bilir.", "The next reply will know all results.");
         EN.put("İptal", "Cancel");
         EN.put("Ara", "Search");
+        // v0.30.00 stability + guidance
+        EN.put("AI'nın yanıtını ne şekillendirir?", "What shapes the AI's reply?");
+        EN.put("1. Karakter kartı ve RP ayarları (ad, kişilik, talimat) — 2. Düşünme modu (konu çapası, aşağıda) — 3. Sahne hafızası: geçmiş mesaj sayısı ve bütçe — 4. Hafızaya eklenen önemli olaylar — 5. Dünya kitabı: anahtar kelime eşleşirse — 6. Örnekleyici (sağlayıcı modda). Ayarları burada düzenle.",
+                "1. Character card and RP settings (name, personality, instructions) — 2. Think mode (topic anchor, below) — 3. Scene memory: history message count and budget — 4. Important events added to memory — 5. Lorebook: when a keyword matches — 6. Sampler (provider mode). Tune them here.");
+        EN.put("Rehber", "Guide");
     }
 }
