@@ -20,7 +20,7 @@ final class ResponseCleanup {
 
     /** Per-speaker compiled label regexes; bounded so a long session cannot grow it. */
     private static final java.util.Map<String, Pattern> LABEL_PATTERNS = new java.util.HashMap<>();
-    private static final int LABEL_CACHE_MAX = 8;
+    private static final int LABEL_CACHE_MAX = 16;
 
     private static Pattern labelPattern(String speakerName) {
         synchronized (LABEL_PATTERNS) {
