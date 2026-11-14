@@ -68,7 +68,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 | | |
 |---|---|
-| Sürüm | v0.31.00 (versionCode 65, stabil) |
+| Sürüm | v0.31.01 (versionCode 66, stabil) |
 | Testler | 219 JVM birim testi, 0 hata; CI her push'ta yeşil |
 | Mimari | Native Kotlin + Java, AndroidX/Room yok; saf views + SharedPreferences |
 | Yapay zekâ | llama.cpp (GGUF, arm64) yerel; OpenAI-uyumlu sağlayıcı opt-in |
