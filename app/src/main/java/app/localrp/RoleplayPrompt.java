@@ -115,6 +115,19 @@ final class RoleplayPrompt {
                         int historyDepth, int historyCharBudget, String[] persona, boolean english,
                         List<Lorebook.Entry> lorebook, String steer,
                         String recap, List<String> memories, boolean think) {
+        return build(sceneName, speaker, castIds, castLookup, history, continuing, continuation,
+                aiInstructions, themeName, themeInstruction, historyDepth, historyCharBudget,
+                persona, english, lorebook, steer, recap, memories, think, null);
+    }
+
+    /** Full build (v0.29.00): think mode + one-shot web search context block. */
+    static String build(String sceneName, CharacterProfile speaker, List<String> castIds,
+                        Function<String, CharacterProfile> castLookup, List<Message> history,
+                        boolean continuing, boolean continuation,
+                        String aiInstructions, String themeName, String themeInstruction,
+                        int historyDepth, int historyCharBudget, String[] persona, boolean english,
+                        List<Lorebook.Entry> lorebook, String steer,
+                        String recap, List<String> memories, boolean think, String webContext) {
         StringBuilder prompt = new StringBuilder();
         String speakerName = clip(speaker.name, 80);
         Message last = history.isEmpty() ? null : history.get(history.size() - 1);
@@ -136,6 +149,13 @@ final class RoleplayPrompt {
             prompt.append(english
                     ? "Think mode: first write a short silent reasoning block wrapped in <think> and </think> tags: what is this scene about, what happened in the last few messages, which topic is still running, and what does your character want this turn? Bind your reply tightly to that topic and to the earlier messages. Then close the </think> tag and write ONLY the in-character reply after it; no notes outside the tags.\n"
                     : "Düşünme modu: Önce kısa bir sessiz akıl yürütme bloğu yaz, bloğu <think> etiketiyle aç ve </think> etiketiyle kapat: bu sahne neyle ilgili, son birkaç mesajda ne oldu, hangi konu hâlâ sürüyor ve karakterin bu turdaki amacı ne? Yanıtını o konuya ve önceki mesajlara sıkı şekilde bağla. Sonra </think> etiketini kapat ve yalnızca rol içi yanıtı yaz; etiketlerin dışında karakter dışı açıklama yapma.\n");
+        }
+        if (webContext != null && !webContext.trim().isEmpty()) {
+            // Web araması (v0.29.00): the user fetched these results for THIS turn
+            // explicitly; they ride as one-shot context (consumed by the caller).
+            prompt.append(english ? "Web search results (fetched by the user for this reply; use naturally, do not invent):\n"
+                    : "Web arama sonuçları (kullanıcı bu yanıt için çekti; doğal biçimde kullan, uydurma):\n")
+                    .append(webContext.trim()).append("\n");
         }
         prompt.append(english ? "Scene: " : "Sahne: ").append(oneLine(sceneName, 160)).append("\n");
         if (english) {
