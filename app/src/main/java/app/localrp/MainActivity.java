@@ -1117,6 +1117,13 @@ public class MainActivity extends Activity {
      */
     private void deleteGroupWithUndo(Group existing, Runnable after) {
         LocalAiRuntime.INSTANCE.stopGeneration();
+        // v0.30.01 (denetçi bulguları 4+5): deleting a chat also stops a running
+        // provider turn (billed SSE keeps streaming otherwise) and drops the regen
+        // stash — its gen-*.png files are otherwise permanently unremovable.
+        if (providerClient != null && generatingChatId != null && generatingChatId.equals(existing.id)) {
+            providerClient.stop();
+        }
+        discardRegenStash(existing.id);
         Group snapshot = store.group(existing.id);
         List<Message> transcript = new ArrayList<>(store.messages(existing.id));
         store.deleteGroup(existing.id);
@@ -2206,6 +2213,10 @@ public class MainActivity extends Activity {
             if (!uiAlive() || !group.id.equals(visibleChatId) || generatingChatId != null) return;
             if (!modelCanRespond() || modelLoading || LocalAiRuntime.INSTANCE.isModelLoading() ||
                     LocalAiRuntime.INSTANCE.isBenchmarking()) return;
+            // v0.30.01 (denetçi bulgusu 2): the chain path was the only entry that
+            // skipped the image-engine guard — a user-started image job during the
+            // 700 ms window could overlap a MAX_PRIORITY text generation.
+            if (LocalImageEngine.INSTANCE.isGenerating() || LocalImageEngine.INSTANCE.isModelLoading()) return;
             Group live = store.group(group.id);
             if (live == null) return;
             CharacterProfile next = chooseSpeaker(live, null);
@@ -2269,7 +2280,8 @@ public class MainActivity extends Activity {
         if (providerTurns != null) {
             OpenAiCompat client = new OpenAiCompat(providerEndpoint(),
                     ApiKeyStore.INSTANCE.load(this), providerModel());
-            final GenerationBackend.Listener real = pipe(group, speaker, startedAt, thisGeneration);
+            final GenerationPipe real = pipe(group, speaker, startedAt, thisGeneration);
+            real.providerTurnsActive = true; // v0.30.01: provider tokens skip the local context budget
             // v0.25.00 sampler: character > chat profile > global, provider turns only.
             client.stream(providerTurns, maxTokens,
                     resolveSampler(group.id, speaker), new GenerationBackend.Listener() {
@@ -2305,6 +2317,8 @@ public class MainActivity extends Activity {
         private final CharacterProfile speaker;
         private final long startedAt;
         private final long thisGeneration;
+        /** v0.30.01 (denetçi bulgusu 3): true while this pipe serves the online provider. */
+        private boolean providerTurnsActive;
         private final StringBuilder response = new StringBuilder();
         /** Last draft-save heartbeat (throttled ≥1.5 s; 0 = save on first token). */
         private long lastDraftSave;
@@ -2387,7 +2401,11 @@ public class MainActivity extends Activity {
             @Override public void onToken(String token) {
                 if (finishedGeneration) return;
                 response.append(token);
-                contextChars.put(group.id, contextChars.getOrDefault(group.id, 0L) + token.length());
+                // v0.30.01 (denetçi bulgusu 3): only the LOCAL engine's prompt rides the
+                // shared context budget — provider tokens must not inflate contextChars.
+                if (!providerTurnsActive) {
+                    contextChars.put(group.id, contextChars.getOrDefault(group.id, 0L) + token.length());
+                }
                 // Draft persistence (task G0 crash case + G11), rate-limited for B1: the full
                 // text is re-serialized per save, so honest per-token writes would make the
                 // token path O(n²) and busy the main thread on slower phones. Save at most
@@ -2653,9 +2671,16 @@ public class MainActivity extends Activity {
             java.io.InputStream stream = connection.getResponseCode() >= 400
                     ? connection.getErrorStream() : connection.getInputStream();
             if (stream == null) return "";
-            java.util.Scanner scanner = new java.util.Scanner(stream, "UTF-8")
-                    .useDelimiter("\\A");
-            return scanner.hasNext() ? scanner.next() : "";
+            // v0.30.01 (denetçi bulgusu 6): bound the body read — a pathological or
+            // redirecting response must not allocate unbounded heap. DDG lite pages
+            // are ~100 KB; 2 MB is a generous ceiling. Stream is closed explicitly.
+            java.io.ByteArrayOutputStream body = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = stream.read(buffer)) > 0 && body.size() < 2_000_000) {
+                body.write(buffer, 0, read);
+            }
+            return new String(body.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception failure) {
             return "";
         } finally {
@@ -3091,8 +3116,11 @@ public class MainActivity extends Activity {
             File file = new File(path);
             if (!file.isFile()) return;
             String canonical = file.getCanonicalPath();
+            // v0.30.01 (denetçi bulgusu 3): narrowed — message images live in the
+            // images subdir (or private files/), never in the models tree, so the
+            // external-files ROOT must not count as deletable scope.
             if (canonical.startsWith(LocalImageEngine.INSTANCE.imagesDirectory(this)
-                    .getParentFile().getCanonicalPath())
+                    .getCanonicalPath())
                     || canonical.startsWith(getFilesDir().getCanonicalPath())) {
                 file.delete();
             }
@@ -4780,10 +4808,21 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Best-effort removal of a replaced/removed private avatar copy. */
+    /** Best-effort removal of a replaced/removed private avatar copy.
+     *  v0.30.01: containment guard — a backup-imported path is never trusted to
+     *  point inside our private files dir; anything else must NOT be deleted. */
     private void deleteAvatarFile(String path) {
         if (path == null || path.isEmpty()) return;
-        new File(path).delete();
+        try {
+            File file = new File(path);
+            if (!file.isFile()) return;
+            String canonical = file.getCanonicalPath();
+            if (canonical.startsWith(getFilesDir().getCanonicalPath())) {
+                file.delete();
+            }
+        } catch (java.io.IOException unreadable) {
+            // unreadable path: never delete something we cannot verify is ours
+        }
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -5365,6 +5404,33 @@ public class MainActivity extends Activity {
                     }
                 }
             }
+            // v0.30.01 (denetçi bulgusu 2): the JSON import path normalizes absolute
+            // paths to filesRoot; the ZIP path must apply the same rule for non-@
+            // paths (a crafted v2 ZIP can carry v1-style absolute paths). A path that
+            // is not inside our private storage is blanked, never trusted.
+            try {
+                String zipFilesRoot = getFilesDir().getCanonicalPath();
+                for (CharacterProfile c : bundle.characters) {
+                    if (c.avatarPath != null && !c.avatarPath.isEmpty()
+                            && !new File(c.avatarPath).getCanonicalPath().startsWith(zipFilesRoot)) {
+                        c.avatarPath = "";
+                    }
+                }
+                for (Persona persona : bundle.personas) {
+                    if (persona.avatarPath != null && !persona.avatarPath.isEmpty()
+                            && !new File(persona.avatarPath).getCanonicalPath().startsWith(zipFilesRoot)) {
+                        persona.avatarPath = "";
+                    }
+                }
+                for (List<Message> transcript : bundle.chats.values()) {
+                    for (Message m : transcript) {
+                        if (m.hasImage() && m.image != null && !m.image.isEmpty()
+                                && !new File(m.image).getCanonicalPath().startsWith(zipFilesRoot)) {
+                            m.image = "";
+                        }
+                    }
+                }
+            } catch (java.io.IOException ignored) { }
         } catch (java.io.IOException failure) {
             runOnUiThread(() -> Toast.makeText(this, L10n.s(L10n.s("Yedek okunamadı: ")) + failure.getMessage(), Toast.LENGTH_LONG).show());
             return;

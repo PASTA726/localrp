@@ -19,10 +19,13 @@ class Store {
     private final SharedPreferences preferences;
     // In-memory chat transcripts: messages() used to re-parse the whole JSON array on
     // every read, making large conversations O(n) main-thread work per message.
-    private final java.util.Map<String, List<Message>> chatCache = new java.util.HashMap<>();
+    // v0.30.01 (denetçi bulgusu 1): backup export/import threads touch these alongside
+    // the UI thread — plain HashMap could lose entries under concurrent writes.
+    private final java.util.Map<String, List<Message>> chatCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Set<String> integrityIssues =
+            java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
     // Keys of stored values that exist but cannot be parsed. Writes to them are refused
     // so the store can never be replaced by an empty default while unreadable.
-    private final java.util.Set<String> integrityIssues = new java.util.HashSet<>();
 
     Store(Context c, String defaultCharacterId) { this.defaultCharacterId = defaultCharacterId; preferences = c.getSharedPreferences("localrp", Context.MODE_PRIVATE); }
 
