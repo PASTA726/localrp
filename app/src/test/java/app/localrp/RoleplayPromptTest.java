@@ -334,4 +334,42 @@ public class RoleplayPromptTest {
         assertTrue(prompt.contains("- Yok (bire bir sahne)"));
         assertTrue(prompt.contains("Kurallar: Yalnızca Elif olarak"));
     }
+
+    @Test
+    public void thinkMode_shipsOnFreshAndContinuingTurns_bothLanguages() {
+        // Think yeteneği (v0.28.00): topic loss happens mid-conversation, so the
+        // think block must ride BOTH fresh and continuing builds, in both languages.
+        List<Message> history = new ArrayList<>();
+        history.add(new Message("Sen", "merhaba", true, 1L));
+        history.add(new Message("Elif", "selam", false, 2L));
+        String open = "\u003ct\u0068ink\u003e";
+        String close = "\u003c\u002fthink\u003e";
+
+        String freshTr = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), EMPTY_LOOKUP,
+                history, false, false, "", "", "", 8, 2600,
+                null, false, null, null, null, null, true);
+        assertTrue(freshTr.contains("Düşünme modu"));
+        assertTrue(freshTr.contains(open));
+        assertTrue(freshTr.contains(close));
+
+        String contEn = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), EMPTY_LOOKUP,
+                history, true, false, "", "", "", 8, 2600,
+                null, true, null, null, null, null, true);
+        assertTrue(contEn.contains("Think mode"));
+        assertFalse(contEn.contains("Düşünme modu"));
+    }
+
+    @Test
+    public void thinkModeOff_shipsNoThinkBlock() {
+        List<Message> history = new ArrayList<>();
+        history.add(new Message("Sen", "merhaba", true, 1L));
+        String prompt = RoleplayPrompt.build(
+                "Gemi", speaker("Elif"), java.util.List.of("spk"), EMPTY_LOOKUP,
+                history, false, false, "", "", "", 8, 2600,
+                null, false, null, null, null, null, false);
+        assertFalse(prompt.contains("Düşünme modu"));
+        assertFalse(prompt.contains("\u003ct\u0068ink\u003e"));
+    }
 }

@@ -16,6 +16,21 @@ final class ResponseCleanup {
         String text = raw.trim();
         text = text.replace("<|im_end|>", "").replace("<|eot_id|>", "")
                 .replace("<|end_of_text|>", "").replace("</s>", "").trim();
+        // Think yeteneği (v0.28.00): reasoning models (Qwen3, R1 distills) emit
+        // think-open/think-close blocks inside the visible reply. The thinking stays
+        // internal: closed blocks are removed wherever they appear, and an
+        // unclosed think-open tag (stream cut mid-thought) hides everything from it on.
+        int open = text.indexOf("<think>");
+        while (open >= 0) {
+            int close = text.indexOf("</think>", open);
+            if (close < 0) {
+                text = text.substring(0, open);
+                break;
+            }
+            text = text.substring(0, open) + text.substring(close + "</think>".length());
+            open = text.indexOf("<think>");
+        }
+        text = text.trim();
         if (!text.isEmpty() && speakerName != null && !speakerName.trim().isEmpty()) {
             String name = Pattern.quote(speakerName.trim());
             // Optional delimiter: "Name:", "Name-", "Name", and asterisk-wrapped forms
