@@ -4363,6 +4363,16 @@ public class MainActivity extends Activity {
         addSection(L10n.s("Bağlam davranışı"), null, null);
         addBudgetRow(prefs);
 
+        // Think yeteneği (v0.28.00): a prompt-level think block — the model anchors
+        // the scene silently before writing, fighting fast topic drift. Default ON.
+        boolean think = prefs.getString("think_mode", "on").equals("on");
+        addSection(L10n.s("Düşünme modu"), null, null);
+        addBody(L10n.s("Model, yanıt yazmadan önce konuyu sessizce değerlendirir: sahne nedir, son olaylar neydi, hangi konu sürüyor. Konu kaymasını azaltır; yanıtlar biraz daha yavaş başlar."));
+        addSecondary(think ? L10n.s("Düşünme modu: AÇIK — kapat") : L10n.s("Düşünme modu: KAPALI — aç"), v -> {
+            prefs.edit().putString("think_mode", think ? "off" : "on").apply();
+            showAiAdvanced();
+        });
+
         // v0.25.00 sampler: global provider defaults; "" = field omitted so the
         // provider's own default applies. Local engine has no sampler API.
         addSection(L10n.s("Örnekleyici (sağlayıcı)"), null, null);
@@ -5530,7 +5540,13 @@ public class MainActivity extends Activity {
                 store.lore(group.id),
                 steer,
                 recap,
-                memories);
+                memories,
+                thinkEnabled());
+    }
+
+    /** Think yeteneği (v0.28.00): global pref; default ON — topic loss is the complaint. */
+    private boolean thinkEnabled() {
+        return prefs().getString("think_mode", "on").equals("on");
     }
 
     /** System prompt + transcript turns for the online provider (DeepSeek item 14/B). */

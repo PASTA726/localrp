@@ -2,6 +2,16 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.28.00-alpha1 — 2026-11-13 (Think yeteneği · konu kayması düzeltmesi)
+
+"AI çok hızlı konuyu kaybediyor" şikâyetine iki yönlü çözüm: **düşünme modu** (prompt düzeyi konu çapası) ve `think` etiket temizliği.
+
+- **Düşünme modu (varsayılan açık)**: Model, görünür yanıtı yazmadan önce kısa bir sessiz akıl yürütme bloğu (`think`…`/think`) yazar — sahne nedir, son olaylar neydi, hangi konu sürüyor, karakterin bu turdaki amacı ne — ve yanıtını bu konuya sıkı şekilde bağlar. Blok hem taze hem devam turlarında prompt'un tepesine girer (konu kayması sohbet ortasında olur); yerel motor ve online sağlayıcı yollarının ikisinde de çalışır.
+- **`think` etiket temizliği (`ResponseCleanup`)**: Kendi akıl yürütme bloğu üreten modellerin (Qwen3, R1 distill) çıktısındaki kapalı `think`…`/think` blokları görünür yanıttan her konumda silinir; **kapanmamış** etiket (akış ortasında kesilmiş düşünce) etiketten itibaren her şeyi gizler — akıl yürütme sızıntısı balonlara asla düşmez. Akış görüntüsü ve saklanan mesaj aynı temizliği kullanır.
+- **Ayar arayüzü**: "AI ayarları" sayfasına "Düşünme modu" bölümü (aç/kapat; neden/açıklama metniyle). Genel pref (`think_mode`), sohbet başına geçersiz kılma sonraki partilere.
+- Yeni testler (5): think bloğu temizliği (kapalı/çoklu/çok satırlı/kapalı-artık-yok), kapanmamış etiket davranışı (tamamı gizlenir, kısmi çift silinmez), etiket sonrası yankılanan konuşmacı etiketi, prompt'ta think bloğunun varlığı/yokluğu (iki dil × taze/devam).
+- Toplam **207 test / 0 hata**. versionCode 61 / 0.28.00-alpha1.
+
 ## v0.27.00-alpha1 — 2026-11-13 (test derinleştirme · kenar durumları)
 
 "Daha iyi testlerle dene" partisi: mevcut 192 testin karartmadığı kenar durumlarına odaklanıp 10 yeni test eklendi — testler **2 gerçek davranış kusuru** yakalayıp düzeltti.

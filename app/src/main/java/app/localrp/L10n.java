@@ -1042,5 +1042,11 @@ public final class L10n {
         EN.put("Sohbeti aç", "Open chat");
         EN.put("Depolanan mesaja uzun bas: kopyala, düzenle, hafızaya ekle, sesli oku.",
                 "Long-press a stored message: copy, edit, remember, read aloud.");
+        // v0.28.00 think mode
+        EN.put("Düşünme modu", "Think mode");
+        EN.put("Model, yanıt yazmadan önce konuyu sessizce değerlendirir: sahne nedir, son olaylar neydi, hangi konu sürüyor. Konu kaymasını azaltır; yanıtlar biraz daha yavaş başlar.",
+                "Before writing, the model silently reviews the scene: what it is about, what happened last, which topic is running. Reduces topic drift; replies start a bit slower.");
+        EN.put("Düşünme modu: AÇIK — kapat", "Think mode: ON — tap to turn off");
+        EN.put("Düşünme modu: KAPALI — aç", "Think mode: OFF — tap to turn on");
     }
 }

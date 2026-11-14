@@ -59,4 +59,38 @@ public class ResponseCleanupTest {
         // No speaker → text passes through untouched
         assertEquals("Selam", ResponseCleanup.clean("Selam", null));
     }
+
+    // ---- Think yeteneği (v0.28.00): <think>…<think> temizliği ----
+
+    @Test
+    public void thinkBlocks_removedWhereverTheyAppear() {
+        String reply = "Merhaba.";
+        assertEquals(reply, ResponseCleanup.clean("<think> Sahne devam ediyor, konu: rüzgar gemisi. </think>" + reply, SPEAKER));
+        assertEquals(reply, ResponseCleanup.clean(reply + "<think> düşüncem burada. </think>", SPEAKER));
+        assertEquals(reply, ResponseCleanup.clean("<think> a </think>" + reply + "<think> b </think>", SPEAKER));
+        // Multi-line block with surrounding newlines collapses cleanly.
+        assertEquals(reply, ResponseCleanup.clean("<think>\nsatır1\nsatır2\n</think>\n" + reply, SPEAKER));
+        // No think content → unchanged.
+        assertEquals(reply, ResponseCleanup.clean(reply, SPEAKER));
+    }
+
+    @Test
+    public void unclosedThinkTag_hidesEverythingFromItOn() {
+        // Stream cut mid-thought: an unclosed <think> must not leak the reasoning into
+        // the balloon — everything from the tag on disappears.
+        assertEquals("Görünür yanıt.", ResponseCleanup.clean("Görünür yanıt. <think> yarım düşün", SPEAKER));
+        // Closed blocks elsewhere still strip even when an unclosed one exists.
+        assertEquals("A.B.", ResponseCleanup.clean("A.<think>x</think>B.<think>yarım", SPEAKER));
+        // Unclosed tag as the whole message → empty.
+        assertEquals("", ResponseCleanup.clean("<think>yarım", SPEAKER));
+        // A BARE tag IS an unclosed think tag: everything from it on (the whole
+        // message) hides by design — no false-positive exceptions needed.
+        assertEquals("a", ResponseCleanup.clean("a <think> b", SPEAKER));
+    }
+
+    @Test
+    public void thinkLabelEchoedAfterBlock_alsoStripped() {
+        // Some models echo the speaker label right after the think block.
+        assertEquals("Selam!", ResponseCleanup.clean("<think> plan </think>Momy -Ashe-: Selam!", SPEAKER));
+    }
 }
