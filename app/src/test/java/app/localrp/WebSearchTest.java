@@ -96,6 +96,20 @@ public class WebSearchTest {
     }
 
     @Test
+    public void parse_hugePage_clippedAndTerminates() {
+        // v0.30.01: a pathological multi-MB page must not make the scan unbounded.
+        StringBuilder huge = new StringBuilder("<html><table>");
+        for (int i = 0; i < 200_000; i++) huge.append("<tr><td>kelime dolgu metni</td></tr>");
+        huge.append("<tr><td><a class=\"result-link\" href=\"https://ok.org/end\">Sonuç</a></td></tr></table></html>");
+        // No result-link within the first 2 MB → 0 results, but must terminate fast.
+        long start = System.nanoTime();
+        List<WebSearch.Result> results = WebSearch.parse(huge.toString());
+        long ms = (System.nanoTime() - start) / 1_000_000;
+        assertTrue("huge parse took " + ms + "ms", ms < 2000);
+        assertTrue(results.size() <= 5);
+    }
+
+    @Test
     public void urlDecode_percentAndPlus() {
         assertEquals("a b/c?d=e", WebSearch.urlDecode("a+b%2Fc%3Fd%3De"));
         assertEquals("merhaba dünya", WebSearch.urlDecode("merhaba d%C3%BCnya"));

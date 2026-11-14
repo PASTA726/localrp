@@ -34,7 +34,11 @@ final class WebSearch {
     /** Extracts result links from a DDG lite results page. */
     static List<Result> parse(String html) {
         List<Result> results = new ArrayList<>();
-        if (html == null || html.isEmpty()) return results;
+        if (html == null) return results;
+        // v0.30.01 (denetçi bulgusu 7): a pathological multi-MB page made the scan
+        // O(n·k); real lite pages are ~100 KB, so clip before scanning.
+        if (html.length() > 2_000_000) html = html.substring(0, 2_000_000);
+        if (html.isEmpty()) return results;
         // DDG lite marks organic results with the class "result-link"; the snippet
         // sits in the following "result-snippet" cell. Parse pairwise.
         int index = 0;
