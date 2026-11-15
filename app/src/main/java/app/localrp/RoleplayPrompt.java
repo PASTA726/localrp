@@ -147,6 +147,10 @@ final class RoleplayPrompt {
                         String recap, List<String> memories, boolean think, String webContext,
                         String thinkDepth) {
         StringBuilder prompt = new StringBuilder();
+        // v0.31.02 audit hardening: a null cast list is unreachable from the app
+        // (Group.characterIds is always initialized) but the guard costs nothing
+        // and keeps the pure builder total for every caller.
+        List<String> cast = castIds == null ? new ArrayList<>() : castIds;
         String speakerName = clip(speaker.name, 80);
         Message last = history.isEmpty() ? null : history.get(history.size() - 1);
 
@@ -214,7 +218,7 @@ final class RoleplayPrompt {
 
             prompt.append(english ? "Other characters in the scene:\n" : "Sahnedeki diğer karakterler:\n");
             boolean otherCharacter = false;
-            for (String id : castIds) {
+            for (String id : cast) {
                 CharacterProfile character = castLookup.apply(id);
                 if (character == null || character.id.equals(speaker.id)) continue;
                 otherCharacter = true;
@@ -272,7 +276,7 @@ final class RoleplayPrompt {
             if (persona != null) appendPersona(prompt, persona, english);
             StringBuilder otherNames = new StringBuilder();
             int otherBudget = 280;
-            for (String id : castIds) {
+            for (String id : cast) {
                 CharacterProfile character = castLookup.apply(id);
                 if (character == null || character.id.equals(speaker.id)) continue;
                 String name = clip(character.name.trim(), 60);

@@ -2,6 +2,32 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.31.02 — 2026-11-15 (hata avı turu: üç denetim + adversarial test)
+
+"Try find bugs" istemi üzerine üç bağımsız Codex denetimi (OpenCode subagent kotası dolduğu için Codex CLI'ya taşındı) ve adversarial birim taraması yapıldı. **Yeni kullanıcıya dokunan hata bulunamadı**; tek isapet ulaşılamaz bir yol ve tek satır savunma guard'ı ile kapatıldı.
+
+## Denetimler (hepsi salt-okunur)
+
+| Denetim | Odak | Sonuç |
+|---|---|---|
+| 1. UI çakılma desenleri | çift addView sınıfı, re-render state, null erişimler, thread ihlali, dialog dizileri | Kritik yok (5 desen tek tek doğrulandı) |
+| 2. Mantık/veri | RoleplayPrompt zinciri, LRU önbellek, Store/codec, pref anahtar çiftleri, üretim state bayrakları | Kritik yok |
+| 3. Tek-seferlik akışlar | SillyTavern V2 içe aktarım, yedek zip, model indirme, TTS/STT, görsel ekleme | Kritik yok |
+
+## Adversarial tarama (5 yeni kalıcı test)
+
+Uç girdilerle saf sınıflara baskı testi (`AdversarialSweepTest`): null sahne adı, uzunluk-1 kişilik dizisi, null hafıza girdileri, sağlayıcı yolu (depth 0 + continuing), null konuşmacı temizliği, lorebook'ta regex özel/boş/10000 karakterli anahtarlar. **Bulgu:** `RoleplayPrompt.build`'a null `castIds` geçilirse NPE — gerçek akışta ulaşılamaz (`Group.characterIds` her zaman başlatılır) ama savunma guard'ı eklendi: builder girdi listesini boş listeye normalize eder.
+
+## Kalite
+
+| Kontrol | Sonuç |
+|---|---|
+| Birim testleri | **224 / 0 hata** (5 yeni adversarial test) |
+| CI | Push sonrası doğrulanır |
+| Veri şeması | Değişiklik yok — yedekler uyumlu |
+
+---
+
 ## v0.31.01 — 2026-11-14 (cihaz kabul turunun ilk bulgusu: sağlayıcı ekranı çakılması)
 
 Sürüm notlarındaki bekleyen cihaz kabul turu ilk meyvesini verdi: sağlayıcı (API) ekranı telefonda ilk kez açıldığında **uygulama çakılıyor**. Bulgu kullanıcıdan geldi ("API yeri bozuk").
