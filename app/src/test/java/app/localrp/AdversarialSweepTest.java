@@ -47,14 +47,19 @@ public class AdversarialSweepTest {
     }
 
     @Test
-    public void prompt_providerPath_depth0_continuingTrue_noThrow() {
+    public void prompt_providerPath_depth0_freshBuild_noHistoryHeader() {
+        // Provider mode calls buildRoleplayPrompt(..., continuingFlag=false, historyDepth=0):
+        // history travels as real chat turns, so the fresh build must carry no
+        // transcript header even though it is a fresh (non-continuing) prompt.
         List<Message> history = new ArrayList<>();
         history.add(new Message("Sen", "merhaba", true, 1L));
+        history.add(new Message("Elif", "selam", false, 2L));
         String a = RoleplayPrompt.build(
                 "Sahne", speaker("Elif"), java.util.List.of("spk"), id -> speaker("Elif"),
                 history, false, true, "", "", "", 0, 2600,
                 null, false, null, null, null, null, false, null, "short");
         assertFalse(a.contains("Yakın sahne geçmişi"));
+        assertFalse("history must never be inlined at depth 0", a.contains("Kullanıcı: merhaba"));
     }
 
     @Test
