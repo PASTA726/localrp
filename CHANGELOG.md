@@ -2,6 +2,44 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.34.00 — 2026-11-16 (acımasız kullanıcı denetimi yamaları)
+
+DeepSeek "acımasız günlük kullanıcı" denetimi (28 bulgu) doğrulandı; 13 gerçek bulgu bu partide yamalandı. versionCode **70**.
+
+## Kritik yamalar
+
+- **Transkript aynası (`chatHistory`) canlı tutuldu** — sohbet açılışında bir kez kurulup bir daha güncellenmeyen liste, yeni kullanıcı mesajı / biten AI yanıtı / üretilen görsel ile senkronize ediliyor. Kapanan üç hata birden: (1) en yeni mesajlarda uzun bas menüsü kopya-only'ye düşüyordu, (2) "↻ Yeniden üret" bayat indeksle daha yeni mesajları da silebiliyordu, (3) sohbet içi aramada yeni mesaja atlama sessizce çalışmıyordu.
+- **Durdur düğmesi çapraz sohbet karışıklığı** — başka sohbette üretim sürerken send düğmesi artık o üretimi kesmiyor; "Üretim başka bir sohbette sürüyor" diyor. ■ stili yalnızca üreten sohbette gösteriliyor.
+
+## Diğer doğrulanmış yamalar
+
+- **[21] Web araması sonucu artık kullanıcı mesajıyla da kullanılıyor** — "sıradaki yanıt bu sonucu bilir" sözü tutuldu; blok üretimde tek seferlik tüketiliyor.
+- **[2] "Fotoğrafı kaldır" vazgeç-güvenli** (karakter + kişilik editörü) — dosya Kaydet'te siliniyor; Vazgeç fotoğrafı bozmuyor.
+- **[3] Aynı isimli karaktere onay diyalogu** — grup RP'de konuşan isimle ayırt edildiği için sessiz kabul kaldırıldı.
+- **[13] Karakter düzenlemesi açık sohbetlere yansıyor** — kayıtta ilgili sohbetlerin motor bağlamı yenileniyor (toast ile bildirilir); üretim sürmeyen sohbetlere dokunulur.
+- **[11] "Yeniden üret" konuşmacıyı koruyor** — bir karakterin yanıtı yeniden üretilirken sıra başka karaktere devredilemez.
+- **[20] Manuel pinler 🔁 özetleri kovamıyor** — ortak 40 kovasında tahliye önce en eski otomatik özetten yapılır.
+- **[10] Token sınırında kesilme uyarısı** — cümle ortasında biten yanıt durum satırında dürüstçe işaretleniyor.
+- **[12] Metinsiz mesajda "Sesli oku" menüde sunulmuyor.**
+- **[22] User-Agent sürüm kayması kökten çözüldü** — model indirme + web araması UA'sı `BuildConfig.VERSION_NAME`'e bağlandı.
+- **[27] Sağlayıcı ekranındaki bozuk cümle düzeltildi.**
+- **[18] Dünya kitabı açıklaması koda eşitlendi** — tetikleme, sahne bağlamı kurulurken/yenilenirken çalışır.
+
+## Kalite
+
+| Kontrol | Sonuç |
+|---|---|
+| Birim testleri | **230 / 0 hata** (1 yeni: manuel pin ↔ 🔁 tahliye önceliği) |
+| Codex diff incelemesi | Push sonrası doğrulanır |
+| CI | Push sonrası doğrulanır |
+| Veri şeması | Değişiklik yok |
+
+## Bilinen boşluklar (bilinçli kabul — sonraki partiler)
+
+Karakter kartı kırpılma uyarıları [1], yeniden adlandırma kimliği [14], profil kaydırıcılarının canlı motor etkisi [16/17], hafıza geri çağırmanın continuing turları [19], yedeğin hafıza/profil taşıması [23], geri yükleme stratejisi seçimi [24], `.part` temizliği [25], undo bar süresi [28].
+
+---
+
 ## v0.33.00 — 2026-11-16 (otomatik özet hafızası)
 
 Danışman ortalamasının sıradaki partisi (özellik danışmanı 9/10; CHANGELOG'da iki kez vaat edilmişti). Uzun sohbetlerde pencereden çıkan eski olaylar artık **kalıcı** hafızaya işlenir. versionCode **69**.

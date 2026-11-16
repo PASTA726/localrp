@@ -27,7 +27,14 @@ final class SummaryPolicy {
     /** Total entry budget, including the "🔁 Olay özeti: " prefix. */
     static final int ENTRY_CHAR_BUDGET = 520;
 
-    private static final String PREFIX = "🔁 Olay özeti: ";
+    /**
+     * v0.34.00 (audit 20): shared marker for auto-summary entries — manual memory
+     * pins are anything that does NOT start with this, and ChatMemory evicts
+     * auto entries first so a machine summary can never push out a user pin.
+     */
+    static final String AUTO_PREFIX = "🔁 Olay özeti: ";
+
+    private static final String PREFIX = AUTO_PREFIX;
 
     /**
      * The messages that left the history window since the last auto-summary:

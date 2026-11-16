@@ -222,6 +222,8 @@ public class MainActivity extends Activity {
     // v0.14.0 feature set: user persona + profile photos + preset characters.
     private boolean avatarPickPersona;          // target of AVATAR_PICK: true = user persona, false = character
     private String personaAvatarDraft;          // freshly picked persona photo, applied on Kaydet
+    /** v0.34.00 (audit 2): the stored persona photo's removal waits for Kaydet. */
+    private boolean personaAvatarRemoved;
     /** Which persona identity the draft belongs to; a stale draft is discarded, never applied silently. */
     private String personaDraftOwnerId;
     private CharacterProfile editorCharacter;   // character being edited (null = creating)
@@ -793,6 +795,7 @@ public class MainActivity extends Activity {
             personaAvatarDraft = null;
         }
         personaDraftOwnerId = editing != null ? editing.id : null;
+        personaAvatarRemoved = false;
 
         String name = editing != null ? editing.name : "";
         String description = editing != null ? editing.description : "";
@@ -814,10 +817,14 @@ public class MainActivity extends Activity {
         if ((personaAvatarDraft != null && !personaAvatarDraft.isEmpty())
                 || !storedAvatar.isEmpty()) {
             addDangerButton(L10n.s(L10n.s("Fotoğrafı kaldır")), v -> {
-                String path = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
-                        ? personaAvatarDraft : storedAvatar;
-                deleteAvatarFile(path);
+                // v0.34.00 (audit 2): a fresh pick is temporary, so dropping it now
+                // is safe; the PERSISTED file is only deleted once a save replaces
+                // it — backing out keeps the stored photo intact.
+                if (personaAvatarDraft != null && !personaAvatarDraft.isEmpty()) {
+                    deleteAvatarFile(personaAvatarDraft);
+                }
                 personaAvatarDraft = "";
+                personaAvatarRemoved = true;
                 if (personaPreviewPane != null) {
                     fillPersonaPreview(personaPreviewPane,
                             personaNameField != null ? personaNameField.getText().toString().trim() : name, "");
@@ -834,13 +841,22 @@ public class MainActivity extends Activity {
         addPrimary(L10n.s(L10n.s("Kişiliği kaydet")), v -> {
             String savedName = nameField.getText().toString().trim();
             String savedDescription = descriptionField.getText().toString().trim();
+            // v0.34.00 (audit 2): removal defers to Kaydet — an explicit removal
+            // saves an empty avatar and deletes the persisted file afterwards.
+            boolean removedStoredAvatar = personaAvatarRemoved && storedAvatar != null && !storedAvatar.isEmpty()
+                    && (personaAvatarDraft == null || personaAvatarDraft.isEmpty());
             String savedAvatar = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
-                    ? personaAvatarDraft : storedAvatar;
+                    ? personaAvatarDraft
+                    : (personaAvatarRemoved ? "" : storedAvatar);
             // A fresh draft replaces the persisted file; delete the old one only once
             // the save succeeded, so backing out can never orphan the kept avatar.
-            String replacedAvatar = personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
-                    && !storedAvatar.isEmpty() && !storedAvatar.equals(personaAvatarDraft)
-                    ? storedAvatar : null;
+            String replacedAvatar = null;
+            if (personaAvatarDraft != null && !personaAvatarDraft.isEmpty()
+                    && !storedAvatar.isEmpty() && !storedAvatar.equals(personaAvatarDraft)) {
+                replacedAvatar = storedAvatar;
+            } else if (removedStoredAvatar) {
+                replacedAvatar = storedAvatar;
+            }
             List<Persona> updated = new ArrayList<>(store.personas());
             if (editing != null) {
                 for (int i = 0; i < updated.size(); i++) {
@@ -860,6 +876,7 @@ public class MainActivity extends Activity {
             }
             personaAvatarDraft = null;
             personaDraftOwnerId = null;
+            personaAvatarRemoved = false;
             if (!store.savePersonas(updated)) {
                 Toast.makeText(this, L10n.s(L10n.s("Profil kayda geçemedi.")), Toast.LENGTH_SHORT).show();
                 return;
@@ -1000,7 +1017,9 @@ public class MainActivity extends Activity {
         addPrimary(L10n.s("Fotoğraf seç"), v -> pickAvatar(false));
         if (!pickedAvatarPath.isEmpty()) {
             addDangerButton(L10n.s("Fotoğrafı kaldır"), v -> {
-                deleteAvatarFile(pickedAvatarPath);
+                // v0.34.00 (audit 2): only the draft reference clears here. The file
+                // is deleted after a successful save (replacedAvatar path), so
+                // backing out of the editor can never destroy the kept photo.
                 pickedAvatarPath = "";
                 if (avatarStatusView != null) {
                     avatarStatusView.setText(L10n.s(L10n.s("Fotoğraf: seçilmedi")));
@@ -1009,8 +1028,10 @@ public class MainActivity extends Activity {
             });
         }
 
-        addPrimary(L10n.s("Kaydet"), v -> {
-            if (name.getText().toString().trim().isEmpty()) { name.setError(L10n.s("Bir ad gerekli")); return; }
+        // v0.34.00 (audit 3+13): the save body is one shared runnable — the button
+        // confirms duplicate names first, and a successful save also refreshes the
+        // engine context of every open conversation this character belongs to.
+        Runnable saveCharacterNow = () -> {
             CharacterProfile character = editing ? existing : new CharacterProfile();
             character.name = name.getText().toString().trim();
             character.description = description.getText().toString().trim();
@@ -1018,9 +1039,10 @@ public class MainActivity extends Activity {
             character.instructions = instructions.getText().toString().trim();
             character.examples = examples.getText().toString().trim();
             character.samplerTemp = samplerTemp.getText().toString().trim();
-            // Delete a replaced persisted avatar only after the save succeeded.
+            // Delete a replaced (or removed) persisted avatar only after the save
+            // succeeded — v0.34.00 (audit 2): removal is just replacement with "",
+            // so cancelling the editor keeps the file exactly as it was.
             String replacedAvatar = editing
-                    && pickedAvatarPath != null && !pickedAvatarPath.isEmpty()
                     && existing.avatarPath != null && !existing.avatarPath.isEmpty()
                     && !existing.avatarPath.equals(pickedAvatarPath)
                     ? existing.avatarPath : null;
@@ -1032,7 +1054,43 @@ public class MainActivity extends Activity {
                 return;
             }
             if (replacedAvatar != null) deleteAvatarFile(replacedAvatar);
+            // v0.34.00 (audit 13): a saved card must reach open conversations. The
+            // engine context is keyed by chat id, so every group containing this
+            // character rebuilds its next prompt from the fresh card (the recap
+            // keeps the story intact). A chat mid-generation is left alone.
+            boolean contextRefreshed = false;
+            for (Group g : store.groups()) {
+                if (g.characterIds != null && g.characterIds.contains(character.id)
+                        && !g.id.equals(generatingChatId)
+                        && LocalAiRuntime.INSTANCE.hasConversation(g.id)) {
+                    LocalAiRuntime.INSTANCE.resetConversation(g.id);
+                    contextChars.remove(g.id);
+                    chainCounts.remove(g.id);
+                    contextRefreshed = true;
+                }
+            }
+            if (contextRefreshed) {
+                Toast.makeText(this, L10n.s(L10n.s("Karakter güncellendi; ilgili sohbetlerin bağlamı yenilendi.")), Toast.LENGTH_SHORT).show();
+            }
             if (afterSave != null) afterSave.run(); else showCharacters();
+        };
+
+        addPrimary(L10n.s("Kaydet"), v -> {
+            if (name.getText().toString().trim().isEmpty()) { name.setError(L10n.s("Bir ad gerekli")); return; }
+            // v0.34.00 (audit 3): group roleplay tells speakers apart by display
+            // name, so a duplicate name must never pass silently — confirm instead.
+            String chosenName = name.getText().toString().trim();
+            boolean duplicate = false;
+            for (CharacterProfile other : store.characters()) {
+                if (other.name != null && other.name.trim().equalsIgnoreCase(chosenName)
+                        && (!editing || !other.id.equals(existing.id))) { duplicate = true; break; }
+            }
+            if (duplicate) {
+                confirm(chosenName + L10n.s(" adında başka bir karakter var. Grup sohbetlerinde konuşan bu isimle ayırt edilir; aynı isim karışabilir. Yine de kaydet?"),
+                        L10n.s("Yine de kaydet"), saveCharacterNow);
+                return;
+            }
+            saveCharacterNow.run();
         });
         if (editing && !BUILTIN_ROLEPLAY_ID.equals(existing.id)) {
             addDangerButton(L10n.s("Karakteri sil"), v -> confirm(existing.name + " silinsin mi?", () -> {
@@ -1596,6 +1654,13 @@ public class MainActivity extends Activity {
         action.setBackground(rounded(Design.accent(), Design.accent(), 30));
         action.setOnClickListener(v -> {
             if (generatingChatId != null) {
+                // v0.34.00 (audit 9): the stop button belongs to the chat that is
+                // generating; tapping send in another chat must not cut someone
+                // else's turn — it explains and does nothing.
+                if (!generatingChatId.equals(group.id)) {
+                    Toast.makeText(this, L10n.s(L10n.s("Üretim başka bir sohbette sürüyor; durdurmak için o sohbete geç.")), Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 LocalAiRuntime.INSTANCE.stopGeneration();
                 if (providerClient != null) providerClient.stop(); // online turn: cut the SSE stream too
             }
@@ -2031,6 +2096,9 @@ public class MainActivity extends Activity {
                 content.removeView(chatEmptyState);
                 chatEmptyState = null;
             }
+            // v0.34.00 (audit 6): image messages join the transcript mirror like
+            // every other append, so the balloon menu sees the real index.
+            chatHistory.add(message);
             addStoredMessage(content, message);
             scrollChatToBottom(true);
             if (chatStatusView != null) chatStatusView.setText(chatStatusText(group));
@@ -2086,9 +2154,10 @@ public class MainActivity extends Activity {
         // a stale steer must not leak into an unrelated reply, and the pre-regenerate
         // tail must never be restored over newer messages.
         pendingSteer.remove(group.id);
-        // v0.29.00: the same staleness rule — a new user turn drops a pending
-        // web-search block so it can never ride an unrelated later reply.
-        pendingWebSearch.remove(group.id);
+        // v0.34.00 (audit 21): the pending web-search block STAYS. The UI promises
+        // "sıradaki yanıt bu sonucu bilir" — and a user message is exactly how the
+        // next reply gets triggered. beginGeneration consumes it one-shot for this
+        // turn, so it can still never ride an unrelated later reply.
         discardRegenStash(group.id);
         File photo = null;
         if (pendingComposerImage != null && group.id.equals(pendingComposerImageChatId)) {
@@ -2103,6 +2172,11 @@ public class MainActivity extends Activity {
             content.removeView(chatEmptyState);
             chatEmptyState = null;
         }
+        // v0.34.00 (audit 6, kritik): chatHistory is the transcript mirror used by
+        // balloon menus, quick regen and search jump — it used to be built only on
+        // chat open, so freshly sent messages fell into the copy-only menu and the
+        // quick regenerate cut at a stale index. Keep it in sync at every append.
+        if (group.id.equals(visibleChatId)) chatHistory.add(sent);
         addStoredMessage(content, sent);
         if (withImage) {
             // Honesty guard: the bundled text engine cannot see images. Say so once
@@ -2357,12 +2431,19 @@ public class MainActivity extends Activity {
                         content.removeView((View) displayedResponse.getParent());
                     }
                 } else if (chatStillExists) {
-                    store.addMessage(group.id, new Message(speaker.name, finalText, false, startedAt));
+                    // v0.34.00 (audit 6, kritik): the finished turn joins the
+                    // transcript mirror too, so its balloon menu, search anchor and
+                    // quick regenerate all see the real index immediately.
+                    Message finished = new Message(speaker.name, finalText, false, startedAt);
+                    store.addMessage(group.id, finished);
                     if (group.id.equals(visibleChatId) && content != null) {
+                        chatHistory.add(finished);
                         if (!balloonInContent(displayedResponse)) {
-                            displayedResponse = addMessage(content, speaker.name, finalText, false, startedAt);
+                            displayedResponse = addStoredMessage(content, finished);
                         } else {
                             renderMessage(displayedResponse, speaker.name, finalText, startedAt);
+                            ViewGroup row = messageRowOf(displayedResponse);
+                            if (row != null) row.setTag(chatHistory.size() - 1); // search/jump anchor
                         }
                     }
                 }
@@ -2373,9 +2454,14 @@ public class MainActivity extends Activity {
                 Group visible = visibleChatId == null ? null : store.group(visibleChatId);
                 if (visible != null) updateChatControls(visible);
                 if (group.id.equals(visibleChatId) && chatStatusView != null) {
+                    // v0.34.00 (audit 10): a reply that ends mid-sentence after
+                    // riding to the token budget is flagged honestly instead of
+                    // being presented as a finished turn.
+                    boolean cutLike = !stopped && error == null && !finalText.isEmpty() && looksCutOff(finalText);
                     if (error != null) chatStatusView.setText(finalText.isEmpty() ? L10n.s(L10n.s("Yanıt üretilemedi")) : L10n.s(L10n.s("Yanıt yarıda kesildi")));
                     else if (finalText.isEmpty()) chatStatusView.setText(L10n.s(L10n.s("Model boş yanıt döndürdü")));
                     else if (stopped) chatStatusView.setText(L10n.s(L10n.s("Yanıt durduruldu.")));
+                    else if (cutLike) chatStatusView.setText(L10n.s(L10n.s("Yanıt cümle ortasında bitti — token sınırı dolmuş olabilir; AI ayarlarından token bütçesini artırabilirsin.")));
                 }
                 if (error != null && finalText.isEmpty() && group.id.equals(visibleChatId) && uiAlive()) {
                     AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this)
@@ -2486,8 +2572,10 @@ public class MainActivity extends Activity {
         if (chatActionButton != null) {
             chatActionButton.setEnabled(generating || !(loading || benchmarking));
             chatActionButton.setAlpha((loading || benchmarking) && !generating ? 0.55f : 1f);
-            // Circular send/stop button: filled accent when idle, soft danger while generating.
-            if (generating) {
+            // v0.34.00 (audit 9): the danger "■" style marks THIS chat's running
+            // turn; when another chat generates, the send icon stays honest.
+            boolean generatingHere = group.id.equals(generatingChatId);
+            if (generatingHere) {
                 chatActionButton.setText("■");
                 chatActionButton.setTextSize(15);
                 chatActionButton.setTextColor(Design.danger());
@@ -2671,7 +2759,7 @@ public class MainActivity extends Activity {
             connection.setConnectTimeout(10_000);
             connection.setReadTimeout(10_000);
             connection.setRequestMethod("GET");
-            connection.setRequestProperty("User-Agent", "LocalRP/0.29.00-alpha1 (+android)");
+            connection.setRequestProperty("User-Agent", "LocalRP/" + BuildConfig.VERSION_NAME + " (+android)");
             connection.setRequestProperty("Accept", "text/html");
             java.io.InputStream stream = connection.getResponseCode() >= 400
                     ? connection.getErrorStream() : connection.getInputStream();
@@ -2701,7 +2789,7 @@ public class MainActivity extends Activity {
         backAction = () -> openChat(group.id);
         setPage(L10n.s("Dünya kitabı"), group.name, "chat");
         addInfoCard(L10n.s("Nasıl çalışır?"),
-                L10n.s(L10n.s("Her kayıt anahtar kelime(ler) ve bir olgudur. Son 3 mesajda bir anahtar geçerse olgu prompta yazılır; "))
+                L10n.s(L10n.s("Her kayıt anahtar kelime(ler) ve bir olgudur. Sahne bağlamı kurulurken ya da yenilenirken son 3 mesajda bir anahtar geçerse olgu prompta yazılır; "))
                         + L10n.s(L10n.s("blok en fazla 900 karakter tutar, anahtar hiç geçmezse yer kaplamaz.")), "Lore");
         List<Lorebook.Entry> entries = store.lore(group.id);
         if (entries.isEmpty()) {
@@ -3472,7 +3560,7 @@ public class MainActivity extends Activity {
         EditText modelField = field(L10n.s(L10n.s("Model adı")), prefs.getString("provider_model", ""));
         modelField.setSingleLine(true);
         int turnDepth = prefs.getInt("provider_history_depth", 8);
-        addBody(L10n.s(L10n.s("Prompta kaç mesajlık sohbet geçmişi taşınır (2–20): telefonla ayardan değil, bu sayıdan düzenlenir.")));
+        addBody(L10n.s(L10n.s("Sağlayıcıya her istekte kaç mesajlık sohbet geçmişi gider (2–20). Bu sayı yalnızca sağlayıcı yolunu düzenler; yerel motorun geçmiş mesaj sayısı ayarını etkilemez.")));
         EditText depthField = field(L10n.s(L10n.s("Geçmiş mesaj sayısı")), String.valueOf(turnDepth));
         depthField.setSingleLine(true);
         // v0.24.00 vision: attached photos travel as real image parts when the
@@ -4940,6 +5028,7 @@ public class MainActivity extends Activity {
                 // Only discard a previous DRAFT file; the persisted persona avatar may
                 // still be referenced if the user backs out without saving.
                 if (personaAvatarDraft != null && !personaAvatarDraft.isEmpty()) deleteAvatarFile(personaAvatarDraft);
+                personaAvatarRemoved = false; // a fresh pick replaces any removal draft
                 personaAvatarDraft = saved.getPath();
                 if (personaPreviewPane != null) {
                     String labelName = personaNameField != null && !personaNameField.getText().toString().trim().isEmpty()
@@ -7615,8 +7704,13 @@ public class MainActivity extends Activity {
         actions.add(() -> pinMessageToMemory(memoryChatId, message));
         // v0.22.00 voice: read the message aloud; a running read can be stopped
         // from the same menu (isSpeaking is evaluated when the menu opens).
-        labels.add(L10n.s("🔊  Sesli oku"));
-        actions.add(() -> speakMessage(message.text == null ? "" : message.text));
+        // v0.34.00 (audit 12): an image-only message has nothing to read — the
+        // menu no longer offers an action that would do nothing silently.
+        String speakable = message.text == null ? "" : message.text;
+        if (!speakable.isEmpty()) {
+            labels.add(L10n.s("🔊  Sesli oku"));
+            actions.add(() -> speakMessage(speakable));
+        }
         if (tts != null && tts.isSpeaking()) {
             labels.add(L10n.s("⏹  Okumayı durdur"));
             actions.add(this::stopSpeech);
@@ -7673,7 +7767,7 @@ public class MainActivity extends Activity {
         List<String> memory = store.memory(chatId);
         List<String> updated = ChatMemory.add(memory, message.speaker + ": " + body);
         if (store.saveMemory(chatId, updated)) {
-            Toast.makeText(this, L10n.s(L10n.s("Anı kaydedildi: önemli anlar her turda hatırlanır.")), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L10n.s(L10n.s("Anı kaydedildi: önemli anlar kelime eşleşmesinde hatırlanır.")), Toast.LENGTH_SHORT).show();
         } else {
             Toast.makeText(this, L10n.s(L10n.s("Anı kaydedilemedi: saklı veri okunamıyor.")), Toast.LENGTH_LONG).show();
         }
@@ -7710,6 +7804,30 @@ public class MainActivity extends Activity {
             if (!chatHistory.get(i).user) return i;
         }
         return -1;
+    }
+
+    /** v0.34.00 (audit 11): resolve a character id by display name within a group. */
+    private String characterIdByName(Group group, String speakerName) {
+        if (group.characterIds == null) return null;
+        for (String id : group.characterIds) {
+            CharacterProfile candidate = store.character(id);
+            if (candidate != null && speakerName.equals(candidate.name)) return id;
+        }
+        return null;
+    }
+
+    /**
+     * v0.34.00 (audit 10): heuristic truncation check — a finished (not stopped,
+     * not errored) reply whose last character is not sentence-terminal punctuation
+     * (trailing quotes/brackets tolerated) is likely cut by the token budget.
+     */
+    private static boolean looksCutOff(String text) {
+        String trimmed = text.trim();
+        int i = trimmed.length() - 1;
+        while (i >= 0 && "\"'\u201D\u2019\u00BB\u203A)]}".indexOf(trimmed.charAt(i)) >= 0) i--;
+        if (i < 0) return false;
+        char c = trimmed.charAt(i);
+        return c != '.' && c != '!' && c != '?' && c != '\u2026';
     }
 
     /** v0.20.00: a small accent pill in the chat quick-tools row. */
@@ -7883,6 +8001,11 @@ public class MainActivity extends Activity {
             return;
         }
         List<Message> stored = store.messages(group.id);
+        // v0.34.00 (audit 11): regenerating a specific character's reply must not
+        // hand the turn to a different speaker — the same character is re-pinned
+        // for this retry turn (the pin is consumed by the generation, like a
+        // manual speaker pick). Unknown names fall back to automatic selection.
+        Message regenTarget = index >= 0 && index < stored.size() ? stored.get(index) : null;
         // Comfort tools (v0.19.22): the removed tail is stashed for "Eski yanıtı geri
         // getir" — image files stay on disk until the stash is discarded, so a
         // restore can put them back into the transcript.
@@ -7900,6 +8023,11 @@ public class MainActivity extends Activity {
         LocalAiRuntime.INSTANCE.resetConversation(group.id);
         forgetAutoAttempts(group.id);
         showChat(group);
+        if (regenTarget != null && !regenTarget.user
+                && regenTarget.speaker != null && !regenTarget.speaker.isEmpty()) {
+            String regenSpeakerId = characterIdByName(group, regenTarget.speaker);
+            if (regenSpeakerId != null) setManualSpeaker(group.id, regenSpeakerId);
+        }
         // continueOrRetry carries the steering note; it applies the note only when
         // a generation actually starts, so an aborted retry never leaks it into a
         // later unrelated turn.
