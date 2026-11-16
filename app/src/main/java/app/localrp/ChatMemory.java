@@ -46,7 +46,19 @@ final class ChatMemory {
             if (existing != null && clean.equals(existing)) return out; // no duplicates
         }
         out.add(clean);
-        while (out.size() > MAX_ENTRIES) out.remove(0); // oldest fall off first
+        // v0.34.00 (audit 20): manual pins outrank auto summaries. When the shared
+        // cap overflows, the oldest 🔁 auto entry is evicted first; a manual pin
+        // only falls off when no auto entry exists at all.
+        while (out.size() > MAX_ENTRIES) {
+            int drop = -1;
+            for (int i = 0; i < out.size(); i++) {
+                if (out.get(i) != null && out.get(i).startsWith(SummaryPolicy.AUTO_PREFIX)) {
+                    drop = i;
+                    break;
+                }
+            }
+            out.remove(drop >= 0 ? drop : 0);
+        }
         return out;
     }
 

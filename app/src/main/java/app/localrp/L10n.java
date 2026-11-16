@@ -568,8 +568,8 @@ public final class L10n {
                 "OpenAI-compatible chat-completions URL. Only https is accepted, e.g. https://api.example.com/v1/chat/completions");
         EN.put("https endpoint", "https endpoint");
         EN.put("Model adı", "Model name");
-        EN.put("Prompta kaç mesajlık sohbet geçmişi taşınır (2–20): telefonla ayardan değil, bu sayıdan düzenlenir.",
-                "How many transcript messages ride the prompt (2–20) — configured here, not on the phone.");
+        EN.put("Sağlayıcıya her istekte kaç mesajlık sohbet geçmişi gider (2–20). Bu sayı yalnızca sağlayıcı yolunu düzenler; yerel motorun geçmiş mesaj sayısı ayarını etkilemez.",
+                "How many transcript messages ride each provider request (2–20). This only configures the provider path; it does not affect the local engine's transcript depth.");
         EN.put("Geçmiş mesaj sayısı", "Transcript message count");
         EN.put("Bağlantı bilgilerini kaydet", "Save connection details");
         EN.put("Geçmiş mesaj sayısı bir sayı olmalı.", "The transcript message count must be a number.");
@@ -897,8 +897,8 @@ public final class L10n {
         EN.put("Adı", "Name");
         EN.put("İlk bilgiyi ekle", "Add the first entry");
         EN.put("Dünya kitabını temizle", "Clear the world book");
-        EN.put("Her kayıt anahtar kelime(ler) ve bir olgudur. Son 3 mesajda bir anahtar geçerse olgu prompta yazılır; ",
-                "Each entry is keyword(s) and a fact. When a key appears in the last 3 messages, the fact goes into the prompt; ");
+        EN.put("Her kayıt anahtar kelime(ler) ve bir olgudur. Sahne bağlamı kurulurken ya da yenilenirken son 3 mesajda bir anahtar geçerse olgu prompta yazılır; ",
+                "Each entry is keyword(s) and a fact. When the scene context is built or rebuilt and a key appears in the last 3 messages, the fact goes into the prompt; ");
         EN.put("blok en fazla 900 karakter tutar, anahtar hiç geçmezse yer kaplamaz.",
                 "entries hold up to 900 characters; a key that never appears takes no space.");
         EN.put("Birden çok karakter aynı sahnede", "Multiple characters in one scene");
@@ -1001,8 +1001,8 @@ public final class L10n {
         EN.put("🧠  Hafızaya ekle", "🧠  Remember this");
         EN.put("🧠  Hafıza", "🧠  Memory");
         EN.put("Hafıza", "Memory");
-        EN.put("Anı kaydedildi: önemli anlar her turda hatırlanır.",
-                "Event pinned: important moments are recalled every turn.");
+        EN.put("Anı kaydedildi: önemli anlar kelime eşleşmesinde hatırlanır.",
+                "Event pinned: important moments are recalled through keyword matching.");
         EN.put("Anı kaydedilemedi: saklı veri okunamıyor.",
                 "Could not pin the event: stored data unreadable.");
         EN.put("Anı silindi.", "Event removed from memory.");
@@ -1094,5 +1094,15 @@ public final class L10n {
                 "On: messages leaving the history window are pinned to permanent memory as a 🔁 event summary; in long conversations old events survive. You can delete them from the memory screen.");
         EN.put("Kapalı: pencereden çıkan mesajlar yalnızca geçici özette kalır; çok uzun sohbetlerde eski olaylar kaybolabilir.",
                 "Off: messages leaving the window stay only in the transient recap; in very long conversations old events may be lost.");
+        // v0.34.00 audit-response batch
+        EN.put("Üretim başka bir sohbette sürüyor; durdurmak için o sohbete geç.",
+                "A generation is running in another chat; switch to that chat to stop it.");
+        EN.put(" adında başka bir karakter var. Grup sohbetlerinde konuşan bu isimle ayırt edilir; aynı isim karışabilir. Yine de kaydet?",
+                " already exists. Group roleplay tells speakers apart by this name; a duplicate can get confusing. Save anyway?");
+        EN.put("Yine de kaydet", "Save anyway");
+        EN.put("Karakter güncellendi; ilgili sohbetlerin bağlamı yenilendi.",
+                "Character updated; the context of affected conversations was refreshed.");
+        EN.put("Yanıt cümle ortasında bitti — token sınırı dolmuş olabilir; AI ayarlarından token bütçesini artırabilirsin.",
+                "The reply ended mid-sentence — the token limit was likely hit; you can raise the token budget in AI settings.");
     }
 }

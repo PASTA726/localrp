@@ -37,6 +37,36 @@ public class ChatMemoryTest {
     }
 
     @Test
+    public void add_manualPinsOutrankAutoSummariesOnEviction() {
+        // v0.34.00 (audit 20): the shared 40-entry cap must not FIFO-evict a user
+        // pin while a machine 🔁 entry can be dropped instead.
+        List<String> memory = new ArrayList<>();
+        for (int i = 0; i < ChatMemory.MAX_ENTRIES; i++) memory = ChatMemory.add(memory, "elle sabitlenmiş anı " + i);
+        // Memory is full of manual pins: the auto summary is the lowest priority
+        // and is dropped rather than pushing a user pin out.
+        memory = ChatMemory.add(memory, SummaryPolicy.AUTO_PREFIX + "kapı kilitliydi");
+        assertEquals(ChatMemory.MAX_ENTRIES, memory.size());
+        for (int i = 0; i < ChatMemory.MAX_ENTRIES; i++) {
+            assertTrue(memory.contains("elle sabitlenmiş anı " + i));
+        }
+        assertFalse(memory.contains(SummaryPolicy.AUTO_PREFIX + "kapı kilitliydi"));
+
+        // Mixed load: 39 pins + one auto; the next auto evicts the OLDEST auto
+        // entry, never a manual pin.
+        List<String> mixed = new ArrayList<>();
+        for (int i = 0; i < ChatMemory.MAX_ENTRIES - 1; i++) mixed = ChatMemory.add(mixed, "sabit anı " + i);
+        mixed = ChatMemory.add(mixed, SummaryPolicy.AUTO_PREFIX + "özet A");
+        assertEquals(ChatMemory.MAX_ENTRIES, mixed.size());
+        mixed = ChatMemory.add(mixed, SummaryPolicy.AUTO_PREFIX + "özet B");
+        assertEquals(ChatMemory.MAX_ENTRIES, mixed.size());
+        assertFalse(mixed.contains(SummaryPolicy.AUTO_PREFIX + "özet A"));
+        assertTrue(mixed.contains(SummaryPolicy.AUTO_PREFIX + "özet B"));
+        for (int i = 0; i < ChatMemory.MAX_ENTRIES - 1; i++) {
+            assertTrue(mixed.contains("sabit anı " + i));
+        }
+    }
+
+    @Test
     public void encode_decode_roundTrip() {
         List<String> memory = ChatMemory.add(null, "Elif: feneri yaktı");
         memory = ChatMemory.add(memory, "Kapı arka bahçeye çıkar.");
