@@ -2,6 +2,28 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.33.00 — 2026-11-16 (otomatik özet hafızası)
+
+Danışman ortalamasının sıradaki partisi (özellik danışmanı 9/10; CHANGELOG'da iki kez vaat edilmişti). Uzun sohbetlerde pencereden çıkan eski olaylar artık **kalıcı** hafızaya işlenir. versionCode **69**.
+
+## Otomatik özet hafızası
+
+- **Ne yapar:** Pencereden (geçmiş mesaj sayısı) çıkan mesajlar **≥4 mesajda bir** tek kompakt 🔁 olay özeti girdisi olarak sohbetin sabit hafızasına eklenir ("🔁 Olay özeti: Kullanıcı: … | Elif: …"). Çok uzun sohbetlerde geçici özet bütçesi artık eski olayları örtmezken bile kalıcı kayıt yaşar.
+- **Nasıl çalışır:** Üretim başında tetiklenir; sayaç (`autosum_count_<id>`) en iyi-efor imleçtir — derinlik artırılırsa geri kaymaz, ileti silinirse en kötü durum aynı dilimin yeniden özetlenmesidir (zararsız ek materyal, asla çakılma yok). Girdiler mevcut hafıza yoluyla taşınır: kelime eşleşmesinde ilgili olanlar (en çok 5 / 700 krk) prompta girer; hafıza ekranından elle silinebilir.
+- **Ayar:** AI ayarları → Sahne hafızası altında **"Otomatik özet hafızası: AÇIK/KAPALI"** (varsayılan AÇIK).
+- **Saf politika:** `SummaryPolicy` (CHUNK_MIN=4, satır 160 krk, girdi bütçesi 520 krk) tamamen JVM testli — 5 yeni test (eşik, imleç ilerlemesi/sıkma, kompakt tek satır, bütçe+dizi yer tutucu, ChatMemory dedupe).
+
+## Kalite
+
+| Kontrol | Sonuç |
+|---|---|
+| Birim testleri | **229 / 0 hata** (5 yeni) |
+| Codex diff incelemesi | Push sonrası doğrulanır |
+| CI | Push sonrası doğrulanır |
+| Veri şeması | Değişiklik yok — yeni girdiler mevcut hafıza JSON'una yazılır, yedekler uyumlu |
+
+---
+
 ## v0.32.00 — 2026-11-16 (Prompt müfettişi · danışman konsensüsü)
 
 "Diğer alt ajanlardan öneriler topla ve ortalamasını al" istemi üzerine dört bağımsız danışmandan (3 OpenCode subagent + Codex) öneri toplandı. Ortalama sıralama: cihaz kabul turu 1. (manuel — aşağıdaki kontrol listesiyle desteklendi), **Prompt müfettişi en yüksek puanlı uygulanabilir kod partisi (≈8,3/10)** — bu partide uygulandı. Bekleyen adaylar: otomatik özet hafızası (9/10, tek oy), mesaj düzenle+yeniden üret (7/10), JNI çökme guard'ı (tek oy), sohbet içi arama (~2 oy), görsel yenileme (5/10, ertelendi).
