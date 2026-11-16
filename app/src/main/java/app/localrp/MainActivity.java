@@ -2228,6 +2228,10 @@ public class MainActivity extends Activity {
     private void beginGeneration(Group group, CharacterProfile speaker) {
         if (generatingChatId != null || modelLoading || LocalAiRuntime.INSTANCE.isModelLoading() ||
                 LocalAiRuntime.INSTANCE.isBenchmarking()) return;
+        // v0.33.00 auto summary: messages that just left the history window get
+        // pinned as one compact 🔁 entry before this turn's prompt is built, so
+        // the recap/recall path can reach them long after they leave the window.
+        maybeAutoSummarize(group);
         List<Message> history = store.messages(group.id);
         Message last = history.isEmpty() ? null : history.get(history.size() - 1);
         boolean continuation = last != null && !last.user;
@@ -4536,6 +4540,18 @@ public class MainActivity extends Activity {
         addSlider(L10n.s("Geçmiş karakter bütçesi"), chars, 1200, 3600, 200, value -> {
             prefs.edit().putInt("history_chars", value).apply();
         }, value -> humanSize(value) + L10n.s(" metin"));
+        // v0.33.00 auto summary: messages that leave the window are pinned as one
+        // compact 🔁 entry, so very old events survive the recap budget on long runs.
+        boolean autoSum = prefs.getString("auto_summary", "on").equals("on");
+        addSecondary(autoSum
+                ? L10n.s("Otomatik özet hafızası: AÇIK — kapat")
+                : L10n.s("Otomatik özet hafızası: KAPALI — aç"), v -> {
+            prefs.edit().putString("auto_summary", autoSum ? "off" : "on").apply();
+            showAiAdvanced();
+        });
+        addBody(autoSum
+                ? L10n.s("Açık: pencereden çıkan mesajlar sabit hafızaya 🔁 olay özeti olarak işlenir; uzun sohbetlerde eski olaylar kalıcı kalır. Hafıza ekranından silebilirsin.")
+                : L10n.s("Kapalı: pencereden çıkan mesajlar yalnızca geçici özette kalır; çok uzun sohbetlerde eski olaylar kaybolabilir."));
 
         addSection(L10n.s("Bağlam davranışı"), null, null);
         addBudgetRow(prefs);
@@ -5799,6 +5815,34 @@ public class MainActivity extends Activity {
     private void captureLastPrompt(String groupId, String prompt, boolean provider) {
         prefs().edit().putString("last_prompt_" + groupId, prompt)
                 .putBoolean("last_prompt_provider_" + groupId, provider).apply();
+    }
+
+    /**
+     * v0.33.00 auto summary: summarizes messages that left the history window
+     * since the last run into one 🔁 memory entry (saf SummaryPolicy). The
+     * count is a best-effort cursor: depth changes and message deletions shift
+     * indexes, so worst case an already-summarized slice is re-summarized —
+     * harmless extra recall material, never a crash.
+     */
+    private void maybeAutoSummarize(Group group) {
+        if (!prefs().getString("auto_summary", "on").equals("on")) return;
+        List<Message> history = store.messages(group.id);
+        int recent = chatHistoryDepth(group.id);
+        int summarized = Math.min(prefs().getInt("autosum_count_" + group.id, 0), history.size());
+        List<Message> chunk = SummaryPolicy.pendingChunk(history, summarized, recent);
+        if (chunk.isEmpty()) return;
+        String entry = SummaryPolicy.entry(chunk);
+        // Codex finding (v0.33.00 review): advance the cursor only when the entry
+        // is actually stored (or genuinely empty). A corrupt memory payload makes
+        // saveMemory refuse; keeping the cursor put lets the chunk retry after
+        // the integrity issue is resolved instead of losing it silently.
+        if (!entry.isEmpty() && !store.saveMemory(group.id, ChatMemory.add(store.memory(group.id), entry))) {
+            return;
+        }
+        // Never regress the cursor: raising the depth slider shrinks the
+        // out-of-window slice, but already-summarized messages stay summarized.
+        int olderCount = history.size() - Math.max(recent, 0);
+        prefs().edit().putInt("autosum_count_" + group.id, Math.max(summarized, olderCount)).apply();
     }
 
     /** v0.32.00: scrollable monospace inspector with a copy button. */

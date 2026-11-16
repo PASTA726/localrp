@@ -1087,5 +1087,12 @@ public final class L10n {
         EN.put("Sağlayıcı turu: bu sistem promptudur; geçmiş ayrıca sohbet turları olarak gönderilir.\n\n",
                 "Provider turn: this is the system prompt; history also travels as chat turns.\n\n");
         EN.put("LocalRP prompt'u", "LocalRP prompt");
+        // v0.33.00 auto summary memory
+        EN.put("Otomatik özet hafızası: AÇIK — kapat", "Auto summary memory: ON — tap to turn off");
+        EN.put("Otomatik özet hafızası: KAPALI — aç", "Auto summary memory: OFF — tap to turn on");
+        EN.put("Açık: pencereden çıkan mesajlar sabit hafızaya 🔁 olay özeti olarak işlenir; uzun sohbetlerde eski olaylar kalıcı kalır. Hafıza ekranından silebilirsin.",
+                "On: messages leaving the history window are pinned to permanent memory as a 🔁 event summary; in long conversations old events survive. You can delete them from the memory screen.");
+        EN.put("Kapalı: pencereden çıkan mesajlar yalnızca geçici özette kalır; çok uzun sohbetlerde eski olaylar kaybolabilir.",
+                "Off: messages leaving the window stay only in the transient recap; in very long conversations old events may be lost.");
     }
 }
