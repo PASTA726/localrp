@@ -2,6 +2,34 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.36.00 — 2026-11-16 (arayüz seçenekleri)
+
+Oturum hedefi: kullanıcının isteğine göre seçebileceği kaliteli arayüz seçenekleri. versionCode **72**.
+
+## Yazı boyutu seçimi
+
+- Görünüm ekranında **Küçük (%85) / Normal (%100) / Büyük (%115) / Daha büyük (%130)** seçenekleri; seçim anında uygulanır.
+- Ölçek Android'in sp tabanlı fontScale yoluyla tüm yazılara (etiketler, balonlar, listeler) uygulanır; dp tabanlı boşluklar ve düzen sabit kalır — layout bozulmaz.
+- Saf `UiScale` sınıfı (seçenekler, clamp, NaN güvenliği) JVM testli.
+
+## 3 yeni palet
+
+- **Bordo** (koyu) — şarap kırmızısı vurgulu gece paleti.
+- **Ametist** (açık) — mor-yeşil arası denge; lavantadan farklı ton.
+- **Yıldız Tozu** (koyu) — derin lacivert + toz mavisi vurgu.
+- Tema sayısı 6 → 9. Soğuk başlatma penceresi artık paletin kendisinden koyuluk okur (`isDarkThemeId` genelleşti) — yeni temalar kayıt gerektirmez.
+
+## Kalite
+
+| Kontrol | Sonuç |
+|---|---|
+| Birim testleri | **237 / 0 hata** (3 yeni: seçenek adımları, clamp/NaN, dil-bağımsız yüzde) |
+| Codex diff incelemesi | Push sonrası doğrulanır |
+| CI | Push sonrası doğrulanır |
+| Veri şeması | Değişiklik yok — yeni pref: `ui_text_scale` |
+
+---
+
 ## v0.35.00 — 2026-11-16 (kart kırpma uyarıları)
 
 Codex öneri taramasının birincisi (kolaylık 9, kullanıcı değeri 8; denetim bulgusu [1]). Karakter kartı alanları prompt'ta kırpılıyordu — editör artık bunu gizlemiyor. versionCode **71**.

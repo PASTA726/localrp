@@ -3716,6 +3716,25 @@ public class MainActivity extends Activity {
         setPage(L10n.s("Görünüm"), L10n.s("Uygulamanın temasını seç"), "settings");
         addInfoCard("Tema sistemi", L10n.s("Her tema kartları, sohbet balonlarını, gezinmeyi ve sistem çubuklarını tek seferde boyar."), "GUI");
         addBody(L10n.s("Seçim anında uygulanır; model bağlamı etkilenmez."));
+        // v0.36.00: user-selectable text size — one scale for every sp-based text
+        // (labels, balloons, lists); dp spacing keeps the layout stable.
+        addSection(L10n.s("Yazı boyutu"), null, null);
+        float currentScale = UiScale.clamp(prefs().getFloat("ui_text_scale", UiScale.DEFAULT));
+        String[] scaleLabels = {L10n.s("Küçük (%85)"), L10n.s("Normal (%100)"), L10n.s("Büyük (%115)"), L10n.s("Daha büyük (%130)")};
+        for (int i = 0; i < UiScale.CHOICES.length; i++) {
+            final String scaleLabel = scaleLabels[i];
+            final float scaleValue = UiScale.CHOICES[i];
+            final boolean chosen = Math.abs(currentScale - scaleValue) < 0.001f;
+            addSecondary((chosen ? "✓  " : "") + scaleLabel, v -> {
+                prefs().edit().putFloat("ui_text_scale", scaleValue).apply();
+                Design.refresh(this);
+                Design.applyBars(this);
+                resetPageAnchor();
+                Toast.makeText(this, scaleLabel + L10n.s(" uygulandı."), Toast.LENGTH_SHORT).show();
+                showAppearance();
+            });
+        }
+        addBody(L10n.s("Seçim tüm yazılara uygulanır; boşluklar ve düzen sabit kalır."));
         for (AppTheme candidate : AppTheme.ALL) {
             final boolean selected = Design.theme.id.equals(candidate.id);
             LinearLayout card = makeCard();
@@ -6578,7 +6597,9 @@ public class MainActivity extends Activity {
 
     /** Dark palettes get the dark cold-start window theme (see onCreate). */
     private boolean isDarkThemeId(String themeId) {
-        return "golge".equals(themeId) || "deniz-gecesi".equals(themeId) || "gun-batimi".equals(themeId);
+        // v0.36.00: derive from the palette itself, so newly added dark themes
+        // need no registration here.
+        return AppTheme.byId(themeId).dark;
     }
 
     /** Forces the next setPage call into a full window rebuild (theme / language changes). */

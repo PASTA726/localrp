@@ -17,6 +17,25 @@ public final class Design {
     public static void refresh(Activity activity) {
         SharedPreferences prefs = activity.getSharedPreferences("localrp", Activity.MODE_PRIVATE);
         theme = AppTheme.byId(prefs.getString("ui_theme", "lavanta"));
+        applyTextScale(activity);
+    }
+
+    /**
+     * v0.36.00: user-selectable text scale (UiScale). Rides fontScale so every
+     * sp-based text size scales together; dp spacing keeps the layout stable.
+     * Applied on every Design.refresh (cold start + palette/appearance changes).
+     */
+    public static void applyTextScale(Activity activity) {
+        SharedPreferences prefs = activity.getSharedPreferences("localrp", Activity.MODE_PRIVATE);
+        float scale = UiScale.clamp(prefs.getFloat("ui_text_scale", UiScale.DEFAULT));
+        try {
+            android.content.res.Resources res = activity.getResources();
+            android.content.res.Configuration config = new android.content.res.Configuration(res.getConfiguration());
+            config.fontScale = scale;
+            res.updateConfiguration(config, res.getDisplayMetrics());
+        } catch (Exception ignored) {
+            // Resources unavailable during teardown; the next onCreate applies the scale.
+        }
     }
 
     /** Applies the theme to the system bars so the chrome follows the screen palette. */
