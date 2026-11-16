@@ -5832,8 +5832,12 @@ public class MainActivity extends Activity {
         List<Message> chunk = SummaryPolicy.pendingChunk(history, summarized, recent);
         if (chunk.isEmpty()) return;
         String entry = SummaryPolicy.entry(chunk);
-        if (!entry.isEmpty()) {
-            store.saveMemory(group.id, ChatMemory.add(store.memory(group.id), entry));
+        // Codex finding (v0.33.00 review): advance the cursor only when the entry
+        // is actually stored (or genuinely empty). A corrupt memory payload makes
+        // saveMemory refuse; keeping the cursor put lets the chunk retry after
+        // the integrity issue is resolved instead of losing it silently.
+        if (!entry.isEmpty() && !store.saveMemory(group.id, ChatMemory.add(store.memory(group.id), entry))) {
+            return;
         }
         // Never regress the cursor: raising the depth slider shrinks the
         // out-of-window slice, but already-summarized messages stay summarized.
