@@ -2,6 +2,44 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.32.00 — 2026-11-16 (Prompt müfettişi · danışman konsensüsü)
+
+"Diğer alt ajanlardan öneriler topla ve ortalamasını al" istemi üzerine dört bağımsız danışmandan (3 OpenCode subagent + Codex) öneri toplandı. Ortalama sıralama: cihaz kabul turu 1. (manuel — aşağıdaki kontrol listesiyle desteklendi), **Prompt müfettişi en yüksek puanlı uygulanabilir kod partisi (≈8,3/10)** — bu partide uygulandı. Bekleyen adaylar: otomatik özet hafızası (9/10, tek oy), mesaj düzenle+yeniden üret (7/10), JNI çökme guard'ı (tek oy), sohbet içi arama (~2 oy), görsel yenileme (5/10, ertelendi).
+
+## Prompt müfettişi
+
+Bir mesaja uzun basınca artık **"🔍 Prompt'u gör"** var (yanıt üretilmiş sohbetlerde):
+
+- **Ne gösterir:** bu sohbetin **en son turunda motorun/sağlayıcının gerçekten aldığı prompt** — think bloğu, dünya kitabı isabetleri, hafıza anları, web bağlamı, geçmiş dökümü, kurallar dahil tüm bölümler; monospace, kaydırılabilir, karakter sayısı başlıkta, tek dokunuşla kopyalanır.
+- **Nasıl çalışır:** üretim başlarken gerçek monte edilmiş prompt sohbet-başı tek slota kaydedilir (`last_prompt_<id>`); yerel motor için gönderilen metin, sağlayıcı için sistem promptu (geçmişin ayrıca sohbet turları olarak gönderildiği açıklama satırıyla).
+- Kayıt yoksa dürüst uyarı: "bir yanıt üretince kaydedilir". Yeni İngilizce çeviriler (v0.31'in düşünme derinliği dizeleri dahil) eklendi.
+
+## Kalite
+
+| Kontrol | Sonuç |
+|---|---|
+| Birim testleri | **224 / 0 hata** (UI özelliği; prompt mantığı zaten saf sınıfta testli) |
+| Codex diff incelemesi | Push sonrası doğrulanır |
+| CI | Push sonrası doğrulanır |
+| Veri şeması | Değişiklik yok — yedekler uyumlu (yeni anahtarlar yedeğe girmez, cihaz içi) |
+
+## Reeder S71 cihaz kabul turu — 10 maddelik kontrol listesi
+
+Danışman konsensüsünün 1 numaralı öğesi; telefonunda elle yapılacak:
+
+1. **Sağlayıcı ekranı açılıyor** — Ayarlar → Çevrimiçi sağlayıcı (v0.31.01 yaması doğrulaması)
+2. **Sağlayıcı akışı** — adres + model + anahtar → "Bağlantıyı test et" → başarılı mesajı
+3. **Yerel model turu** — model yükle → bir mesaj yaz → yanıt gelsin → "Dur" düğmesi
+4. **Think modu** — Ayarlar → Düşünme modu Kısa/Derin geçişi; sohbet profilinden sohbet-başı kapatma
+5. **Prompt müfettişi** — bir mesaja uzun bas → 🔍 Prompt'u gör → kopyala (bu partinin kabulü)
+6. **🌐 Web araması** — ağ açıkken bir sonuç seç → sonraki yanıt sonucu kullanıyor mu
+7. **Grup RP + dünya kitabı** — 2 karakterli grup, anahtar kelime tetiklemesi
+8. **TTS/STT** — sesli oku + dikte dener
+9. **Yedek** — Yedek al → (istersen) sil → Geri yükle
+10. **Uzun oturum** — 20+ mesajlık sohbette konuşmacı karışması/konu kayması gözlemi (inspector ile teşhis edilebilir)
+
+---
+
 ## v0.31.02 — 2026-11-15 (hata avı turu: üç denetim + adversarial test)
 
 "Try find bugs" istemi üzerine üç bağımsız Codex denetimi (OpenCode subagent kotası dolduğu için Codex CLI'ya taşındı) ve adversarial birim taraması yapıldı. **Yeni kullanıcıya dokunan hata bulunamadı**; tek isapet ulaşılamaz bir yol ve tek satır savunma guard'ı ile kapatıldı.
