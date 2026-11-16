@@ -2274,6 +2274,8 @@ public class MainActivity extends Activity {
                 prompt = buildRoleplayPrompt(group, speaker, continuation, steer, webContext);
             }
             contextChars.put(group.id, contextUsed + prompt.length());
+            // v0.32.00 prompt inspector: keep the exact prompt this turn received.
+            captureLastPrompt(group.id, prompt, false);
             LocalAiRuntime.INSTANCE.generate(group.id, prompt, maxTokens, pipe(group, speaker, startedAt, thisGeneration));
         }
         if (providerTurns != null) {
@@ -5786,6 +5788,54 @@ public class MainActivity extends Activity {
         return prefs().getString("think_mode", "on").equals("on");
     }
 
+    /**
+     * v0.32.00 prompt inspector: the exact prompt of this chat's latest turn rides
+     * in a single per-chat slot. Long-pressing any message offers "Prompt'u gör";
+     * the inspector shows what the engine/provider actually received, so prompt
+     * features (think block, lorebook hits, web context, history depth) become
+     * visible instead of assumed. Not cleaned on chat delete — orphan prefs stay
+     * valid for undo-restore, like profile and next_speaker keys.
+     */
+    private void captureLastPrompt(String groupId, String prompt, boolean provider) {
+        prefs().edit().putString("last_prompt_" + groupId, prompt)
+                .putBoolean("last_prompt_provider_" + groupId, provider).apply();
+    }
+
+    /** v0.32.00: scrollable monospace inspector with a copy button. */
+    private void showPromptInspector(String chatId) {
+        SharedPreferences prefs = prefs();
+        String prompt = prefs.getString("last_prompt_" + chatId, null);
+        if (prompt == null) {
+            Toast.makeText(this, L10n.s(L10n.s("Bu tur için prompt kaydı yok — bir yanıt üretince kaydedilir.")), Toast.LENGTH_LONG).show();
+            return;
+        }
+        boolean provider = prefs.getBoolean("last_prompt_provider_" + chatId, false);
+        String note = provider
+                ? L10n.s(L10n.s("Sağlayıcı turu: bu sistem promptudur; geçmiş ayrıca sohbet turları olarak gönderilir.\n\n"))
+                : L10n.s(L10n.s("Bu turda motorun aldığı prompt:\n\n"));
+        TextView body = new TextView(this);
+        body.setText(note + prompt);
+        body.setTextSize(11);
+        body.setTypeface(android.graphics.Typeface.MONOSPACE);
+        body.setTextColor(Design.text());
+        body.setTextIsSelectable(true);
+        body.setPadding(dp(16), dp(12), dp(16), dp(12));
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(body);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(L10n.s(L10n.s("Prompt müfettişi")) + L10n.s(" · ") + prompt.length() + L10n.s(" karakter"))
+                .setView(scroll)
+                .setPositiveButton(L10n.s(L10n.s("Kopyala")), (d, w) -> copyTextToClipboard(L10n.s(L10n.s("LocalRP prompt'u")), prompt))
+                .setNegativeButton(L10n.s(L10n.s("Vazgeç")), null).create();
+        tintDialog(dialog);
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    (int) (getResources().getDisplayMetrics().heightPixels * 0.7));
+        }
+    }
+
     /** v0.31.00: per-chat think override; unset pref = follow the global switch. */
     private boolean chatThinkEnabled(String groupId) {
         String override = prefs().getString("profile_think_" + groupId, null);
@@ -5828,8 +5878,11 @@ public class MainActivity extends Activity {
         } else {
             finalUserText = continuationPrompt;
         }
+        // v0.32.00 prompt inspector: capture the exact system prompt this turn ships.
+        String systemPrompt = buildRoleplayPrompt(group, speaker, continuation, false, 0, steer, webContext);
+        captureLastPrompt(group.id, systemPrompt, true);
         return OpenAiCompat.assembleTurns(
-                buildRoleplayPrompt(group, speaker, continuation, false, 0, steer, webContext), history, finalUserText, providerTurnDepth(), trailingImageDataUrl);
+                systemPrompt, history, finalUserText, providerTurnDepth(), trailingImageDataUrl);
     }
 
     /** v0.24.00: images ride to the provider unless the user switched them off. */
@@ -7523,6 +7576,14 @@ public class MainActivity extends Activity {
         if (tts != null && tts.isSpeaking()) {
             labels.add(L10n.s("⏹  Okumayı durdur"));
             actions.add(this::stopSpeech);
+        }
+        // v0.32.00 prompt inspector: available for every message of a chat that
+        // already has a captured turn prompt (the menu is modal, so the chat id
+        // is captured now — same guard as the memory/stash actions above).
+        String inspectorChatId = visibleChatId;
+        if (inspectorChatId != null && prefs().getString("last_prompt_" + inspectorChatId, null) != null) {
+            labels.add(L10n.s("🔍  Prompt'u gör"));
+            actions.add(() -> showPromptInspector(inspectorChatId));
         }
         if (!message.user && index == chatHistory.size() - 1 && !isGeneratingHere()) {
             labels.add(L10n.s(L10n.s("Yeniden üret")));

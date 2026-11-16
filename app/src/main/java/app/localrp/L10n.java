@@ -1066,5 +1066,26 @@ public final class L10n {
         EN.put("1. Karakter kartı ve RP ayarları (ad, kişilik, talimat) — 2. Düşünme modu (konu çapası, aşağıda) — 3. Sahne hafızası: geçmiş mesaj sayısı ve bütçe — 4. Hafızaya eklenen önemli olaylar — 5. Dünya kitabı: anahtar kelime eşleşirse — 6. Örnekleyici (sağlayıcı modda). Ayarları burada düzenle.",
                 "1. Character card and RP settings (name, personality, instructions) — 2. Think mode (topic anchor, below) — 3. Scene memory: history message count and budget — 4. Important events added to memory — 5. Lorebook: when a keyword matches — 6. Sampler (provider mode). Tune them here.");
         EN.put("Rehber", "Guide");
+        // v0.31.00 think second round + v0.32.00 prompt inspector
+        EN.put("AÇIK", "ON");
+        EN.put("KAPALI", "OFF");
+        EN.put("Bu sohbette düşünme modunu kapat", "Turn think mode off for this conversation");
+        EN.put("Bu sohbette düşünme modunu aç", "Turn think mode on for this conversation");
+        EN.put("Düşünme modunu genel ayara döndür", "Follow the global think mode again");
+        EN.put("Düşünme derinliği: KISA — model kısa bir konu çapası yazar; hızlı başlar.",
+                "Think depth: SHORT — the model writes a brief topic anchor; turns start fast.");
+        EN.put("Düşünme derinliği: DERİN — model adım adım, daha uzun bir değerlendirme yazar; konu tutmayı güçlendirir ama yanıtı yavaşlatır.",
+                "Think depth: DEEP — the model writes a longer, step-by-step evaluation; stronger topic anchoring, slower turn starts.");
+        EN.put("Düşünme derinliği: DERİN — kısa bloğa döndür", "Think depth: DEEP — switch back to a short block");
+        EN.put("Düşünme derinliği: KISA — derin bloğa geç", "Think depth: SHORT — switch to a deep block");
+        EN.put("🔍  Prompt'u gör", "🔍  View the prompt");
+        EN.put("Prompt müfettişi", "Prompt inspector");
+        EN.put(" karakter", " characters");
+        EN.put("Bu tur için prompt kaydı yok — bir yanıt üretince kaydedilir.",
+                "No prompt captured for this turn — it is saved once a reply is generated.");
+        EN.put("Bu turda motorun aldığı prompt:\n\n", "The exact prompt the engine received this turn:\n\n");
+        EN.put("Sağlayıcı turu: bu sistem promptudur; geçmiş ayrıca sohbet turları olarak gönderilir.\n\n",
+                "Provider turn: this is the system prompt; history also travels as chat turns.\n\n");
+        EN.put("LocalRP prompt'u", "LocalRP prompt");
     }
 }
