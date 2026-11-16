@@ -13,6 +13,14 @@ final class CharacterFieldLimits {
     /** Character display name (prompt clip + cast lists). */
     static final int NAME = 80;
 
+    /**
+     * Codex finding (v0.35.00): other characters' names inside the shared-cast
+     * line clip tighter (a 280-char budget covers the whole list). The name
+     * counter advertises {@link #NAME} (the speaker clip); this constant keeps
+     * the cast path from hiding a second literal.
+     */
+    static final int CAST_NAME = 60;
+
     /** Character description ("Kısa tanım"). */
     static final int DESCRIPTION = 700;
 

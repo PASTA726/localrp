@@ -16,6 +16,7 @@ public class CharacterFieldLimitsTest {
         // These must stay byte-identical to what RoleplayPrompt clips at; the
         // editor counters would otherwise advertise a different truncation point.
         assertEquals(80, CharacterFieldLimits.NAME);
+        assertEquals(60, CharacterFieldLimits.CAST_NAME);
         assertEquals(700, CharacterFieldLimits.DESCRIPTION);
         assertEquals(900, CharacterFieldLimits.PERSONALITY);
         assertEquals(900, CharacterFieldLimits.INSTRUCTIONS);

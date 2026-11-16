@@ -281,7 +281,7 @@ final class RoleplayPrompt {
             for (String id : cast) {
                 CharacterProfile character = castLookup.apply(id);
                 if (character == null || character.id.equals(speaker.id)) continue;
-                String name = clip(character.name.trim(), 60);
+                String name = clip(character.name.trim(), CharacterFieldLimits.CAST_NAME);
                 if (name.isEmpty() || otherBudget <= name.length()) continue;
                 if (otherNames.length() > 0) { otherNames.append(", "); otherBudget -= 2; }
                 otherNames.append(name);
