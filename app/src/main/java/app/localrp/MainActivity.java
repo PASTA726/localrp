@@ -15,8 +15,10 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.text.Editable;
 import android.text.SpannableString;
 import android.text.Spanned;
+import android.text.TextWatcher;
 import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
@@ -811,7 +813,9 @@ public class MainActivity extends Activity {
         EditText nameField = field(L10n.s(L10n.s("Adın (boş bırakılırsa \"Sen\" sayılır)")), name, 1);
         nameField.setSingleLine(true);
         personaNameField = nameField;
+        attachLimitCounter(nameField, CharacterFieldLimits.PERSONA_NAME);
         EditText descriptionField = field(L10n.s(L10n.s("Kendini tanıt (davranışını ve sesini etkiler)")), description, 3);
+        attachLimitCounter(descriptionField, CharacterFieldLimits.PERSONA_DESCRIPTION);
         addBody(L10n.s(L10n.s("RP sohbetlerinde mesajların \"Sen\" etiketiyle kalır; model sana \"Kullanıcı kimliği\" bloğunda burada yazdığın bilgilerle davranır.")));
         addPrimary(L10n.s(L10n.s("Profil fotoğrafı seç")), v -> pickAvatar(true));
         if ((personaAvatarDraft != null && !personaAvatarDraft.isEmpty())
@@ -882,6 +886,11 @@ public class MainActivity extends Activity {
                 return;
             }
             if (replacedAvatar != null) deleteAvatarFile(replacedAvatar);
+            // v0.35.00 (audit 1): persona identity clips at 80/400 — say so once.
+            if (CharacterFieldLimits.over(CharacterFieldLimits.PERSONA_NAME, savedName)
+                    || CharacterFieldLimits.over(CharacterFieldLimits.PERSONA_DESCRIPTION, savedDescription)) {
+                Toast.makeText(this, L10n.s(L10n.s("Bazı alanlar prompt sınırını aşıyor; prompta kırpılarak girer.")), Toast.LENGTH_LONG).show();
+            }
             Toast.makeText(this, L10n.s(L10n.s("Kullanıcı kişiliği kaydedildi.")), Toast.LENGTH_SHORT).show();
             showPersonas();
         });
@@ -998,10 +1007,15 @@ public class MainActivity extends Activity {
         setPage(editing ? L10n.s("Karakteri düzenle") : "Yeni karakter", L10n.s("Bilgiler bu telefonda saklanır"), "characters");
         EditText name = field(L10n.s("Karakter adı"), editing ? existing.name : "");
         name.setSingleLine(true);
+        attachLimitCounter(name, CharacterFieldLimits.NAME);
         EditText description = field(L10n.s("Kısa tanım"), editing ? existing.description : "", 3);
+        attachLimitCounter(description, CharacterFieldLimits.DESCRIPTION);
         EditText personality = field(L10n.s("Kişilik ve konuşma tarzı"), editing ? existing.personality : "", 3);
+        attachLimitCounter(personality, CharacterFieldLimits.PERSONALITY);
         EditText instructions = field(L10n.s("Karakter talimatları"), editing ? existing.instructions : "", 4);
+        attachLimitCounter(instructions, CharacterFieldLimits.INSTRUCTIONS);
         EditText examples = field(L10n.s("Örnek diyalog"), editing ? existing.examples : "", 3);
+        attachLimitCounter(examples, CharacterFieldLimits.EXAMPLES);
         // v0.25.00 sampler: per-character provider temperature override; blank = follow.
         addSection(L10n.s("Üretim ayarı (sağlayıcı)"), null, null);
         addBody(L10n.s("Bu karakter konuşurken sağlayıcı sıcaklığı: boş bırakılırsa sohbet profili/genel ayar izlenir. Yerel motor bu ayarı desteklemez."));
@@ -1052,6 +1066,16 @@ public class MainActivity extends Activity {
             if (!store.saveCharacter(character)) {
                 Toast.makeText(this, L10n.s(L10n.s("Değişiklik kaydedilemedi: karakter verisi okunamıyor.")), Toast.LENGTH_LONG).show();
                 return;
+            }
+            // v0.35.00 (audit 1): the counters warned live; save stays allowed but
+            // never lies — say once that a prompt clip applies.
+            boolean anyOver = CharacterFieldLimits.over(CharacterFieldLimits.NAME, character.name)
+                    || CharacterFieldLimits.over(CharacterFieldLimits.DESCRIPTION, character.description)
+                    || CharacterFieldLimits.over(CharacterFieldLimits.PERSONALITY, character.personality)
+                    || CharacterFieldLimits.over(CharacterFieldLimits.INSTRUCTIONS, character.instructions)
+                    || CharacterFieldLimits.over(CharacterFieldLimits.EXAMPLES, character.examples);
+            if (anyOver) {
+                Toast.makeText(this, L10n.s(L10n.s("Bazı alanlar prompt sınırını aşıyor; prompta kırpılarak girer.")), Toast.LENGTH_LONG).show();
             }
             if (replacedAvatar != null) deleteAvatarFile(replacedAvatar);
             // v0.34.00 (audit 13): a saved card must reach open conversations. The
@@ -7217,9 +7241,32 @@ public class MainActivity extends Activity {
         button.setBackground(rounded(Design.accent(), Design.accent(), 20));
     }
 
+    /**
+     * v0.35.00 (audit 1): live "n/limit karakter" counter under a prompt-clipped
+     * editor field. Inside the limit it is a quiet muted line; over the limit it
+     * turns danger-colored and says the prompt will clip — no silent truncation.
+     */
+    private void attachLimitCounter(EditText input, int limit) {
+        TextView counter = label("", 12, Design.muted());
+        counter.setPadding(0, 0, 0, dp(10));
+        content.addView(counter, fullWidth());
+        Runnable update = () -> {
+            String text = input.getText() == null ? "" : input.getText().toString();
+            boolean overLimit = CharacterFieldLimits.over(limit, text);
+            counter.setText(CharacterFieldLimits.counter(limit, text) + " " + L10n.s("karakter")
+                    + (overLimit ? " · " + L10n.s("Prompta kırpılır") : ""));
+            counter.setTextColor(overLimit ? Design.danger() : Design.muted());
+        };
+        input.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { update.run(); }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+        update.run();
+    }
+
     private EditText field(String hint, String value) { return field(hint, value, 1); }
-    private EditText field(String hint, String value, int lines) {
-        EditText input = new EditText(this);
+    private EditText field(String hint, String value, int lines) {        EditText input = new EditText(this);
         input.setHint(L10n.s(hint));
         input.setText(value);
         input.setTextSize(15);

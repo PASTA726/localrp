@@ -2,6 +2,28 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.35.00 — 2026-11-16 (kart kırpma uyarıları)
+
+Codex öneri taramasının birincisi (kolaylık 9, kullanıcı değeri 8; denetim bulgusu [1]). Karakter kartı alanları prompt'ta kırpılıyordu — editör artık bunu gizlemiyor. versionCode **71**.
+
+## Kart kırpma uyarıları
+
+- **Tek kaynak:** `CharacterFieldLimits` — prompt kırpma sınırları (ad 80, tanım 700, kişilik 900, talimat 900, örnek diyalog 1200; kişilik adı 80/tanım 400) artık hem `RoleplayPrompt` hem editör sayaçları tarafından paylaşılıyor.
+- **Canlı sayaç:** karakter editöründe her alanın altında "n/limit karakter" sayacı; sınırı aşınca kırmızıya döner ve "Prompta kırpılır" yazar. Kişilik (kullanıcı kimliği) editöründe de aynısı (80/400).
+- **Kayıtta dürüstlük:** aşan alan varsa kayıt engellenmez ama "Bazı alanlar prompt sınırını aşıyor; prompta kırpılarak girer" toast'ı gösterilir.
+- **Testler:** 4 yeni (sınır sabitleri, aşım algılama, dil-bağımsız sayaç, uçtan uca kırpma doğrulaması).
+
+## Kalite
+
+| Kontrol | Sonuç |
+|---|---|
+| Birim testleri | **234 / 0 hata** (4 yeni) |
+| Codex diff incelemesi | Push sonrası doğrulanır |
+| CI | Push sonrası doğrulanır |
+| Veri şeması | Değişiklik yok |
+
+---
+
 ## v0.34.00 — 2026-11-16 (acımasız kullanıcı denetimi yamaları)
 
 DeepSeek "acımasız günlük kullanıcı" denetimi (28 bulgu) doğrulandı; 13 gerçek bulgu bu partide yamalandı. versionCode **70**.

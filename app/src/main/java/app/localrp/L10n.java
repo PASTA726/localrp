@@ -1104,5 +1104,10 @@ public final class L10n {
                 "Character updated; the context of affected conversations was refreshed.");
         EN.put("Yanıt cümle ortasında bitti — token sınırı dolmuş olabilir; AI ayarlarından token bütçesini artırabilirsin.",
                 "The reply ended mid-sentence — the token limit was likely hit; you can raise the token budget in AI settings.");
+        // v0.35.00 field-limit counters (audit 1)
+        EN.put("karakter", "characters");
+        EN.put("Prompta kırpılır", "clipped for the prompt");
+        EN.put("Bazı alanlar prompt sınırını aşıyor; prompta kırpılarak girer.",
+                "Some fields exceed the prompt limits; they are clipped when entering the prompt.");
     }
 }

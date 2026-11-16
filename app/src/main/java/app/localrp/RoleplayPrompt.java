@@ -151,7 +151,7 @@ final class RoleplayPrompt {
         // (Group.characterIds is always initialized) but the guard costs nothing
         // and keeps the pure builder total for every caller.
         List<String> cast = castIds == null ? new ArrayList<>() : castIds;
-        String speakerName = clip(speaker.name, 80);
+        String speakerName = clip(speaker.name, CharacterFieldLimits.NAME);
         Message last = history.isEmpty() ? null : history.get(history.size() - 1);
 
         if (aiInstructions != null && !aiInstructions.isEmpty()) {
@@ -203,10 +203,12 @@ final class RoleplayPrompt {
                     prompt.append(Lorebook.assemble(triggered, Lorebook.BLOCK_CHAR_BUDGET));
                 }
             }
-            String description = clip(speaker.description, 700);
-            String personality = clip(speaker.personality, 900);
-            String instructions = clip(speaker.instructions, 900);
-            String examples = clip(speaker.examples, 1200);
+            // v0.35.00: limits come from CharacterFieldLimits — the editor's live
+            // counters show the exact values the prompt clips at.
+            String description = clip(speaker.description, CharacterFieldLimits.DESCRIPTION);
+            String personality = clip(speaker.personality, CharacterFieldLimits.PERSONALITY);
+            String instructions = clip(speaker.instructions, CharacterFieldLimits.INSTRUCTIONS);
+            String examples = clip(speaker.examples, CharacterFieldLimits.EXAMPLES);
             if (!description.isEmpty())
                 prompt.append(english ? "Character description: " : "Karakter tanımı: ").append(description).append("\n");
             if (!personality.isEmpty())
@@ -357,8 +359,8 @@ final class RoleplayPrompt {
     /** User identity block: v0.14.0 feature; omitted entirely when no persona is set. */
     private static void appendPersona(StringBuilder prompt, String[] persona, boolean english) {
         if (persona == null) return;
-        String name = clip(persona.length > 0 ? persona[0] : "", 80);
-        String description = clip(persona.length > 1 ? persona[1] : "", 400);
+        String name = clip(persona.length > 0 ? persona[0] : "", CharacterFieldLimits.PERSONA_NAME);
+        String description = clip(persona.length > 1 ? persona[1] : "", CharacterFieldLimits.PERSONA_DESCRIPTION);
         prompt.append(english ? "User identity: " : "Kullanıcı kimliği: ").append(name.isEmpty() ? (english ? "You" : "Sen") : name);
         if (!description.isEmpty()) prompt.append(" — ").append(oneLine(description, 400));
         prompt.append("\n");
