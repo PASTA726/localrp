@@ -24,9 +24,16 @@ Oturum hedefi: kullanıcının isteğine göre seçebileceği kaliteli arayüz s
 | Kontrol | Sonuç |
 |---|---|
 | Birim testleri | **237 / 0 hata** (3 yeni: seçenek adımları, clamp/NaN, dil-bağımsız yüzde) |
-| Codex diff incelemesi | Push sonrası doğrulanır |
+| Dış inceleme | DeepSeek alt ajanı — **"Kritik yok"** + 6 bulgudan 5'i yamalandı (aşağıda) |
 | CI | Push sonrası doğrulanır |
 | Veri şeması | Değişiklik yok — yeni pref: `ui_text_scale` |
+
+## İnceleme yamaları (DeepSeek bulguları)
+
+- **[B1-orta] Sistem yazı boyutu artık korunur:** hiç seçim yapılmamışsa uygulamada telefonun erişilebilirlik yazı boyutu izlenir; sessiz %100'e düşürme kaldırıldı. Görünüm ekranına **"Sistem (telefon ayarı)"** seçeneği eklendi.
+- **[B2-orta] Döndürme/çoklu pencere sonrası ölçek korunur:** `onConfigurationChanged` ölçeği yeniden uygular ve görünür sohbeti yeniden kurar.
+- **[B4-düşük] Kontrast düzeltildi:** Bordo accent `#D96C7B→#B04E5E` (3.04→4.73), Ametist accent `#9A5BD0→#8447BE` (4.39→5.79) — WCAG AA.
+- **[B3-düşük] EN modda toast dili** düzeltildi; **[B5-düşük] paralel dizi** yerine etiketler `UiScale.percent`'ten üretilir (gelecek seçenek ekleme çökme riski kapandı).
 
 ---
 

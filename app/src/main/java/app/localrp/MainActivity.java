@@ -3718,13 +3718,24 @@ public class MainActivity extends Activity {
         addBody(L10n.s("Seçim anında uygulanır; model bağlamı etkilenmez."));
         // v0.36.00: user-selectable text size — one scale for every sp-based text
         // (labels, balloons, lists); dp spacing keeps the layout stable.
+        // Review B1: a "Sistem" row follows the phone's accessibility setting.
+        // Review B5: labels derive from UiScale.percent — no parallel magic arrays.
         addSection(L10n.s("Yazı boyutu"), null, null);
-        float currentScale = UiScale.clamp(prefs().getFloat("ui_text_scale", UiScale.DEFAULT));
-        String[] scaleLabels = {L10n.s("Küçük (%85)"), L10n.s("Normal (%100)"), L10n.s("Büyük (%115)"), L10n.s("Daha büyük (%130)")};
-        for (int i = 0; i < UiScale.CHOICES.length; i++) {
-            final String scaleLabel = scaleLabels[i];
+        boolean systemScale = !prefs().contains("ui_text_scale");
+        addSecondary(systemScale ? "✓  " + L10n.s("Sistem (telefon ayarı)") : L10n.s("Sistem (telefon ayarı)"), v -> {
+            prefs().edit().remove("ui_text_scale").apply();
+            Design.refresh(this);
+            Design.applyBars(this);
+            resetPageAnchor();
+            Toast.makeText(this, L10n.s("Sistem yazı boyutu izleniyor."), Toast.LENGTH_SHORT).show();
+            showAppearance();
+        });
+        String[] scaleNames = {L10n.s("Küçük"), L10n.s("Normal"), L10n.s("Büyük"), L10n.s("Daha büyük")};
+        for (int i = 0; i < UiScale.CHOICES.length && i < scaleNames.length; i++) {
             final float scaleValue = UiScale.CHOICES[i];
-            final boolean chosen = Math.abs(currentScale - scaleValue) < 0.001f;
+            final String scaleLabel = scaleNames[i] + " (%" + UiScale.percent(scaleValue) + ")";
+            final boolean chosen = !systemScale
+                    && Math.abs(prefs().getFloat("ui_text_scale", UiScale.DEFAULT) - scaleValue) < 0.001f;
             addSecondary((chosen ? "✓  " : "") + scaleLabel, v -> {
                 prefs().edit().putFloat("ui_text_scale", scaleValue).apply();
                 Design.refresh(this);
@@ -6328,6 +6339,21 @@ public class MainActivity extends Activity {
     @Override public void onBackPressed() {
         if (backAction != null) backAction.run();
         else super.onBackPressed();
+    }
+
+    /**
+     * v0.36.00 (review B2): the manifest opts out of activity recreation for
+     * rotation / multi-window, so the process resources revert to the system
+     * scale on such changes — re-apply the user scale and rebuild the visible
+     * chat; other pages re-render on their next navigation.
+     */
+    @Override public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        Design.refresh(this);
+        Design.applyBars(this);
+        resetPageAnchor();
+        Group visible = visibleChatId == null ? null : store.group(visibleChatId);
+        if (visible != null) showChat(visible);
     }
 
     /** v0.22.00: lazily creates the TTS engine; initialization is async. */

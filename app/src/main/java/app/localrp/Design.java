@@ -24,10 +24,24 @@ public final class Design {
      * v0.36.00: user-selectable text scale (UiScale). Rides fontScale so every
      * sp-based text size scales together; dp spacing keeps the layout stable.
      * Applied on every Design.refresh (cold start + palette/appearance changes).
+     * Review B1: when the user never chose a scale, the SYSTEM font scale is
+     * preserved instead of silently clobbering it with 1.0.
      */
     public static void applyTextScale(Activity activity) {
         SharedPreferences prefs = activity.getSharedPreferences("localrp", Activity.MODE_PRIVATE);
-        float scale = UiScale.clamp(prefs.getFloat("ui_text_scale", UiScale.DEFAULT));
+        float scale;
+        if (prefs.contains("ui_text_scale")) {
+            scale = UiScale.clamp(prefs.getFloat("ui_text_scale", UiScale.DEFAULT));
+        } else {
+            // No explicit choice: follow the phone's accessibility font setting.
+            try {
+                scale = UiScale.clamp(android.provider.Settings.System.getFloat(
+                        activity.getContentResolver(),
+                        android.provider.Settings.System.FONT_SCALE, UiScale.DEFAULT));
+            } catch (Exception fallback) {
+                scale = UiScale.DEFAULT;
+            }
+        }
         try {
             android.content.res.Resources res = activity.getResources();
             android.content.res.Configuration config = new android.content.res.Configuration(res.getConfiguration());
