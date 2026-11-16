@@ -1109,5 +1109,16 @@ public final class L10n {
         EN.put("Prompta kırpılır", "clipped for the prompt");
         EN.put("Bazı alanlar prompt sınırını aşıyor; prompta kırpılarak girer.",
                 "Some fields exceed the prompt limits; they are clipped when entering the prompt.");
+        // v0.36.00 appearance options (text scale)
+        EN.put("Yazı boyutu", "Text size");
+        EN.put("Sistem (telefon ayarı)", "System (phone setting)");
+        EN.put("Sistem yazı boyutu izleniyor.", "Following the system text size.");
+        EN.put("Küçük", "Small");
+        EN.put("Normal", "Normal");
+        EN.put("Büyük", "Large");
+        EN.put("Daha büyük", "Larger");
+        EN.put(" uygulandı.", " applied.");
+        EN.put("Seçim tüm yazılara uygulanır; boşluklar ve düzen sabit kalır.",
+                "The choice applies to all text; spacing and layout stay unchanged.");
     }
 }

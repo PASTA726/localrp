@@ -2,6 +2,41 @@
 
 All notable LocalRP changes. The app targets Turkish-speaking users; entries are bilingual when a change matters for English readers.
 
+## v0.36.00 — 2026-11-16 (arayüz seçenekleri)
+
+Oturum hedefi: kullanıcının isteğine göre seçebileceği kaliteli arayüz seçenekleri. versionCode **72**.
+
+## Yazı boyutu seçimi
+
+- Görünüm ekranında **Küçük (%85) / Normal (%100) / Büyük (%115) / Daha büyük (%130)** seçenekleri; seçim anında uygulanır.
+- Ölçek Android'in sp tabanlı fontScale yoluyla tüm yazılara (etiketler, balonlar, listeler) uygulanır; dp tabanlı boşluklar ve düzen sabit kalır — layout bozulmaz.
+- Saf `UiScale` sınıfı (seçenekler, clamp, NaN güvenliği) JVM testli.
+
+## 3 yeni palet
+
+- **Bordo** (koyu) — şarap kırmızısı vurgulu gece paleti.
+- **Ametist** (açık) — mor-yeşil arası denge; lavantadan farklı ton.
+- **Yıldız Tozu** (koyu) — derin lacivert + toz mavisi vurgu.
+- Tema sayısı 6 → 9. Soğuk başlatma penceresi artık paletin kendisinden koyuluk okur (`isDarkThemeId` genelleşti) — yeni temalar kayıt gerektirmez.
+
+## Kalite
+
+| Kontrol | Sonuç |
+|---|---|
+| Birim testleri | **237 / 0 hata** (3 yeni: seçenek adımları, clamp/NaN, dil-bağımsız yüzde) |
+| Dış inceleme | DeepSeek alt ajanı — **"Kritik yok"** + 6 bulgudan 5'i yamalandı (aşağıda) |
+| CI | Push sonrası doğrulanır |
+| Veri şeması | Değişiklik yok — yeni pref: `ui_text_scale` |
+
+## İnceleme yamaları (DeepSeek bulguları)
+
+- **[B1-orta] Sistem yazı boyutu artık korunur:** hiç seçim yapılmamışsa uygulamada telefonun erişilebilirlik yazı boyutu izlenir; sessiz %100'e düşürme kaldırıldı. Görünüm ekranına **"Sistem (telefon ayarı)"** seçeneği eklendi.
+- **[B2-orta] Döndürme/çoklu pencere sonrası ölçek korunur:** `onConfigurationChanged` ölçeği yeniden uygular ve görünür sohbeti yeniden kurar.
+- **[B4-düşük] Kontrast düzeltildi:** Bordo accent `#D96C7B→#B04E5E` (3.04→4.73), Ametist accent `#9A5BD0→#8447BE` (4.39→5.79) — WCAG AA.
+- **[B3-düşük] EN modda toast dili** düzeltildi; **[B5-düşük] paralel dizi** yerine etiketler `UiScale.percent`'ten üretilir (gelecek seçenek ekleme çökme riski kapandı).
+
+---
+
 ## v0.35.00 — 2026-11-16 (kart kırpma uyarıları)
 
 Codex öneri taramasının birincisi (kolaylık 9, kullanıcı değeri 8; denetim bulgusu [1]). Karakter kartı alanları prompt'ta kırpılıyordu — editör artık bunu gizlemiyor. versionCode **71**.

@@ -4,7 +4,7 @@
 [![CI](https://github.com/PASTA726/localrp/actions/workflows/ci.yml/badge.svg)](https://github.com/PASTA726/localrp/actions/workflows/ci.yml)
 [![Sürüm](https://img.shields.io/github/v/release/PASTA726/localrp?include_prereleases&label=s%C3%BCr%C3%BCm&color=9B7BFF)](https://github.com/PASTA726/localrp/releases)
 [![Lisans](https://img.shields.io/github/license/PASTA726/localrp?color=9B7BFF)](LICENSE)
-![Testler](https://img.shields.io/badge/birim%20test-234%20ge%C3%A7er-4A2BA8)
+![Testler](https://img.shields.io/badge/birim%20test-237%20ge%C3%A7er-4A2BA8)
 
 *Hikâyelerin telefonda, model cihazda, veri sende.*
 
@@ -68,12 +68,12 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 | | |
 |---|---|
-| Sürüm | v0.35.00 (versionCode 71, stabil) |
-| Testler | 234 JVM birim testi, 0 hata; CI her push'ta yeşil |
+| Sürüm | v0.36.00 (versionCode 72, stabil) |
+| Testler | 237 JVM birim testi, 0 hata; CI her push'ta yeşil |
 | Mimari | Native Kotlin + Java, AndroidX/Room yok; saf views + SharedPreferences |
 | Yapay zekâ | llama.cpp (GGUF, arm64) yerel; OpenAI-uyumlu sağlayıcı opt-in |
 | Bekleyen | Sağlayıcı akışının gerçek cihazda uçtan uca kabul turu |
 
 ## English summary
 
-LocalRP is an offline-first Android roleplay app (Turkish UI). Build characters, run one-on-one or multi-character group stories with per-character prompts, a keyword→fact lorebook and per-chat generation profiles. Inference runs fully on-device via llama.cpp (GGUF, arm64); models install through a SHA-256-verified in-app catalog with resumable downloads. An OpenAI-compatible online provider exists but is strictly opt-in (https-only, AndroidKeyStore-encrypted key) and off by default. Backups export to `.json`/`.zip`; deletes are undoable; 234 JVM unit tests pass on every push. Characters import/export as SillyTavern-compatible V2 cards (PNG with embedded JSON or plain JSON); messages can be read aloud (TTS) and dictated (STT); pinned story events are recalled through keyword matching when they relate to the current exchange.
+LocalRP is an offline-first Android roleplay app (Turkish UI). Build characters, run one-on-one or multi-character group stories with per-character prompts, a keyword→fact lorebook and per-chat generation profiles. Inference runs fully on-device via llama.cpp (GGUF, arm64); models install through a SHA-256-verified in-app catalog with resumable downloads. An OpenAI-compatible online provider exists but is strictly opt-in (https-only, AndroidKeyStore-encrypted key) and off by default. Backups export to `.json`/`.zip`; deletes are undoable; 237 JVM unit tests pass on every push. Characters import/export as SillyTavern-compatible V2 cards (PNG with embedded JSON or plain JSON); messages can be read aloud (TTS) and dictated (STT); pinned story events are recalled through keyword matching when they relate to the current exchange.
